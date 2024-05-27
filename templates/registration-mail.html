@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<htmllang="en">
+    <head>
+        <metacharset="UTF-8" />
+        <metaname="viewport"content="width=device-width, initial-scale=1.0" />
+        <title>Verify your Email</title>
+    </head>
+
+    <body>
+        Hello {{ user }},
+
+        <p>We are delighted to have you among us. On behalf of all the members and the management, we would like to extend our
+        warmest welcome and good wishes!</p> 
+
+        <p>Lab Hazir is an online marketplace for diagnostic labs which will help the patients to find the best lab using web-based
+        application with regard to location, quality, cost and feedback. Patients can look up different labs, compare their
+        prices and services, and then select the one which suits them the best.</p><br />
+        <a href="{{ verification_link }}" style="background-color: #007bff; color: #fff; padding: 10px 20px; border-radius: 5px; text-decoration: none;">Verify</a>
+        </p><br />
+    </br>
+        <p>By completing the registration process, you are confirming to the acceptance of <a href="{{terms_conditions}}"><strong>Terms and Conditions</strong></a> of Lab Hazir.</p>
+        {% if account_type == "labowner" %}
+            <p>You will be able to use the account once its been approved by Lab Hazir Registration Team.</p>
+        {% endif %}
+
+        <p>Registration & Audits Department <br/> Lab Hazir</p>
+        <p><img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAUA
+            AAAFCAYAAACNbyblAAAAHElEQVQI12P4//8/w38GIAXDIBKE0DHxgljNBAAO
+            9TXL0Y4OHwAAAABJRU5ErkJggg=="" alt="Lab Hazir logo"></p>
+    </body>
+</html>

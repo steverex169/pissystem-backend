@@ -1,0 +1,33 @@
+from django.urls import path
+from databaseadmin.views import NewsListView,InstrumentsAPIView, InstrumentsUpdateAPIView, InstrumentTypeView,AnalyteUpdateAPIView, AnalyteAPIView, MethodsAPIView, UpdateInstrumentTypeView,  MethodsUpdateAPIView, UnitsAPIView, UnitsListAPIView, UnitsUpdateAPIView, ActivityLogDatabaseadmin, ReagentsListAPIView, ReagentsPostAPIView, ReagentsPutAPIView ,ManufacturalListAPIView, ManufacturalPostAPIView, ManufacturalPutAPIView
+
+urlpatterns = [
+    path('units_update/<id>', UnitsUpdateAPIView.as_view(), name='units_update'),
+    path('units_create', UnitsAPIView.as_view(), name='units_create'),
+    path('units_list', UnitsListAPIView.as_view(), name='units_list'),
+    path('history_list/<id>', ActivityLogDatabaseadmin.as_view(), name='history_list'),
+    path('reagent_update/<id>', ReagentsPutAPIView.as_view(), name='reagent_update'),
+    path('reagent_create', ReagentsPostAPIView.as_view(), name='reagent_create'),
+    path('reagent_list', ReagentsListAPIView.as_view(), name='reagent_list'), 
+    path('manufactural_update/<id>', ManufacturalPutAPIView.as_view(), name='manufactural_update'),
+    path('manufactural_create', ManufacturalPostAPIView.as_view(), name='manufactural_create'),
+    path('manufactural_list', ManufacturalListAPIView.as_view(), name='manufactural_list'), 
+        path('instrument-type-list',
+         InstrumentTypeView.as_view(), name='instrument-type-list'),
+    path('update-instrument-type-list/<id>',
+        UpdateInstrumentTypeView.as_view(), name='update-instrument-type-list'),
+    path('methods-list',
+         MethodsAPIView.as_view(), name='methods-list'),
+    path('update-method-list/<id>',
+        MethodsUpdateAPIView.as_view(), name='update-method-list'), 
+    path('analyte-list',
+        AnalyteAPIView.as_view(), name='analyte-list'),
+    path('update-analyte/<id>',
+        AnalyteUpdateAPIView.as_view(), name='update-analyte'),
+    path('instrument-list',
+         InstrumentsAPIView.as_view(), name='instrument-list'),
+    path('update-instrument-list/<id>',
+        InstrumentsUpdateAPIView.as_view(), name='update-instrument-list'),
+    path('news-list',
+         NewsListView.as_view(), name='news-list'),
+]
