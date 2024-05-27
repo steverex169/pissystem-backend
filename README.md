@@ -4,8 +4,8 @@
 The first thing to do is to clone the repository:
 
 ```sh
-git clone https://github.com/labhazir/nhs-neqas-django.git
-cd nhs-neqas-django
+git clone https://github.com/labhazir/nhsneqas-django.git
+cd nhsneqas-django
 ```
 
 Copy settings_copy content into settings file:
