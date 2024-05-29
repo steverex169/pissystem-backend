@@ -12,9 +12,10 @@ from helpers.mail import send_mail
 # Create your models here.
 OPTIONS = (
     ('admin', 'Admin'),
+    ('organization', 'Organization'),
     ('database-admin', 'Database Admin'),
     ('hr-admin', 'HR Admin'),
-      ('CSR', 'CSR'),
+    ('CSR', 'CSR'),
     ('registration-admin', 'Registration Admin'),
     ('labowner', 'Lab'),
     ('finance-officer', 'Finance Officer'),
