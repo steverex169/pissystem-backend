@@ -30,7 +30,7 @@ from labowner.models import FINANCIAL_SETTLEMENT, ActivityLog, Lab, LabCorporate
 
 # from medicaltest.models import Test, Unit
 from labowner.serializers import ActivityLogSerializer, LabCorporateSerializer, LabInformationSerializer, LabPaymentSerializer, PathologistSerializer, SampleCollectorSerializer, OfferedTestSerializer, ManufacturalSerializer
-from django.contrib.gis.geos import Point
+
 from django.conf import settings
 
 from staff.models import Marketer, Staff

@@ -1,6 +1,5 @@
 from datetime import datetime
-from django.contrib.gis.db import models
-
+from django.db import models
 from account.models import UserAccount
 
 # Create your models here.
