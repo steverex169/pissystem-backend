@@ -11,7 +11,6 @@ from rest_framework.views import APIView
 from territories.models import Territories
 from territories.serializers import TerritoriesSerializer
 import csv
-import pandas as pd
 
 
 # Api for post and delete cities: By the running this Api deleting all the items associated with it if already that Api (Post, Delete) in running state one time no need to run again and again..
