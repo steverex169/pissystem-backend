@@ -1,10 +1,9 @@
 from django.contrib import admin
-from django.contrib.gis.admin import OSMGeoAdmin
 from labowner.models import  Lab, ActivityLog, LabPayment, Pathologist, OfferedTest, SampleCollector, Staff
 
 
 # Change settings for showing in Admin
-class LabAdmin(OSMGeoAdmin):
+class LabAdmin(admin.ModelAdmin):
     list_display = ('id', 'name', 'is_active', 'is_blocked',)
     search_fields = ('name', 'email', 'phone',
                      'landline', 'address', 'city', )
