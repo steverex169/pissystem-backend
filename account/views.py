@@ -45,6 +45,9 @@ class RegisterView(CreateAPIView):
             email_exists = UserAccount.objects.filter(email=request.data['email']).exists()
             if email_exists:
                 return Response({"status": status.HTTP_400_BAD_REQUEST, "error": "Email already exists."})
+            # email_exists = UserAccount.objects.filter(email=request.data['email']).exists()
+            # if email_exists:
+            #     return Response({"status": status.HTTP_400_BAD_REQUEST, "error": "Email already exists."})
 
             # Proceed with saving the serializer data
             serializer.save()
@@ -63,6 +66,10 @@ class RegisterView(CreateAPIView):
                 Organization.objects.create(
                     account_id=user,
                     name=request.data['name'],
+                    user_name=request.data['username'],
+                    email=request.data['email'],
+                    website=request.data['website'],
+                    country=request.data['country'],
                     photo=request.data['photo'],
                     user_name=request.data['username'],
                     email=request.data['email'],
@@ -77,8 +84,12 @@ class RegisterView(CreateAPIView):
             if request.data['account_type'] == "database-admin" or request.data['account_type'] == "registration-admin" or request.data['account_type'] == "CSR":
                 user.email = request.data['email']
                 user.save()
+                print("organization and user", user, request.data['added_by'])
+                organization = Organization.objects.get(account_id=request.data['added_by'])
+                print("organization and user", organization.id, user)
                 Staff.objects.create(
                     account_id=user,
+                    organization_id=organization,
                     name=request.data['name'],
                     cnic=request.data['cnic'],
                     photo=request.data['photo'],
