@@ -13,10 +13,13 @@ OPTIONS = (
     ('admin', 'Admin'),
     ('database-admin', 'Database Admin'),
     ('hr-admin', 'HR Admin'),
-      ('CSR', 'CSR'),
+    ('CSR', 'CSR'),
     ('registration-admin', 'Registration Admin'),
     ('labowner', 'Lab'),
     ('finance-officer', 'Finance Officer'),
+    ('organization', 'Organization'),
+    ('superadmin', 'Superadmin'),
+
 )
 
 

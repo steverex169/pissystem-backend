@@ -1,6 +1,6 @@
 from django.contrib import admin
 from django.contrib.gis.admin import OSMGeoAdmin
-from labowner.models import  Lab, ActivityLog, LabPayment, Pathologist, OfferedTest, SampleCollector, Staff
+from labowner.models import  Lab, Result, ActivityLog, LabPayment, Pathologist, OfferedTest, SampleCollector, Staff
 
 
 # Change settings for showing in Admin
@@ -24,6 +24,9 @@ class SampleCollectorAdmin(admin.ModelAdmin):
     list_display = ('id', 'lab_id', 'name', 'gender', 'cnic', 'phone')
     search_fields = ('id', 'name', 'cnic', 'gender', 'phone')
 
+class ResultAdmin(admin.ModelAdmin):
+    list_display = ('id', 'lab_id', 'analyte', 'units',  'method', 'reagents', 'result',)
+    search_fields = ('id', 'lab_id', 'analyte', 'units',  'method', 'reagents', 'result',)
 
 class OfferedTestAdmin(admin.ModelAdmin):
     list_display = ('id', 'lab_id','test_type','duration_required', 'duration_type', 'shared_percentage',
@@ -60,6 +63,7 @@ class ActivityLogAdmin(admin.ModelAdmin):
 # Register your models here
 
 admin.site.register(Lab, LabAdmin)
+admin.site.register(Result, ResultAdmin)
 admin.site.register(Pathologist, PathologistAdmin)
 admin.site.register(SampleCollector, SampleCollectorAdmin)
 admin.site.register(OfferedTest, OfferedTestAdmin)
