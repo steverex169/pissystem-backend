@@ -11,24 +11,25 @@ from rest_framework.authtoken.models import Token
 from rest_framework.authtoken.serializers import AuthTokenSerializer
 from django.utils import timezone
 from account.models import UserAccount
+from organization.models import Organization
 import datetime
-class UnitsListAPIView(APIView):
+# class UnitsListAPIView(APIView):
     
-    def get(self, request, *args, **kwargs):
-        try:
-            units_list = Units.objects.all()
-            serialized_data = []
-            for unit in units_list:
-                unit_data = model_to_dict(unit)
-                if unit.added_by_id:  # Check if added_by_id is not None
-                    user_account = UserAccount.objects.get(id=unit.added_by_id)
-                    unit_data['added_by'] = user_account.username
-                else:
-                    unit_data['added_by'] = None
-                serialized_data.append(unit_data)
-            return Response({"status": status.HTTP_200_OK, "data": serialized_data})
-        except Units.DoesNotExist:
-            return Response({"status": status.  HTTP_400_BAD_REQUEST, "message": "No Record Exist."})
+#     def get(self, request, *args, **kwargs):
+#         try:
+#             units_list = Units.objects.all()
+#             serialized_data = []
+#             for unit in units_list:
+#                 unit_data = model_to_dict(unit)
+#                 if unit.added_by_id:  # Check if added_by_id is not None
+#                     user_account = UserAccount.objects.get(id=unit.added_by_id)
+#                     unit_data['added_by'] = user_account.username
+#                 else:
+#                     unit_data['added_by'] = None
+#                 serialized_data.append(unit_data)
+#             return Response({"status": status.HTTP_200_OK, "data": serialized_data})
+#         except Units.DoesNotExist:
+#             return Response({"status": status.  HTTP_400_BAD_REQUEST, "message": "No Record Exist."})
         
 class UnitsAPIView(APIView):
     permission_classes = (AllowAny,)  # AllowAny temporarily for demonstration
@@ -36,14 +37,15 @@ class UnitsAPIView(APIView):
     # Post API for creating units
     def post(self, request, *args, **kwargs):
         try:
-            user_id = request.data['added_by']
-            user_account = UserAccount.objects.get(id=user_id)
+            # user_id = request.data['added_by']
+            # print("id", request.data['added_by'])
+            # organozation = Organization.objects.get(account_id=user_id)
 
             # Create a new unit
             unit = Units.objects.create(
                 name=request.data['name'],
                 date_of_addition=timezone.now(),
-                added_by=user_account
+                # organization_id=organozation
             )
 
             # Save data in activity log
@@ -52,7 +54,7 @@ class UnitsAPIView(APIView):
                 old_value= request.data['name'], # Here you can specify old value for post
                 new_value= "",  # Assuming 'name' is the new value
                 date_of_addition=timezone.now(),
-                added_by=user_account,
+                # organization_id=organozation,
                 actions='Added'  # Specify action as 'Added'
             )
             # Serialize the created unit

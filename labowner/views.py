@@ -23,12 +23,12 @@ from accountstatement.serializers import AccountStatementSerializer
 from financeofficer.models import PaymentIn
 from financeofficer.serializers import PaymentInSerializer
 from helpers.mail import send_mail
-from labowner.models import FINANCIAL_SETTLEMENT, ActivityLog, Lab, LabCorporate, OfferedTest, Pathologist, SampleCollector, Manufactural
+from labowner.models import FINANCIAL_SETTLEMENT, Result, ActivityLog, Lab, LabCorporate, OfferedTest, Pathologist, SampleCollector
 
 
 # from medicaltest.models import Test, Unit
-from labowner.serializers import ActivityLogSerializer, LabCorporateSerializer, LabInformationSerializer, LabPaymentSerializer, PathologistSerializer, SampleCollectorSerializer, OfferedTestSerializer, ManufacturalSerializer
-
+from labowner.serializers import ResultSerializer, ActivityLogSerializer, LabCorporateSerializer, LabInformationSerializer, LabPaymentSerializer, PathologistSerializer, SampleCollectorSerializer, OfferedTestSerializer
+from django.contrib.gis.geos import Point
 from django.conf import settings
 
 from staff.models import Marketer, Staff
@@ -1816,22 +1816,59 @@ class ReffrellFeeCorporationsListView(APIView):
             return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "Lab record doesn't exist."})
         
 
-class ManufacturalList(APIView):
+# class ManufacturalList(APIView):
+#     permission_classes = (AllowAny,)
+
+#     def get(self, request, *args, **kwargs):
+#         try:
+#             database = Manufactural.objects.all()
+
+#             serializer = ManufacturalSerializer(database, many=True)
+        
+#             return Response({"status": status.HTTP_200_OK, "data": serializer.data})
+#         except Manufactural.DoesNotExist:
+#             return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "Sorry! record doesn't exist."})
+        
+#     def post(self, request, *args, **kwargs):
+#         serializer = ManufacturalSerializer(data=request.data)
+#         if serializer.is_valid():
+#             serializer.save()
+#             return Response({"status": status.HTTP_201_CREATED, "data": serializer.data})
+#         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+class ForChartCalculationView(APIView):
     permission_classes = (AllowAny,)
 
-    def get(self, request, *args, **kwargs):
-        try:
-            database = Manufactural.objects.all()
-
-            serializer = ManufacturalSerializer(database, many=True)
-        
-            return Response({"status": status.HTTP_200_OK, "data": serializer.data})
-        except Manufactural.DoesNotExist:
-            return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "Sorry! record doesn't exist."})
-        
     def post(self, request, *args, **kwargs):
-        serializer = ManufacturalSerializer(data=request.data)
-        if serializer.is_valid():
-            serializer.save()
-            return Response({"status": status.HTTP_201_CREATED, "data": serializer.data})
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        analyte_id = request.data.get('analyte_id')
+        print("analyte id is", analyte_id)
+        if analyte_id:
+            # Retrieve TestAppointment instances where analyte_ids contains the analyte_id
+            analyte_result = Result.objects.filter(analyte_id=analyte_id)
+            print("appointmnets", analyte_result)
+
+            # Check status of each TestAppointment instance
+            for analyte in analyte_result:
+                print("Lab ID:", analyte.lab_id, "- Result:", analyte.result, analyte.analyte)
+
+            # Define all possible statuses
+            possible_result = ["10", "20", "30", "40"]
+            
+            # Initialize data with all possible statuses set to zero
+            data_dict = {result: 0 for result in possible_result}
+            print("data result", data_dict)
+            # Count appointments for each result
+            for result_count in analyte_result.values_list('result', flat=True):
+                if result_count in data_dict:
+                    data_dict[result_count] += 1
+
+            # Prepare the response data
+            categories = list(data_dict.keys())
+            data = list(data_dict.values())
+            
+            response_data = {
+                'categories': categories,
+                'data': data
+            }
+
+            return Response(response_data, status=status.HTTP_200_OK)

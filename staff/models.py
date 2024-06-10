@@ -1,5 +1,6 @@
 from datetime import datetime
-from django.db import models
+from django.contrib.gis.db import models
+from organization.models import Organization
 from account.models import UserAccount
 
 # Create your models here.
@@ -15,7 +16,8 @@ OPTIONS = (
     ('CSR', 'CSR'),
     ('auditor', 'Auditor'),
     ('finance-officer', 'Finance Officer'),
-    ('marketer-admin', 'Marketer Admin')
+    ('marketer-admin', 'Marketer Admin'),
+    ('superadmin', 'Superadmin'),
 )
 
 TERRITORY_OFFICES = (
@@ -25,6 +27,8 @@ TERRITORY_OFFICES = (
 )
 
 class Staff(models.Model):
+    organization_id = models.ForeignKey(
+        Organization, on_delete=models.CASCADE, null=True, blank=True)
     photo = models.ImageField(
         upload_to='staff', verbose_name='Staff\'s Photo', default="blank")
     account_id = models.OneToOneField(
@@ -48,6 +52,8 @@ class Staff(models.Model):
 
 
 class Marketer(models.Model):
+    organization_id = models.ForeignKey(
+        Organization, on_delete=models.CASCADE, null=True, blank=True)
     name = models.CharField(max_length=255, blank=False, null=True)
     cnic = models.CharField(max_length=255, unique=True, blank=False, null=True,
                             verbose_name='CNIC Number', help_text='Please add backslashes as well.')
