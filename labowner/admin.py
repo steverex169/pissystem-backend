@@ -4,7 +4,7 @@ from labowner.models import  Lab, Result, ActivityLog, LabPayment, Pathologist, 
 
 
 # Change settings for showing in Admin
-class LabAdmin(OSMGeoAdmin):
+class LabAdmin(admin.ModelAdmin):
     list_display = ('id', 'name', 'is_active', 'is_blocked',)
     search_fields = ('name', 'email', 'phone',
                      'landline', 'address', 'city', )

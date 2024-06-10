@@ -45,6 +45,9 @@ class RegisterView(CreateAPIView):
             email_exists = UserAccount.objects.filter(email=request.data['email']).exists()
             if email_exists:
                 return Response({"status": status.HTTP_400_BAD_REQUEST, "error": "Email already exists."})
+            # email_exists = UserAccount.objects.filter(email=request.data['email']).exists()
+            # if email_exists:
+            #     return Response({"status": status.HTTP_400_BAD_REQUEST, "error": "Email already exists."})
 
             # Proceed with saving the serializer data
             serializer.save()
@@ -67,6 +70,13 @@ class RegisterView(CreateAPIView):
                     email=request.data['email'],
                     website=request.data['website'],
                     country=request.data['country'],
+                    photo=request.data['photo'],
+                    user_name=request.data['username'],
+                    email=request.data['email'],
+                    phone=request.data['phone'],
+                    city=request.data['city'],
+                    country=request.data['country'],
+                    address=request.data['address'],
                     registered_at=datetime.datetime.now()
                 )
              

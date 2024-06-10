@@ -1,7 +1,7 @@
 from datetime import datetime
 from enum import unique
+from django.db import models
 from typing import Type
-from django.contrib.gis.db import models
 from account.models import UserAccount
 from organization.models import Organization
 # from donor.models import DonorBank

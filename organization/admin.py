@@ -8,3 +8,6 @@ class OrganizationAdmin(admin.ModelAdmin):
 
 # Register your models here
 admin.site.register(Organization, OrganizationAdmin)
+from django.contrib import admin
+
+# Register your models here.

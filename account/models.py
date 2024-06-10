@@ -1,7 +1,8 @@
-from django.contrib.gis.db import models
+
 from django.contrib.auth.models import AbstractUser
 from django.dispatch import receiver
 from django.urls import reverse
+from django.db import models
 from django_rest_passwordreset.signals import reset_password_token_created
 # from django.core.mail import send_mail
 from django.utils.timezone import now
@@ -11,6 +12,7 @@ from helpers.mail import send_mail
 # Create your models here.
 OPTIONS = (
     ('admin', 'Admin'),
+    ('organization', 'Organization'),
     ('database-admin', 'Database Admin'),
     ('hr-admin', 'HR Admin'),
     ('CSR', 'CSR'),

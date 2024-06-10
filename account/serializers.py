@@ -15,6 +15,7 @@ from account.models import UserAccount
 
 OPTIONS = (
     ('admin', 'Admin'),
+    ('organization', 'Organization'),
     ('database-admin', 'Database Admin'),
     ('hr-admin', 'HR Admin'),
     ('CSR', 'CSR'),
