@@ -41,8 +41,8 @@ class Manufactural(models.Model):
     date_of_addition = models.DateTimeField(blank=True, null=True) 
     added_by = models.ForeignKey(
         UserAccount, on_delete=models.CASCADE, null=True, blank=True)
-    image = models.ImageField(
-        upload_to='image', verbose_name='Image', blank=True, null=True)
+    # image = models.ImageField(
+    #     upload_to='image', verbose_name='Image', blank=True, null=True)
     def __str__(self):
         return self.name
 
@@ -63,19 +63,6 @@ class Method(models.Model):
     class Meta:       
         verbose_name = 'Method'
 
-class Analyte(models.Model):
-    name = models.CharField(max_length=255, blank=True, null=True)
-    code = models.PositiveBigIntegerField(blank=True, null=True)
-    date_of_addition = models.DateTimeField(blank=True, null=True) 
-    added_by = models.ForeignKey(
-        UserAccount, on_delete=models.CASCADE, null=True, blank=True)
-    status = models.CharField(
-        max_length=50, choices=STATUS, default='Inactive', blank=True)
-    def __str__(self):
-        return self.name
-
-    class Meta:       
-        verbose_name = 'Analyte'
 
 class Reagents(models.Model):
     name = models.CharField(max_length=255, blank=False, null=True)
@@ -122,6 +109,28 @@ class Instrument(models.Model):
 
     class Meta:
         verbose_name = 'Instrument'
+        
+class Analyte(models.Model):
+    name = models.CharField(max_length=255, blank=True, null=True)
+    code = models.PositiveBigIntegerField(blank=True, null=True)
+    date_of_addition = models.DateTimeField(blank=True, null=True) 
+    added_by = models.ForeignKey(
+        UserAccount, on_delete=models.CASCADE, null=True, blank=True)
+    method = models.ForeignKey(
+        Method, on_delete=models.SET_NULL, null=True, blank=True)
+    instrument = models.ForeignKey( 
+        Instrument, on_delete=models.SET_NULL, null=True, blank=True)
+    reagent = models.ForeignKey(
+        Reagents, on_delete=models.SET_NULL, null=True, blank=True)
+    unit = models.ForeignKey(
+        Units, on_delete=models.SET_NULL, null=True, blank=True)
+    status = models.CharField(
+        max_length=50, choices=STATUS, default='Inactive', blank=True)
+    def __str__(self):
+        return self.name
+
+    class Meta:       
+        verbose_name = 'Analyte'
 
 class ActivityLogUnits(models.Model):
     analyte_id = models.ForeignKey(

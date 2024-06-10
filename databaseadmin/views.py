@@ -408,11 +408,11 @@ class ManufacturalListAPIView(APIView):
                     manufactural_data['added_by'] = user_account.username
                 else:
                     manufactural_data['added_by'] = None
-                 # Handle the 'image' field
-                if manufactural.image:
-                    manufactural_data['image'] = manufactural.image.url
-                else:
-                    manufactural_data['image'] = None
+                #  # Handle the 'image' field
+                # if manufactural.image:
+                #     manufactural_data['image'] = manufactural.image.url
+                # else:
+                #     manufactural_data['image'] = None
                 serialized_data.append(manufactural_data)
             return Response({"status": status.HTTP_200_OK, "data": serialized_data})
         except Manufactural.DoesNotExist:
@@ -736,6 +736,7 @@ class AnalyteAPIView(APIView):
         try:
             user_id = request.data['added_by']
             user_account = UserAccount.objects.get(id=user_id)
+            
 
             # Create a new Analyte
             analyte = Analyte.objects.create(
