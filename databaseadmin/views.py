@@ -1,8 +1,8 @@
 from rest_framework import status
 from rest_framework.response import Response
 from rest_framework.views import APIView
-from databaseadmin.models import News,Instrument, Units, ActivityLogUnits,Reagents , Manufactural, Method,InstrumentType, Analyte
-from databaseadmin.serializers import NewsSerializer,InstrumentSerializer, MethodSerializer,AnalyteSerializer, InstrumentTypeSerializer, UnitsSerializer, ActivityLogUnitsSerializer, ReagentsSerializer, ManufacturalSerializer
+from databaseadmin.models import News,Instrument, Units, ActivityLogUnits,Reagents , Manufactural, Method, Scheme, InstrumentType, Analyte
+from databaseadmin.serializers import NewsSerializer,InstrumentSerializer, MethodSerializer, SchemeSerializer, AnalyteSerializer, InstrumentTypeSerializer, UnitsSerializer, ActivityLogUnitsSerializer, ReagentsSerializer, ManufacturalSerializer
 from django.forms.models import model_to_dict
 from django.http import HttpResponseRedirect
 from rest_framework.permissions import IsAuthenticated, AllowAny
@@ -263,14 +263,18 @@ class ActivityLogDatabaseadmin(APIView):
                             activity_log = ActivityLogUnits.objects.filter(method_id=method.id)
                         except Method.DoesNotExist:
                             try:
-                                manufactural = Manufactural.objects.get(id=id_value)
-                                activity_log = ActivityLogUnits.objects.filter(manufactural_id=manufactural.id)
-                            except Manufactural.DoesNotExist:
+                                scheme = Scheme.objects.get(id=id_value)
+                                activity_log = ActivityLogUnits.objects.filter(scheme_id=scheme.id)
+                            except Scheme.DoesNotExist:
                                 try:
-                                    instrument = Instrument.objects.get(id=id_value)
-                                    activity_log = ActivityLogUnits.objects.filter(instrument_id=instrument.id)
-                                except Instrument.DoesNotExist:
-                                    return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "No record exists."}) 
+                                    manufactural = Manufactural.objects.get(id=id_value)
+                                    activity_log = ActivityLogUnits.objects.filter(manufactural_id=manufactural.id)
+                                except Manufactural.DoesNotExist:
+                                    try:
+                                        instrument = Instrument.objects.get(id=id_value)
+                                        activity_log = ActivityLogUnits.objects.filter(instrument_id=instrument.id)
+                                    except Instrument.DoesNotExist:
+                                        return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "No record exists."}) 
           
 
             serializer = ActivityLogUnitsSerializer(activity_log, many=True)
@@ -617,6 +621,116 @@ class MethodsUpdateAPIView(APIView):
 
         except Method.DoesNotExist:
             return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "No such record exists."})
+
+class SchemeAPIView(APIView):
+    permission_classes = (AllowAny,)  # AllowAny temporarily for demonstration
+
+    def get(self, request, *args, **kwargs):
+        try:
+            scheme_list = Scheme.objects.all()
+            serialized_data = []
+            for scheme in scheme_list:
+                scheme_data = model_to_dict(scheme)
+                if scheme.added_by_id:  # Check if added_by_id is not None
+                    user_account = UserAccount.objects.get(id=scheme.added_by_id)
+                    scheme_data['added_by'] = user_account.username
+                else:
+                    scheme_data['added_by'] = None
+                serialized_data.append(scheme_data)
+            return Response({"status": status.HTTP_200_OK, "data": serialized_data})
+        except Scheme.DoesNotExist:
+            return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "No Record Exist."})
+
+    # Post API for creating units
+    def post(self, request, *args, **kwargs):
+        try:
+            user_id = request.data['added_by']
+            user_account = UserAccount.objects.get(id=user_id)
+
+            # Create a new method
+            scheme = Scheme.objects.create(
+                scheme_name=request.data['scheme_name'],
+                cycle_no=request.data['cycle_no'],
+                rounds=request.data['rounds'],
+                start_date=timezone.now(),
+                end_date=timezone.now(),
+                added_by=user_account,
+                cycle=request.data['cycle'],
+                status=request.data['status'],
+            )
+
+            # Concatenate all changes into a single string
+            changes_string = ", ".join([f"{field}: {request.data[field]}" for field in ["scheme_name", "cycle_no", "rounds", "cycle", "status"]])
+
+            # Save data in activity log as a single field
+            ActivityLogUnits.objects.create(
+                scheme_id=scheme,
+                start_date=timezone.now(),
+                end_date=timezone.now(),
+                field_name="Changes",
+                old_value=None,  # No old value during creation
+                new_value=changes_string,
+                added_by=user_account,
+                actions='Added',
+                type="Scheme",
+            )
+
+            scheme_serializer = SchemeSerializer(scheme)
+
+            return Response({"status": status.HTTP_201_CREATED, "unit_data": scheme_serializer.data,
+                             "message": "Scheme added successfully."})
+
+        except Exception as e:
+            return Response({"status": status.HTTP_400_BAD_REQUEST, "message": str(e)})
+
+class SchemeUpdateAPIView(APIView):
+    permission_classes = (AllowAny,)
+
+    def put(self, request, *args, **kwargs):
+        try:
+            scheme = Scheme.objects.get(id=kwargs.get('id'))
+
+            # Store old values before updating
+            old_values = {field: getattr(method, field) for field in ["scheme_name", "cycle_no", "rounds", "cycle", "status"]}
+            
+            serializer = SchemeSerializer(scheme, data=request.data, partial=True)
+
+            if serializer.is_valid():
+                updated_unit = serializer.save()
+                
+                # Retrieve new values after updating
+                new_values = {field: getattr(updated_unit, field) for field in ["scheme_name", "cycle_no", "rounds", "cycle", "status"]}
+
+                # Find the fields that have changed
+                changed_fields = {field: new_values[field] for field in new_values if new_values[field] != old_values[field]}
+
+                # Concatenate all changes into a single string
+                changes_string = ", ".join([f"{field}: {changed_fields[field]}" for field in changed_fields])
+
+                # Save data in activity log as a single field
+                ActivityLogUnits.objects.create(
+                    scheme_id=scheme,
+                    start_date=timezone.now(),
+                    end_date=timezone.now(),
+                    field_name="Changes",
+                    old_value= ", ".join([f"{field}: {old_values[field]}" for field in changed_fields]),
+                    new_value=changes_string,
+                    added_by=request.user,
+                    actions="Updated",
+                    type="Scheme",
+                )
+
+                return Response({
+                    "status": status.HTTP_200_OK,
+                    "data": serializer.data,
+                    "message": "Scheme Information updated successfully."
+                })
+            else:
+                return Response({"status": status.HTTP_400_BAD_REQUEST, "message": serializer.errors})
+
+        except Scheme.DoesNotExist:
+            return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "No such record exists."})
+
 
 class InstrumentTypeView(APIView):
     permission_classes = (AllowAny,)

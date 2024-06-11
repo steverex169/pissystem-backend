@@ -1,4 +1,3 @@
-from curses import window
 import datetime
 import json
 from multiprocessing import context

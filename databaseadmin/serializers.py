@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from databaseadmin.models import News,Instrument, Units, Analyte, ActivityLogUnits, Reagents, Manufactural, Method, InstrumentType
+from databaseadmin.models import News,Instrument, Units, Analyte, ActivityLogUnits, Reagents, Manufactural, Method, Scheme, InstrumentType
 
 
 class UnitsSerializer(serializers.ModelSerializer):
@@ -30,7 +30,12 @@ class InstrumentTypeSerializer(serializers.ModelSerializer):
 class MethodSerializer(serializers.ModelSerializer):
     class Meta:
         model = Method
-        fields = ('__all__')              
+        fields = ('__all__')     
+
+class SchemeSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Scheme
+        fields = ('__all__')            
 
 class AnalyteSerializer(serializers.ModelSerializer):
     class Meta:

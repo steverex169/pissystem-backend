@@ -1,5 +1,5 @@
 from django.urls import path
-from databaseadmin.views import NewsListView,InstrumentsAPIView, InstrumentsUpdateAPIView, InstrumentTypeView,AnalyteUpdateAPIView, AnalyteAPIView, MethodsAPIView, UpdateInstrumentTypeView,  MethodsUpdateAPIView, UnitsAPIView, UnitsListAPIView, UnitsUpdateAPIView, ActivityLogDatabaseadmin, ReagentsListAPIView, ReagentsPostAPIView, ReagentsPutAPIView ,ManufacturalListAPIView, ManufacturalPostAPIView, ManufacturalPutAPIView
+from databaseadmin.views import NewsListView,InstrumentsAPIView, InstrumentsUpdateAPIView, InstrumentTypeView,AnalyteUpdateAPIView, AnalyteAPIView, MethodsAPIView, MethodsUpdateAPIView, SchemeAPIView,SchemeUpdateAPIView, UpdateInstrumentTypeView,   UnitsAPIView, UnitsListAPIView, UnitsUpdateAPIView, ActivityLogDatabaseadmin, ReagentsListAPIView, ReagentsPostAPIView, ReagentsPutAPIView ,ManufacturalListAPIView, ManufacturalPostAPIView, ManufacturalPutAPIView
 
 urlpatterns = [
     path('units_update/<id>', UnitsUpdateAPIView.as_view(), name='units_update'),
@@ -20,6 +20,10 @@ urlpatterns = [
          MethodsAPIView.as_view(), name='methods-list'),
     path('update-method-list/<id>',
         MethodsUpdateAPIView.as_view(), name='update-method-list'), 
+    path('scheme-list',
+         SchemeAPIView.as_view(), name='scheme-list'),
+    path('update-scheme-list/<id>',
+        SchemeUpdateAPIView.as_view(), name='update-scheme-list'),    
     path('analyte-list',
         AnalyteAPIView.as_view(), name='analyte-list'),
     path('update-analyte/<id>',

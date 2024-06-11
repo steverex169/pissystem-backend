@@ -1,11 +1,11 @@
 from django.contrib import admin
-from databaseadmin.models import News,Instrument, Method,InstrumentType,ActivityLogUnits, Units, Reagents, Manufactural, Analyte
+from databaseadmin.models import News,Instrument, Method, Scheme, InstrumentType,ActivityLogUnits, Units, Reagents, Manufactural, Analyte
 
 # Register your models here.
 
 class ActivityLogUnitsAdmin(admin.ModelAdmin):
-    list_display = ('id', 'reagent_id','method_id', 'analyte_id', 'instrumenttype_id','unit_id', "manufactural_id", 'type','old_value', 'new_value', 'date_of_addition','added_by','actions','status')
-    search_fields = ('id', 'reagent_id','method_id', 'instrumenttype_id','unit_id', 'type','old_value', 'new_value', 'date_of_addition','added_by','actions','status')
+    list_display = ('id', 'reagent_id','method_id', 'scheme_id', 'analyte_id', 'instrumenttype_id','unit_id', "manufactural_id", 'type','old_value', 'new_value', 'date_of_addition','added_by','actions','status', 'cycle')
+    search_fields = ('id', 'reagent_id','method_id',  'scheme_id', 'instrumenttype_id','unit_id', 'type','old_value', 'new_value', 'date_of_addition','added_by','actions','status', 'cycle')
 
 class InstrumentTypeAdmin(admin.ModelAdmin):
     list_display = ('id', 'name', 'date_of_addition', 'added_by')
@@ -22,6 +22,10 @@ class ManufacturalAdmin(admin.ModelAdmin):
 class MethodAdmin(admin.ModelAdmin):
     list_display = ('id', 'name', 'date_of_addition', 'added_by','code','status')
     search_fields = ('id', 'name', 'date_of_addition', 'added_by','code','status')
+
+class SchemeAdmin(admin.ModelAdmin):
+    list_display = ('id', 'scheme_name', 'cycle_no', 'rounds','added_by','cycle', 'start_date', 'end_date', 'status')
+    search_fields = ('id', 'scheme_name', 'cycle_no', 'rounds','added_by','cycle', 'start_date', 'end_date', 'status')
 
 class ReagentsAdmin(admin.ModelAdmin):
     list_display = ('id', 'name', 'date_of_addition', 'added_by','code','status')
@@ -44,4 +48,5 @@ admin.site.register(News, NewsAdmin)
 admin.site.register(InstrumentType, InstrumentTypeAdmin)
 admin.site.register(ActivityLogUnits, ActivityLogUnitsAdmin)
 admin.site.register(Method, MethodAdmin)
+admin.site.register(Scheme, SchemeAdmin)
 admin.site.register(Instrument, InstrumentAdmin)

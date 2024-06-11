@@ -11,6 +11,10 @@ STATUS = (
     ('Active', 'Active'),
     ('Inactive', 'Inactive'),
 )
+CYCLE = (
+    ('Months', 'Months'),
+    ('Year', 'Year'),
+)
 TYPE= (
     ('Units', 'Units'),
     ('Instruments', 'Instruments'),
@@ -62,6 +66,24 @@ class Method(models.Model):
 
     class Meta:       
         verbose_name = 'Method'
+
+class Scheme(models.Model):
+    scheme_name = models.CharField(max_length=255, blank=True, null=True)
+    cycle_no = models.PositiveBigIntegerField(blank=True, null=True)
+    rounds = models.PositiveBigIntegerField(blank=True, null=True)
+    added_by = models.ForeignKey(
+        UserAccount, on_delete=models.CASCADE, null=True, blank=True)
+    cycle = models.CharField(
+        max_length=50, choices=CYCLE, default='Months', blank=True)  
+    start_date = models.DateField(blank=True, null=True)
+    end_date = models.DateField(blank=True, null=True)
+    status = models.CharField(
+        max_length=50, choices=STATUS, default='Inactive', blank=True)
+    def __str__(self):
+        return self.name
+
+    class Meta:       
+        verbose_name = 'Scheme'
 
 class Analyte(models.Model):
     name = models.CharField(max_length=255, blank=True, null=True)
@@ -138,6 +160,8 @@ class ActivityLogUnits(models.Model):
         Instrument, on_delete=models.CASCADE, null=True, blank=True)
     method_id = models.ForeignKey(
         Method, on_delete=models.CASCADE, null=True, blank=True)
+    scheme_id = models.ForeignKey(
+        Scheme, on_delete=models.CASCADE, null=True, blank=True)
     old_value = models.TextField(null= True, blank=True)
     new_value = models.TextField(null= True, blank=True)
     date_of_addition = models.DateTimeField(blank=True, null=True)  
@@ -149,6 +173,8 @@ class ActivityLogUnits(models.Model):
         max_length=50, choices= ACTIONS, default= 'Added', verbose_name='Which action is performed?')
     status = models.CharField(
         max_length=50, choices=STATUS, default='Inactive', blank=True)
+    cycle = models.CharField(
+        max_length=50, choices=CYCLE, default='Months', blank=True)
     type = models.CharField(
         max_length=50, choices= TYPE, default= 'Units', verbose_name='Form type?')
     def __str__(self):
