@@ -223,8 +223,8 @@ class Lab(models.Model):
         Staff, on_delete=models.CASCADE, primary_key=False, null=True, blank=True, verbose_name="Approved/Unapproved by")
     done_at = models.DateTimeField(
         max_length=255, blank=True, null=True, verbose_name="Approved/Unapproved at")
-    postalcode = models.CharField(
-        max_length=255, null=True, blank=True)
+    # postalcode = models.CharField(
+    #     max_length=255, null=True, blank=True)
     organization = models.CharField(
         max_length=255, null=True, blank=True)
    
@@ -238,6 +238,10 @@ class Lab(models.Model):
     is_approved = models.BooleanField(default=0, blank=False, null=True)
     Select_schemes = models.CharField(
         max_length=255, null=True, blank=True)
+    website = models.URLField(max_length=200, blank=True, null=True, verbose_name='Website')
+    district = models.CharField(max_length=255, blank=True, null=True)
+    landline_registered_by = models.CharField(
+        max_length=13, blank=False, null=True, help_text="Please use the format: +922134552799")
     def __str__(self):
         return self.name
 

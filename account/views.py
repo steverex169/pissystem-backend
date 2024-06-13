@@ -57,7 +57,38 @@ class RegisterView(CreateAPIView):
 
             # Update password_foradmins
             UserAccount.objects.filter(username=request.data['username']).update(password_foradmins=request.data['password'])
+            # Participant registration
+            if request.data['account_type'] == "labowner":
+                user.email = request.data['email']
+                user.save()
+                organization = Organization.objects.get(account_id = request.data['added_by'])
+                # print("emaillllll", request.data['email'], request.data['added_by'], organization)
+                Lab.objects.create(
+                    
+                    account_id=user,
+                    # organization_id=request.data['added_by'],
+                    user_name=request.data['username'],
+                    city=request.data['name'],
+                    name=request.data['city'],
+                    department=request.data['department'],
+                    organization_id = organization,
+                    country=request.data['country'],
+                    address=request.data['address'],
+                    district=request.data['district'],
+                    Select_schemes=request.data['Select_schemes'],
+                   
+                    email=request.data['email'],
+                    landline=request.data['landline'],
+                    
+                    
+                    lab_staff_name=request.data['lab_staff_name'],
+                    lab_staff_designation=request.data['lab_staff_designation'],
+                    landline_registered_by=request.data['landline_registered_by'],
+                    website=request.data['website'],
+                   
+                )
             
+           
             # Additional logic for creating Organization instance
             if request.data['account_type'] == "organization":
                 user.email = request.data['email']
@@ -70,13 +101,6 @@ class RegisterView(CreateAPIView):
                     email=request.data['email'],
                     website=request.data['website'],
                     country=request.data['country'],
-                    photo=request.data['photo'],
-                    user_name=request.data['username'],
-                    email=request.data['email'],
-                    phone=request.data['phone'],
-                    city=request.data['city'],
-                    country=request.data['country'],
-                    address=request.data['address'],
                     registered_at=datetime.datetime.now()
                 )
              

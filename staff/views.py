@@ -18,7 +18,7 @@ from django.db.models import Q
 from accountstatement.models import AccountStatement, B2BAccountStatement
 from accountstatement.serializers import AccountStatementSerializer, B2BAccountStatementSerializer
 
-
+from organization.models import Organization
 from labowner.models import Lab, SampleCollector
 
 from staff.models import Staff
@@ -179,20 +179,6 @@ class StaffProfileView(APIView):
 
 
 # API for displaying csr list
-class CSRListView(APIView):
-    permission_classes = (AllowAny,)
-
-    # Get request to display list of pending audits
-    def get(self, request, *args, **kwargs):
-        try:
-            csr_list = Staff.objects.filter(staff_type="CSR")
-            serializer_class = StaffSerializer(
-                csr_list, many=True)
-
-            return Response({"status": status.HTTP_200_OK, "data": serializer_class.data})
-
-        except Staff.DoesNotExist:
-            return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "Sorry! No csr staff exist."})
 
 # CSR belong to Central office
 class CSRCentralListView(APIView):
@@ -242,23 +228,84 @@ class CSRNorthListView(APIView):
         except Staff.DoesNotExist:
             return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "Sorry! No csr staff exist."})
 
+class CSRListView(APIView):
+    permission_classes = (AllowAny,)
+
+    # Get request to display list of pending audits
+    def get(self, request, *args, **kwargs):
+        try:
+            id = kwargs.get("id")
+            organization = Organization.objects.get(account_id=id)
+            organization_id = organization.id
+            csr_list = Staff.objects.filter(organization_id=organization_id, staff_type="CSR")
+            serializer_class = StaffSerializer(
+                csr_list, many=True)
+
+            return Response({"status": status.HTTP_200_OK, "data": serializer_class.data})
+
+        except Staff.DoesNotExist:
+            return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "Sorry! No csr staff exist."})
+
+
+class FinanceOfficerListView(APIView):
+    permission_classes = (AllowAny,)
+
+    # Get request to display list of pending audits
+    def get(self, request, *args, **kwargs):
+        try:
+            id = kwargs.get('id')
+            organization = Organization.objects.get(account_id=id)
+            organization_id = organization.id
+            finance_officer_list = Staff.objects.filter(organization_id=organization_id,
+                staff_type="registration-admin")
+            serializer_class = StaffSerializer(
+                finance_officer_list, many=True)
+
+            return Response({"status": status.HTTP_200_OK, "data": serializer_class.data})
+
+        except Staff.DoesNotExist:
+            return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "Sorry! No auditor staff exist."})
 
 
 # API for displaying database admin list
 class AuditorListView(APIView):
     permission_classes = (AllowAny,)
 
+    def get(self, request, *args, **kwargs):
+        try:
+            # Extract id from the URL
+            id = kwargs.get('id')
+            # Retrieve organization ID associated with the id
+            organization = Organization.objects.get(account_id=id)
+            organization_id = organization.id
+            
+            # Filter staff based on organization_id
+            auditor_list = Staff.objects.filter(organization_id=organization_id, staff_type="database-admin")
+            
+            serializer_class = StaffSerializer(auditor_list, many=True)
+
+            return Response({"status": status.HTTP_200_OK, "data": serializer_class.data})
+
+        except Organization.DoesNotExist:
+            return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "Organization not found."})
+        except Staff.DoesNotExist:
+            return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "No Database Admin staff exist for this organization."})
+
+# API for displaying database admin list
+class OrganizationListView(APIView):
+    permission_classes = (AllowAny,)
+
     # Get request to display list of pending audits
     def get(self, request, *args, **kwargs):
         try:
-            auditor_list = Staff.objects.filter(staff_type="database-admin")
+            organization_list = Staff.objects.filter(staff_type="organization")
             serializer_class = StaffSerializer(
-                auditor_list, many=True)
+                organization_list, many=True)
 
             return Response({"status": status.HTTP_200_OK, "data": serializer_class.data})
 
         except Staff.DoesNotExist:
-            return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "Sorry! No Database Admin staff exist."})
+            return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "Sorry! No Organization data  exist."})
 
 # API for displaying Central auditor list
 class AuditorCentralListView(APIView):
@@ -311,21 +358,6 @@ class AuditorNorthListView(APIView):
 
 
 # API for displaying finance officer list
-class FinanceOfficerListView(APIView):
-    permission_classes = (AllowAny,)
-
-    # Get request to display list of pending audits
-    def get(self, request, *args, **kwargs):
-        try:
-            finance_officer_list = Staff.objects.filter(
-                staff_type="finance-officer")
-            serializer_class = StaffSerializer(
-                finance_officer_list, many=True)
-
-            return Response({"status": status.HTTP_200_OK, "data": serializer_class.data})
-
-        except Staff.DoesNotExist:
-            return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "Sorry! No auditor staff exist."})
 
 # API for storing information of a payment
 class CSRAppointmentListView(APIView):

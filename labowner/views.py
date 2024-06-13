@@ -3,6 +3,7 @@ import datetime
 import re
 from ssl import CertificateError
 from sys import audit
+
 import shortuuid
 import requests
 from django.db.models import Max

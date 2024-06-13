@@ -40,19 +40,7 @@ class Migration(migrations.Migration):
                 'verbose_name': 'Database Reagent',
             },
         ),
-        migrations.CreateModel(
-            name='News',
-            fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('title', models.CharField(max_length=255, null=True)),
-                ('description', models.TextField()),
-                ('date_of_addition', models.DateTimeField(blank=True, null=True)),
-                ('added_by', models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.CASCADE, to=settings.AUTH_USER_MODEL)),
-            ],
-            options={
-                'verbose_name': 'News',
-            },
-        ),
+
         migrations.CreateModel(
             name='Method',
             fields=[
