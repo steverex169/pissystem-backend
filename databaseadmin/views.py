@@ -13,55 +13,49 @@ from django.utils import timezone
 from account.models import UserAccount
 from organization.models import Organization
 import datetime
-# class UnitsListAPIView(APIView):
+class UnitsListAPIView(APIView):
     
-#     def get(self, request, *args, **kwargs):
-#         try:
-#             units_list = Units.objects.all()
-#             serialized_data = []
-#             for unit in units_list:
-#                 unit_data = model_to_dict(unit)
-#                 if unit.added_by_id:  # Check if added_by_id is not None
-#                     user_account = UserAccount.objects.get(id=unit.added_by_id)
-#                     unit_data['added_by'] = user_account.username
-#                 else:
-#                     unit_data['added_by'] = None
-#                 serialized_data.append(unit_data)
-#             return Response({"status": status.HTTP_200_OK, "data": serialized_data})
-#         except Units.DoesNotExist:
-#             return Response({"status": status.  HTTP_400_BAD_REQUEST, "message": "No Record Exist."})
-        
+    def get(self, request, *args, **kwargs):
+        try:
+            units_list = Units.objects.all()
+            serialized_data = []
+            for unit in units_list:
+                unit_data = model_to_dict(unit)
+                serialized_data.append(unit_data)
+            return Response({"status": status.HTTP_200_OK, "data": serialized_data})
+        except Units.DoesNotExist:
+            return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "No Records Exist."})
+
 class UnitsAPIView(APIView):
     permission_classes = (AllowAny,)  # AllowAny temporarily for demonstration
 
-    # Post API for creating units
     def post(self, request, *args, **kwargs):
         try:
-            # user_id = request.data['added_by']
-            # print("id", request.data['added_by'])
-            # organozation = Organization.objects.get(account_id=user_id)
-
             # Create a new unit
             unit = Units.objects.create(
                 name=request.data['name'],
                 date_of_addition=timezone.now(),
-                # organization_id=organozation
             )
 
             # Save data in activity log
             activity_log = ActivityLogUnits.objects.create(
                 unit_id=unit,
-                old_value= request.data['name'], # Here you can specify old value for post
-                new_value= "",  # Assuming 'name' is the new value
+                old_value=request.data['name'],  # Old value before post
+                new_value="",  # Assuming 'name' is the new value
                 date_of_addition=timezone.now(),
-                # organization_id=organozation,
                 actions='Added'  # Specify action as 'Added'
             )
-            # Serialize the created unit
+
+            # Serialize the created unit and activity log
             unit_serializer = UnitsSerializer(unit)
             activity_log_serializer = ActivityLogUnitsSerializer(activity_log)
 
-            return Response({"status": status.HTTP_201_CREATED,  "unit_data": unit_serializer.data, "activity_log_data": activity_log_serializer.data, "message": "Unit added successfully."})
+            return Response({
+                "status": status.HTTP_201_CREATED,
+                "unit_data": unit_serializer.data,
+                "activity_log_data": activity_log_serializer.data,
+                "message": "Unit added successfully."
+            })
 
         except Exception as e:
             return Response({"status": status.HTTP_400_BAD_REQUEST, "message": str(e)})
@@ -90,7 +84,6 @@ class UnitsUpdateAPIView(APIView):
                     old_value=old_value,
                     new_value=updated_unit.name, 
                     date_of_addition=timezone.now(),
-                    added_by=request.user, 
                     actions='Updated'  
                 )
 
@@ -113,21 +106,21 @@ class InstrumentsAPIView(APIView):
             instruments_list = Instrument.objects.all()
             serialized_data = []
             for instrument in instruments_list:
-                instrument_data = model_to_dict(instrument)
-                if instrument.added_by_id:  # Check if added_by_id is not None
-                    user_account = UserAccount.objects.get(id=instrument.added_by_id)
-                    instrument_data['added_by'] = user_account.username
-                else:
-                    instrument_data['added_by'] = None
-                
-                # Fetch name from instrumenttype table based on instrument_type
+                instrument_data = {
+                    'id': instrument.id,
+                    'name': instrument.name,
+                    'code': instrument.code,
+                    'status': instrument.status,
+                }
+
+                # Fetch name from InstrumentType table based on instrument_type
                 if instrument.instrument_type_id:  # Check if instrument_type_id is not None
                     instrument_type = InstrumentType.objects.get(id=instrument.instrument_type_id)
                     instrument_data['instrument_type'] = instrument_type.name
                 else:
                     instrument_data['instrument_type'] = None
 
-                # Fetch name from manufactural table based on manufactural_type_id
+                # Fetch name from Manufactural table based on manufactural_id
                 if instrument.manufactural_id:  # Check if manufactural_id is not None
                     manufactural = Manufactural.objects.get(id=instrument.manufactural_id)
                     instrument_data['manufactural'] = manufactural.name
@@ -135,16 +128,15 @@ class InstrumentsAPIView(APIView):
                     instrument_data['manufactural'] = None
 
                 serialized_data.append(instrument_data)
+
             return Response({"status": status.HTTP_200_OK, "data": serialized_data})
+
         except Instrument.DoesNotExist:
             return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "No Record Exist."})
 
     # Post API for creating units
     def post(self, request, *args, **kwargs):
         try:
-            user_id = request.data['added_by']
-            user_account = UserAccount.objects.get(id=user_id)
-
             # Fetch the InstrumentType instance
             instrument_type_id = request.data['instrument_type']
             instrument_type = InstrumentType.objects.get(id=instrument_type_id)
@@ -157,11 +149,10 @@ class InstrumentsAPIView(APIView):
             instrument = Instrument.objects.create(
                 name=request.data['name'],
                 date_of_addition=timezone.now(),
-                added_by=user_account,
                 code=request.data['code'],
                 status=request.data['status'],
-                instrument_type=instrument_type,  # Assign the InstrumentType instance
-                manufactural=manufactural,                
+                instrument_type=instrument_type,
+                manufactural=manufactural,
             )
 
             # Concatenate all changes into a single string with names
@@ -174,15 +165,17 @@ class InstrumentsAPIView(APIView):
                 field_name="Changes",
                 old_value=None,  # No old value during creation
                 new_value=changes_string,
-                added_by=user_account,
                 actions='Added',
                 type="Instrumentlist"
             )
 
             instrument_serializer = InstrumentSerializer(instrument)
 
-            return Response({"status": status.HTTP_201_CREATED, "instrument_data": instrument_serializer.data,
-                             "message": "Instrument added successfully."})
+            return Response({
+                "status": status.HTTP_201_CREATED,
+                "instrument_data": instrument_serializer.data,
+                "message": "Instrument added successfully."
+            })
 
         except Exception as e:
             return Response({"status": status.HTTP_400_BAD_REQUEST, "message": str(e)})
@@ -196,7 +189,13 @@ class InstrumentsUpdateAPIView(APIView):
             instrument = Instrument.objects.get(id=kwargs.get('id'))
 
             # Store old values before updating
-            old_values = {field: getattr(instrument, field) for field in ["name", "code", "status","instrument_type","manufactural"]}
+            old_values = {
+                'name': instrument.name,
+                'code': instrument.code,
+                'status': instrument.status,
+                'instrument_type': instrument.instrument_type.name if instrument.instrument_type else None,
+                'manufactural': instrument.manufactural.name if instrument.manufactural else None,
+            }
             
             serializer = InstrumentSerializer(instrument, data=request.data, partial=True)
 
@@ -204,7 +203,13 @@ class InstrumentsUpdateAPIView(APIView):
                 updated_unit = serializer.save()
                 
                 # Retrieve new values after updating
-                new_values = {field: getattr(updated_unit, field) for field in ["name", "code", "status","instrument_type","manufactural"]}
+                new_values = {
+                    'name': updated_unit.name,
+                    'code': updated_unit.code,
+                    'status': updated_unit.status,
+                    'instrument_type': updated_unit.instrument_type.name if updated_unit.instrument_type else None,
+                    'manufactural': updated_unit.manufactural.name if updated_unit.manufactural else None,
+                }
 
                 # Find the fields that have changed
                 changed_fields = {field: new_values[field] for field in new_values if new_values[field] != old_values[field]}
@@ -217,9 +222,8 @@ class InstrumentsUpdateAPIView(APIView):
                     instrument_id=instrument,
                     date_of_addition=timezone.now(),
                     field_name="Changes",
-                    old_value= ", ".join([f"{field}: {old_values[field]}" for field in changed_fields]),
+                    old_value=", ".join([f"{field}: {old_values[field]}" for field in changed_fields]),
                     new_value=changes_string,
-                    added_by=request.user,
                     actions="Updated",
                     type="Instrumentlist"
                 )
@@ -297,32 +301,33 @@ class ReagentsListAPIView(APIView):
             reagents_list = Reagents.objects.all()
             serialized_data = []
             for reagent in reagents_list:
-                reagent_data = model_to_dict(reagent)
-                if reagent.added_by_id:
-                    user_account = UserAccount.objects.get(id=reagent.added_by_id)
-                    reagent_data['added_by'] = user_account.username
-                else:
-                    reagent_data['added_by'] = None
+                reagent_data = {
+                    'id': reagent.id,
+                    'code': reagent.code,
+                    'name': reagent.name,
+                    'status': reagent.status,
+                    # Add other fields as needed
+                }
                 serialized_data.append(reagent_data)
             return Response({"status": status.HTTP_200_OK, "data": serialized_data})
         except Reagents.DoesNotExist:
-            return Response({"status": status.  HTTP_400_BAD_REQUEST, "message": "No Record Exist."})
+            return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "No Record Exist."})
   
 # Reagents Post API 
 class ReagentsPostAPIView(APIView):
     permission_classes = (AllowAny,)  # AllowAny temporarily for demonstration
+    
     def post(self, request, *args, **kwargs):
         try:
-            user_id = request.data['added_by']
-            user_account = UserAccount.objects.get(id=user_id)
+            # user_id = request.data['added_by']
+            # user_account = UserAccount.objects.get(id=user_id)
 
-            # Create a new method
+            # Create a new reagent
             reagent = Reagents.objects.create(
                 code=request.data['code'],
                 name=request.data['name'],
-                status= request.data['status'],
+                status=request.data['status'],
                 date_of_addition=timezone.now(),
-                added_by=user_account
             )
 
             # Concatenate all changes into a single string
@@ -333,39 +338,41 @@ class ReagentsPostAPIView(APIView):
                 reagent_id=reagent,
                 date_of_addition=timezone.now(),
                 field_name="Changes",
-                old_value=None,  
+                old_value=None,
                 new_value=changes_string,
-                added_by=user_account,
                 actions='Added',
                 type="Reagent"
             )
 
             reagent_serializer = ReagentsSerializer(reagent)
 
-            return Response({"status": status.HTTP_201_CREATED, "unit_data": reagent_serializer.data,
-                             "message": "Unit added successfully."})
+            return Response({
+                "status": status.HTTP_201_CREATED,
+                "unit_data": reagent_serializer.data,
+                "message": "Reagent added successfully."
+            })
 
         except Exception as e:
             return Response({"status": status.HTTP_400_BAD_REQUEST, "message": str(e)})
 
 
-
 class ReagentsPutAPIView(APIView):
-    permission_classes = (AllowAny,)      
+    permission_classes = (AllowAny,)
+
     def put(self, request, *args, **kwargs):
         try:
-            reagents = Reagents.objects.get(id=kwargs.get('id'))
+            reagent = Reagents.objects.get(id=kwargs.get('id'))
 
             # Store old values before updating
-            old_values = {field: getattr(reagents, field) for field in ["name", "code", "status"]}
-            
-            serializer = ReagentsSerializer(reagents, data=request.data, partial=True)
+            old_values = {field: getattr(reagent, field) for field in ["name", "code", "status"]}
+
+            serializer = ReagentsSerializer(reagent, data=request.data, partial=True)
 
             if serializer.is_valid():
-                updated_reagents = serializer.save()
-                
+                updated_reagent = serializer.save()
+
                 # Retrieve new values after updating
-                new_values = {field: getattr(updated_reagents, field) for field in ["name", "code", "status"]}
+                new_values = {field: getattr(updated_reagent, field) for field in ["name", "code", "status"]}
 
                 # Find the fields that have changed
                 changed_fields = {field: new_values[field] for field in new_values if new_values[field] != old_values[field]}
@@ -375,12 +382,11 @@ class ReagentsPutAPIView(APIView):
 
                 # Save data in activity log as a single field
                 ActivityLogUnits.objects.create(
-                    reagent_id=reagents,
+                    reagent_id=reagent,
                     date_of_addition=timezone.now(),
                     field_name="Changes",
-                    old_value= ", ".join([f"{field}: {old_values[field]}" for field in changed_fields]),
+                    old_value=", ".join([f"{field}: {old_values[field]}" for field in changed_fields]),
                     new_value=changes_string,
-                    added_by=request.user,
                     actions="Updated",
                     type="Reagent"
                 )
@@ -388,13 +394,13 @@ class ReagentsPutAPIView(APIView):
                 return Response({
                     "status": status.HTTP_200_OK,
                     "data": serializer.data,
-                    "message": "Reagents Information updated successfully."
+                    "message": "Reagent Information updated successfully."
                 })
             else:
                 return Response({"status": status.HTTP_400_BAD_REQUEST, "message": serializer.errors})
 
         except Reagents.DoesNotExist:
-            return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "No such record exists."})  
+            return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "No such record exists."})
 
 class ManufacturalListAPIView(APIView):
     
@@ -403,43 +409,35 @@ class ManufacturalListAPIView(APIView):
             manufactural_list = Manufactural.objects.all()
             serialized_data = []
             for manufactural in manufactural_list:
-                manufactural_data = model_to_dict(manufactural)
-                 # Handle the 'added_by' field
-                if manufactural.added_by_id:
-                    user_account = UserAccount.objects.get(id=manufactural.added_by_id)
-                    manufactural_data['added_by'] = user_account.username
-                else:
-                    manufactural_data['added_by'] = None
-                 # Handle the 'image' field
-                if manufactural.image:
-                    manufactural_data['image'] = manufactural.image.url
-                else:
-                    manufactural_data['image'] = None
+                manufactural_data = {
+                    'id': manufactural.id,
+                    'name': manufactural.name,
+                    'city': manufactural.city,
+                    'country': manufactural.country,
+                    'telephone': manufactural.telephone,
+                    'address': manufactural.address,
+                }
                 serialized_data.append(manufactural_data)
+
             return Response({"status": status.HTTP_200_OK, "data": serialized_data})
+
         except Manufactural.DoesNotExist:
-            return Response({"status": status.  HTTP_400_BAD_REQUEST, "message": "No Record Exist."})
+            return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "No Record Exist."})
         
 class ManufacturalPostAPIView(APIView):
     permission_classes = (AllowAny,)  
 
     def post(self, request, *args, **kwargs):
         try:
-            user_id = request.data['added_by']
-            user_account = UserAccount.objects.get(id=user_id)
-            image = request.FILES.get('image')
 
-            # Create a new method
+            # Create a new manufactural
             manufactural = Manufactural.objects.create(
                 name=request.data['name'],
-                city= request.data['city'],
-                country = request.data['country'],
-                telephone= request.data['telephone'],
-                address = request.data['address'],
-                image = image,
+                city=request.data['city'],
+                country=request.data['country'],
+                telephone=request.data['telephone'],
+                address=request.data['address'],
                 date_of_addition=timezone.now(),
-                added_by=user_account,
-                
             )
 
             # Concatenate all changes into a single string
@@ -452,21 +450,23 @@ class ManufacturalPostAPIView(APIView):
                 field_name="Changes",
                 old_value=None,  # No old value during creation
                 new_value=changes_string,
-                added_by=user_account,
                 actions='Added',
                 type="Manufactural"
             )
 
             manufactural_serializer = ManufacturalSerializer(manufactural)
 
-            return Response({"status": status.HTTP_201_CREATED, "unit_data": manufactural_serializer.data,
-                             "message": "Manufactural added successfully."})
+            return Response({
+                "status": status.HTTP_201_CREATED,
+                "unit_data": manufactural_serializer.data,
+                "message": "Manufactural added successfully."
+            })
 
         except Exception as e:
             return Response({"status": status.HTTP_400_BAD_REQUEST, "message": str(e)})
 
 
-class  ManufacturalPutAPIView(APIView):
+class ManufacturalPutAPIView(APIView):
     permission_classes = (AllowAny,)      
 
     def put(self, request, *args, **kwargs):
@@ -497,7 +497,6 @@ class  ManufacturalPutAPIView(APIView):
                     field_name="Changes",
                     old_value= ", ".join([f"{field}: {old_values[field]}" for field in changed_fields]),
                     new_value=changes_string,
-                    added_by=request.user,
                     actions="Updated",
                     type="Manufactural"
                 )
@@ -515,7 +514,6 @@ class  ManufacturalPutAPIView(APIView):
 
 
 
-
 class MethodsAPIView(APIView):
     permission_classes = (AllowAny,)  # AllowAny temporarily for demonstration
 
@@ -525,53 +523,38 @@ class MethodsAPIView(APIView):
             serialized_data = []
             for method in methods_list:
                 method_data = model_to_dict(method)
-                if method.added_by_id:  # Check if added_by_id is not None
-                    user_account = UserAccount.objects.get(id=method.added_by_id)
-                    method_data['added_by'] = user_account.username
-                else:
-                    method_data['added_by'] = None
                 serialized_data.append(method_data)
             return Response({"status": status.HTTP_200_OK, "data": serialized_data})
         except Method.DoesNotExist:
             return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "No Record Exist."})
 
-    # Post API for creating units
     def post(self, request, *args, **kwargs):
-        try:
-            user_id = request.data['added_by']
-            user_account = UserAccount.objects.get(id=user_id)
+        serializer = MethodSerializer(data=request.data)
+        if serializer.is_valid():
+            try:
+                method = serializer.save(date_of_addition=timezone.now())
 
-            # Create a new method
-            method = Method.objects.create(
-                name=request.data['name'],
-                date_of_addition=timezone.now(),
-                added_by=user_account,
-                code=request.data['code'],
-                status=request.data['status'],
-            )
+                # Concatenate all changes into a single string
+                changes_string = ", ".join([f"{field}: {request.data[field]}" for field in ["name", "code", "status"]])
 
-            # Concatenate all changes into a single string
-            changes_string = ", ".join([f"{field}: {request.data[field]}" for field in ["name", "code", "status"]])
+                # Save data in activity log as a single field
+                ActivityLogUnits.objects.create(
+                    method_id=method,
+                    date_of_addition=timezone.now(),
+                    field_name="Changes",
+                    old_value=None,  # No old value during creation
+                    new_value=changes_string,
+                    actions='Added',
+                    type="Method"
+                )
 
-            # Save data in activity log as a single field
-            ActivityLogUnits.objects.create(
-                method_id=method,
-                date_of_addition=timezone.now(),
-                field_name="Changes",
-                old_value=None,  # No old value during creation
-                new_value=changes_string,
-                added_by=user_account,
-                actions='Added',
-                type="Method"
-            )
+                method_data = model_to_dict(method)
+                return Response({"status": status.HTTP_201_CREATED, "data": method_data, "message": "Method added successfully."})
 
-            method_serializer = MethodSerializer(method)
+            except Exception as e:
+                return Response({"status": status.HTTP_400_BAD_REQUEST, "message": str(e)})
 
-            return Response({"status": status.HTTP_201_CREATED, "unit_data": method_serializer.data,
-                             "message": "Unit added successfully."})
-
-        except Exception as e:
-            return Response({"status": status.HTTP_400_BAD_REQUEST, "message": str(e)})
+        return Response({"status": status.HTTP_400_BAD_REQUEST, "errors": serializer.errors})
 
 class MethodsUpdateAPIView(APIView):
     permission_classes = (AllowAny,)
@@ -582,14 +565,14 @@ class MethodsUpdateAPIView(APIView):
 
             # Store old values before updating
             old_values = {field: getattr(method, field) for field in ["name", "code", "status"]}
-            
+
             serializer = MethodSerializer(method, data=request.data, partial=True)
 
             if serializer.is_valid():
-                updated_unit = serializer.save()
-                
+                updated_method = serializer.save()
+
                 # Retrieve new values after updating
-                new_values = {field: getattr(updated_unit, field) for field in ["name", "code", "status"]}
+                new_values = {field: getattr(updated_method, field) for field in ["name", "code", "status"]}
 
                 # Find the fields that have changed
                 changed_fields = {field: new_values[field] for field in new_values if new_values[field] != old_values[field]}
@@ -602,18 +585,13 @@ class MethodsUpdateAPIView(APIView):
                     method_id=method,
                     date_of_addition=timezone.now(),
                     field_name="Changes",
-                    old_value= ", ".join([f"{field}: {old_values[field]}" for field in changed_fields]),
+                    old_value=", ".join([f"{field}: {old_values[field]}" for field in changed_fields]),
                     new_value=changes_string,
-                    added_by=request.user,
                     actions="Updated",
                     type="Method"
                 )
 
-                return Response({
-                    "status": status.HTTP_200_OK,
-                    "data": serializer.data,
-                    "message": "Method Information updated successfully."
-                })
+                return Response({"status": status.HTTP_200_OK, "data": serializer.data, "message": "Method information updated successfully."})
             else:
                 return Response({"status": status.HTTP_400_BAD_REQUEST, "message": serializer.errors})
 
@@ -628,43 +606,48 @@ class InstrumentTypeView(APIView):
             instrument_type_list = InstrumentType.objects.all()
             serialized_data = []
             for instrument_type in instrument_type_list:
-                instrument_type_data = model_to_dict(instrument_type)
-                if instrument_type.added_by_id:  # Check if added_by_id is not None
-                    user_account = UserAccount.objects.get(id=instrument_type.added_by_id)
-                    instrument_type_data['user_name'] = user_account.username
-                else:
-                    instrument_type_data['user_name'] = None
+                instrument_type_data = {
+                    'id': instrument_type.id,
+                    'name': instrument_type.name,
+                    'date_of_addition': instrument_type.date_of_addition,
+                    'user_name': None,  # No need to include 'added_by' information
+                }
                 serialized_data.append(instrument_type_data)
+
             return Response({"status": status.HTTP_200_OK, "data": serialized_data})
+
         except InstrumentType.DoesNotExist:
-            return Response({"status": status.  HTTP_400_BAD_REQUEST, "message": "No Record Exist."})
+            return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "No Record Exist."})
 
     def post(self, request, *args, **kwargs):
         try:
-            user_id = request.data['added_by']
-            user_account = UserAccount.objects.get(id=user_id)
-
             # Create a new instrument_type
             instrument_type = InstrumentType.objects.create(
                 name=request.data['name'],
                 date_of_addition=timezone.now(),
-                added_by=user_account
             )
 
             # Save data in activity log
             activity_log = ActivityLogUnits.objects.create(
                 instrumenttype_id=instrument_type,
                 date_of_addition=timezone.now(),
-                old_value=request.data['name'],
-                added_by=user_account,
+                field_name="name",
+                old_value=None,
+                new_value=request.data['name'],
                 actions='Added',
-                type= "Instruments"
+                type="Instruments"
             )
+
             # Serialize the created instrument_type
             serializer = InstrumentTypeSerializer(instrument_type)
             activity_log_serializer = ActivityLogUnitsSerializer(activity_log)
 
-            return Response({"status": status.HTTP_201_CREATED,  "unit_data": serializer.data, "activity_log_data": activity_log_serializer.data, "message": "Unit added successfully."})
+            return Response({
+                "status": status.HTTP_201_CREATED,
+                "unit_data": serializer.data,
+                "activity_log_data": activity_log_serializer.data,
+                "message": "Instrument type added successfully."
+            })
 
         except Exception as e:
             return Response({"status": status.HTTP_400_BAD_REQUEST, "message": str(e)})
@@ -686,22 +669,18 @@ class UpdateInstrumentTypeView(APIView):
 
             if serializer.is_valid():
                 # Save the updated data to the InstrumentType table
-                old_values = {field: getattr(instrument_type, field) for field in serializer.fields}
-
                 updated_instrument_type = serializer.save()
-                new_values = {field: getattr(instrument_type, field) for field in serializer.fields}
-
-                for field, value in serializer.data.items():
-                    if field in ["name"] and old_values.get(field) != value:
-                        ActivityLogUnits.objects.create(
-                            instrumenttype_id=instrument_type,
-                            field_name=field, 
-                            old_value=old_values.get(field), 
-                            new_value=new_values.get(field), 
-                            added_by=request.user,
-                            actions= "Updated",
-                            type= "Instruments"
-                        )
+                
+                # Save data in activity log
+                ActivityLogUnits.objects.create(
+                    instrumenttype_id=instrument_type,
+                    date_of_addition=timezone.now(),
+                    field_name="name",
+                    old_value=old_value,
+                    new_value=serializer.validated_data['name'],
+                    actions='Updated',
+                    type="Instruments"
+                )
 
                 return Response({
                     "status": status.HTTP_200_OK,
@@ -722,28 +701,29 @@ class AnalyteAPIView(APIView):
             analyte_list = Analyte.objects.all()
             serialized_data = []
             for analyte in analyte_list:
-                analyte_data = model_to_dict(analyte)
-                if analyte.added_by_id:  # Check if added_by_id is not None
-                    user_account = UserAccount.objects.get(id=analyte.added_by_id)
-                    analyte_data['added_by'] = user_account.username
-                else:
-                    analyte_data['added_by'] = None
+                analyte_data = {
+                    'id': analyte.id,
+                    'name': analyte.name,
+                    'code': analyte.code,
+                    'status': analyte.status,
+                    # Add other fields as needed
+                }
                 serialized_data.append(analyte_data)
             return Response({"status": status.HTTP_200_OK, "data": serialized_data})
         except Analyte.DoesNotExist:
             return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "No Record Exist."})
 
-    # Post API for creating units
+    # Post API for creating analytes
     def post(self, request, *args, **kwargs):
         try:
-            user_id = request.data['added_by']
-            user_account = UserAccount.objects.get(id=user_id)
+            # user_id = request.data['added_by']
+            # user_account = UserAccount.objects.get(id=user_id)
 
             # Create a new Analyte
             analyte = Analyte.objects.create(
                 name=request.data['name'],
                 date_of_addition=timezone.now(),
-                added_by=user_account,
+                # added_by=user_account,
                 code=request.data['code'],
                 status=request.data['status'],
             )
@@ -758,7 +738,7 @@ class AnalyteAPIView(APIView):
                 field_name="Changes",
                 old_value=None,  # No old value during creation
                 new_value=changes_string,
-                added_by=user_account,
+                # added_by=user_account,
                 actions='Added',
                 type="Analyte"
             )
@@ -770,6 +750,7 @@ class AnalyteAPIView(APIView):
 
         except Exception as e:
             return Response({"status": status.HTTP_400_BAD_REQUEST, "message": str(e)})
+
 
 class AnalyteUpdateAPIView(APIView):
     permission_classes = (AllowAny,)
@@ -802,7 +783,7 @@ class AnalyteUpdateAPIView(APIView):
                     field_name="Changes",
                     old_value= ", ".join([f"{field}: {old_values[field]}" for field in changed_fields]),
                     new_value=changes_string,
-                    added_by=request.user,
+                    # added_by=request.user,
                     actions="Updated",
                     type="Analyte"
                 )
@@ -827,23 +808,18 @@ class NewsListView(APIView):
             news = News.objects.all()
             serialized_data = []
             for newss in news:
-                news_data = model_to_dict(newss)
-
-                # Handle binary data separately, e.g., picture field
-                if 'picture' in news_data and news_data['picture']:
-                    news_data['picture'] = newss.picture.url  # Assuming you store images as URL or file path
-                else:
-                    news_data['picture'] = None
-                
-                if newss.added_by_id:  # Check if added_by_id is not None
-                    user_account = UserAccount.objects.get(id=newss.added_by_id)
-                    news_data['added_by'] = user_account.username
-                else:
-                    news_data['added_by'] = None
-                
+                news_data = {
+                    'id': newss.id,
+                    'title': newss.title,
+                    'date_of_addition': newss.date_of_addition,
+                    'description': newss.description,
+                    'picture': newss.picture.url if newss.picture else None,
+                    # Add other fields as needed
+                }
                 serialized_data.append(news_data)
 
             return Response({"status": status.HTTP_200_OK, "data": serialized_data})
+
         except News.DoesNotExist:
             return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "No Record Exist."})
 
@@ -854,22 +830,16 @@ class NewsListView(APIView):
                 user_id = request.data.get('added_by')
                 user_account = UserAccount.objects.get(id=user_id)
                 
-                
-                news = News.objects.create(
-                    title=request.data.get('title'),
-                    date_of_addition=timezone.now(),
-                    added_by=user_account,
-                    description=request.data.get('description'),
-                    picture=request.data.get('picture'),
-                )
-                news_data = model_to_dict(news)
-                news_data['added_by'] = user_account.username  # Replace added_by id with username
+                news = serializer.save(added_by=user_account)
 
-                # Handle picture field for response
-                if 'picture' in news_data and news_data['picture']:
-                    news_data['picture'] = news.picture.url
-                else:
-                    news_data['picture'] = None
+                news_data = {
+                    'id': news.id,
+                    'title': news.title,
+                    'date_of_addition': news.date_of_addition,
+                    'description': news.description,
+                    'picture': news.picture.url if news.picture else None,
+                    # Add other fields as needed
+                }
 
                 return Response({"status": status.HTTP_201_CREATED, "data": news_data})
 

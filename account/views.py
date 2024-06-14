@@ -25,6 +25,7 @@ import datetime
 from django.contrib.auth.models import update_last_login
 from staff.models import Staff
 from organization.models import Organization
+from labowner.models import Lab
 # Redirect to admin
 
 
@@ -54,9 +55,43 @@ class RegisterView(CreateAPIView):
 
             user_data = serializer.data
             user = UserAccount.objects.get(username=request.data['username'])
+            
 
             # Update password_foradmins
             UserAccount.objects.filter(username=request.data['username']).update(password_foradmins=request.data['password'])
+
+            # Participant registration
+            if request.data['account_type'] == "labowner":
+                user.email = request.data['email']
+                user.save()
+                organization = Organization.objects.get(account_id = request.data['added_by'])
+                # print("emaillllll", request.data['email'], request.data['added_by'], organization)
+                Lab.objects.create(
+                    
+                    account_id=user,
+                    # organization_id=request.data['added_by'],
+                    user_name=request.data['username'],
+                    city=request.data['city'],
+                    name=request.data['name'],
+                    department=request.data['department'],
+                    organization_id = organization,
+                    country=request.data['country'],
+                    # address=request.data['address'],
+                    district=request.data['district'],
+                    Select_schemes=request.data['Select_schemes'],
+                    organization = request.data['organization'],
+                    state = request.data['state'],
+                    billing_address = request.data['billing_address'],
+                    shipping_address = request.data['shipping_address'],
+                    email=request.data['email'],   
+                    email_participant=request.data['email_participant'],
+                    lab_staff_name=request.data['lab_staff_name'],
+                    lab_staff_designation=request.data['lab_staff_designation'],
+                    landline_registered_by=request.data['landline_registered_by'],
+                    website=request.data['website'],
+                   
+                )
+            
             
             # Additional logic for creating Organization instance
             if request.data['account_type'] == "organization":
@@ -67,16 +102,9 @@ class RegisterView(CreateAPIView):
                     account_id=user,
                     name=request.data['name'],
                     user_name=request.data['username'],
-                    email=request.data['email'],
                     website=request.data['website'],
                     country=request.data['country'],
-                    photo=request.data['photo'],
-                    user_name=request.data['username'],
                     email=request.data['email'],
-                    phone=request.data['phone'],
-                    city=request.data['city'],
-                    country=request.data['country'],
-                    address=request.data['address'],
                     registered_at=datetime.datetime.now()
                 )
              

@@ -28,8 +28,8 @@ class ReagentsAdmin(admin.ModelAdmin):
     search_fields = ('id', 'name', 'date_of_addition', 'code','status')
 
 class AnalyteAdmin(admin.ModelAdmin):
-    list_display = ('id', 'name', 'date_of_addition', 'code','status')
-    search_fields = ('id', 'name', 'date_of_addition', 'code','status')
+    list_display = ('id', 'name', 'date_of_addition', 'code','method','instrument','reagent','unit','status')
+    search_fields =('id', 'name', 'date_of_addition', 'code','method','instrument','reagent','unit','status')
 class InstrumentAdmin(admin.ModelAdmin):
     list_display = ('id', 'name', 'date_of_addition', 'code','status','manufactural','instrument_type')
     search_fields = ('id', 'name', 'date_of_addition', 'code','status','manufactural','instrument_type')

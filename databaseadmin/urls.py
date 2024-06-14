@@ -1,10 +1,10 @@
 from django.urls import path
-from databaseadmin.views import NewsListView,InstrumentsAPIView, InstrumentsUpdateAPIView, InstrumentTypeView,AnalyteUpdateAPIView, AnalyteAPIView, MethodsAPIView, UpdateInstrumentTypeView,  MethodsUpdateAPIView, UnitsAPIView, UnitsUpdateAPIView, ActivityLogDatabaseadmin, ReagentsListAPIView, ReagentsPostAPIView, ReagentsPutAPIView ,ManufacturalListAPIView, ManufacturalPostAPIView, ManufacturalPutAPIView
+from databaseadmin.views import UnitsListAPIView,NewsListView,InstrumentsAPIView, InstrumentsUpdateAPIView, InstrumentTypeView,AnalyteUpdateAPIView, AnalyteAPIView, MethodsAPIView, UpdateInstrumentTypeView,  MethodsUpdateAPIView, UnitsAPIView, UnitsUpdateAPIView, ActivityLogDatabaseadmin, ReagentsListAPIView, ReagentsPostAPIView, ReagentsPutAPIView ,ManufacturalListAPIView, ManufacturalPostAPIView, ManufacturalPutAPIView
 
 urlpatterns = [
     path('units_update/<id>', UnitsUpdateAPIView.as_view(), name='units_update'),
     path('units_create', UnitsAPIView.as_view(), name='units_create'),
-    # path('units_list', UnitsListAPIView.as_view(), name='units_list'),
+    path('units_list', UnitsListAPIView.as_view(), name='units_list'),
     path('history_list/<id>', ActivityLogDatabaseadmin.as_view(), name='history_list'),
     path('reagent_update/<id>', ReagentsPutAPIView.as_view(), name='reagent_update'),
     path('reagent_create', ReagentsPostAPIView.as_view(), name='reagent_create'),

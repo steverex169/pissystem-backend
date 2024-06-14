@@ -120,6 +120,26 @@ class Instrument(models.Model):
 
     class Meta:
         verbose_name = 'Instrument'
+        
+class Analyte(models.Model):
+    name = models.CharField(max_length=255, blank=True, null=True)
+    code = models.PositiveBigIntegerField(blank=True, null=True)
+    date_of_addition = models.DateTimeField(blank=True, null=True) 
+    method = models.ForeignKey(
+        Method, on_delete=models.SET_NULL, null=True, blank=True)
+    instrument = models.ForeignKey( 
+        Instrument, on_delete=models.SET_NULL, null=True, blank=True)
+    reagent = models.ForeignKey(
+        Reagents, on_delete=models.SET_NULL, null=True, blank=True)
+    unit = models.ForeignKey(
+        Units, on_delete=models.SET_NULL, null=True, blank=True)
+    status = models.CharField(
+        max_length=50, choices=STATUS, default='Inactive', blank=True)
+    def __str__(self):
+        return self.name
+
+    class Meta:       
+        verbose_name = 'Analyte'
 
 class ActivityLogUnits(models.Model):
     organization_id = models.ForeignKey(
