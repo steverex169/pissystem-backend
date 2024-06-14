@@ -1,13 +1,16 @@
 from datetime import datetime
 from enum import unique
+from django.db import models
 from typing import Type
-from django.contrib.gis.db import models
 from account.models import UserAccount
+from organization.models import Organization
 # from donor.models import DonorBank
 # from medicaltest.models import Test, Unit
 from staff.models import Marketer, Staff
 from territories.models import Territories
 from django.utils.timezone import now
+from databaseadmin.models import Analyte, Instrument, Method, Units, Reagents
+
 # from corporate.models import Corporate
 
 
@@ -179,6 +182,8 @@ ACTIONS= (
 )
 
 class Lab(models.Model):
+    organization_id = models.ForeignKey(
+        Organization, on_delete=models.CASCADE, null=True, blank=True)
     account_id = models.OneToOneField(
         UserAccount, on_delete=models.CASCADE, primary_key=False, null=True)
     name = models.CharField(max_length=255, blank=False,
@@ -438,18 +443,37 @@ class ActivityLog(models.Model):
          verbose_name = 'Activity Log'
 
 # Database of Manufactural
-class Manufactural(models.Model):
+# class Manufactural(models.Model):
+#     organization_id = models.ForeignKey(
+#         Organization, on_delete=models.CASCADE, null=True, blank=True)
+#     name = models.CharField(max_length=255, blank=False, null=True) 
+#     landline = models.CharField(
+#         max_length=13, blank=True, null=True, help_text="Please use the format: +922134552799")
+#     # added_by = models.ForeignKey(
+#     #     UserAccount, on_delete=models.CASCADE, verbose_name='added by', null=True)
+#     date_of_addition = models.DateTimeField(max_length=255, null=True, blank=True, default=datetime.now)
+#     address = models.CharField(max_length=255, blank=False, null=True, verbose_name='Address')
+#     city = models.CharField(max_length=255, blank=True, null=True)
+#     country = models.CharField(max_length=255, blank=True, null=True)
+#     def __str__(self):
+#         return self.name
+#     class Meta:
+#         verbose_name = 'Manufactural'
 
-    name = models.CharField(max_length=255, blank=False, null=True) 
-    landline = models.CharField(
-        max_length=13, blank=True, null=True, help_text="Please use the format: +922134552799")
-    # added_by = models.ForeignKey(
-    #     UserAccount, on_delete=models.CASCADE, verbose_name='added by', null=True)
-    date_of_addition = models.DateTimeField(max_length=255, null=True, blank=True, default=datetime.now)
-    address = models.CharField(max_length=255, blank=False, null=True, verbose_name='Address')
-    city = models.CharField(max_length=255, blank=True, null=True)
-    country = models.CharField(max_length=255, blank=True, null=True)
+# Database of Result
+class Result(models.Model):
+    organization_id = models.ForeignKey(
+        Organization, on_delete=models.CASCADE, null=True, blank=True)
+    lab_id = models.ForeignKey(Lab, on_delete=models.CASCADE, verbose_name='Lab', primary_key=False, null=True, blank=False)
+    analyte = models.ForeignKey(Analyte, on_delete=models.CASCADE, verbose_name='Analyte', primary_key=False, null=True, blank=False)
+    units = models.ForeignKey(Units, on_delete=models.CASCADE, verbose_name='Units', primary_key=False, null=True, blank=False)
+    instrument = models.ForeignKey(Instrument, on_delete=models.CASCADE, verbose_name='Instrument', primary_key=False, null=True, blank=False)
+    method = models.ForeignKey(Method, on_delete=models.CASCADE, verbose_name='Method', primary_key=False, null=True, blank=False)
+    reagents = models.ForeignKey(Reagents, on_delete=models.CASCADE, verbose_name='Reagents', primary_key=False, null=True, blank=False)
+    result = models.CharField(max_length=255, blank=True, null=True)
+
+
     def __str__(self):
-        return self.name
+        return self.result
     class Meta:
-        verbose_name = 'Manufactural'
+        verbose_name = 'Result'

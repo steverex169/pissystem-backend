@@ -1,5 +1,5 @@
 from django.db import models
-from account.models import UserAccount
+from organization.models import Organization
 from django.utils import timezone
 # table of units
 ACTIONS= (
@@ -21,10 +21,11 @@ TYPE= (
     ('Instrumentlist', 'Instrumentlist')
     )
 class Units(models.Model):
+    organization_id = models.ForeignKey(
+        Organization, on_delete=models.CASCADE, null=True, blank=True)
     name = models.CharField(max_length=255, blank=False, null=True)
+    formula = models.CharField(max_length=255, blank=False, null=True)
     date_of_addition = models.DateTimeField(blank=True, null=True)  # Changed to DateTimeField
-    added_by = models.ForeignKey(
-        UserAccount, on_delete=models.CASCADE, null=True, blank=True)
 
     def __str__(self):
         return self.name
@@ -33,16 +34,14 @@ class Units(models.Model):
         verbose_name = 'Database Unit'
 
 class Manufactural(models.Model):
+    organization_id = models.ForeignKey(
+        Organization, on_delete=models.CASCADE, null=True, blank=True)
     name = models.CharField(max_length=255, blank=False, null=True)
-    address = models.CharField(max_length=255, blank=False, null=True)
+    address = models.CharField(max_length=255, blank=True, null=True)
     country = models.CharField(max_length=255, blank=False, null=True)
-    telephone = models.PositiveBigIntegerField(blank=False, null=True)
+    telephone = models.CharField(max_length=255, blank=True, null=True)
     city =models.CharField(max_length=255, blank=False, null=True)
     date_of_addition = models.DateTimeField(blank=True, null=True) 
-    added_by = models.ForeignKey(
-        UserAccount, on_delete=models.CASCADE, null=True, blank=True)
-    # image = models.ImageField(
-    #     upload_to='image', verbose_name='Image', blank=True, null=True)
     def __str__(self):
         return self.name
 
@@ -50,11 +49,11 @@ class Manufactural(models.Model):
         verbose_name = 'Database Manufactural'
 
 class Method(models.Model):
+    organization_id = models.ForeignKey(
+        Organization, on_delete=models.CASCADE, null=True, blank=True)
     name = models.CharField(max_length=255, blank=True, null=True)
     code = models.PositiveBigIntegerField(blank=True, null=True)
     date_of_addition = models.DateTimeField(blank=True, null=True) 
-    added_by = models.ForeignKey(
-        UserAccount, on_delete=models.CASCADE, null=True, blank=True)
     status = models.CharField(
         max_length=50, choices=STATUS, default='Inactive', blank=True)
     def __str__(self):
@@ -63,13 +62,26 @@ class Method(models.Model):
     class Meta:       
         verbose_name = 'Method'
 
+# class Analyte(models.Model):
+#     organization_id = models.ForeignKey(
+#         Organization, on_delete=models.CASCADE, null=True, blank=True)
+#     name = models.CharField(max_length=255, blank=True, null=True)
+#     code = models.PositiveBigIntegerField(blank=True, null=True)
+#     date_of_addition = models.DateTimeField(blank=True, null=True) 
+#     status = models.CharField(
+#         max_length=50, choices=STATUS, default='Inactive', blank=True)
+#     def __str__(self):
+#         return self.name
+
+#     class Meta:       
+#         verbose_name = 'Analyte'
 
 class Reagents(models.Model):
+    organization_id = models.ForeignKey(
+        Organization, on_delete=models.CASCADE, null=True, blank=True)
     name = models.CharField(max_length=255, blank=False, null=True)
     code = models.PositiveBigIntegerField(blank=False, null=True)
     date_of_addition = models.DateTimeField(blank=True, null=True) 
-    added_by = models.ForeignKey(
-        UserAccount, on_delete=models.CASCADE, null=True, blank=True)
     status = models.CharField(
         max_length=50, choices=STATUS, default='Inactive', blank=True)
     def __str__(self):
@@ -79,8 +91,8 @@ class Reagents(models.Model):
         verbose_name = 'Database Reagent'
 
 class InstrumentType(models.Model):
-    added_by = models.ForeignKey(
-        UserAccount, on_delete=models.SET_NULL, null=True, blank=True)
+    organization_id = models.ForeignKey(
+        Organization, on_delete=models.CASCADE, null=True, blank=True)
     name = models.CharField(max_length=255, blank=False,
                             null=True, verbose_name='Instrument type')
     date_of_addition = models.DateTimeField(null=True, blank=True)
@@ -91,8 +103,8 @@ class InstrumentType(models.Model):
         verbose_name = 'Instrument type'
 
 class Instrument(models.Model):
-    added_by = models.ForeignKey(
-        UserAccount, on_delete=models.SET_NULL, null=True, blank=True)
+    organization_id = models.ForeignKey(
+        Organization, on_delete=models.CASCADE, null=True, blank=True)
     instrument_type = models.ForeignKey(
         InstrumentType, on_delete=models.SET_NULL, null=True, blank=True)
     manufactural = models.ForeignKey(
@@ -111,28 +123,34 @@ class Instrument(models.Model):
         verbose_name = 'Instrument'
         
 class Analyte(models.Model):
+    organization_id = models.ForeignKey(
+        Organization, on_delete=models.CASCADE, null=True, blank=True)
     name = models.CharField(max_length=255, blank=True, null=True)
     code = models.PositiveBigIntegerField(blank=True, null=True)
-    date_of_addition = models.DateTimeField(blank=True, null=True) 
-    added_by = models.ForeignKey(
-        UserAccount, on_delete=models.CASCADE, null=True, blank=True)
+    date_of_addition = models.DateTimeField(blank=True, null=True)
     method = models.ForeignKey(
         Method, on_delete=models.SET_NULL, null=True, blank=True)
-    instrument = models.ForeignKey( 
+    instrument = models.ForeignKey(
         Instrument, on_delete=models.SET_NULL, null=True, blank=True)
-    reagent = models.ForeignKey(
-        Reagents, on_delete=models.SET_NULL, null=True, blank=True)
+    reagents = models.ManyToManyField(Reagents, blank=True)  # Change to ManyToManyField
     unit = models.ForeignKey(
         Units, on_delete=models.SET_NULL, null=True, blank=True)
     status = models.CharField(
         max_length=50, choices=STATUS, default='Inactive', blank=True)
+    allowed_units = models.ManyToManyField(Units, related_name="allowed_units")
+    master_unit = models.ForeignKey(
+        Units, on_delete=models.SET_NULL, related_name="master_unit", null=True, blank=True)
+
     def __str__(self):
         return self.name
 
-    class Meta:       
+    class Meta:
         verbose_name = 'Analyte'
 
+
 class ActivityLogUnits(models.Model):
+    organization_id = models.ForeignKey(
+        Organization, on_delete=models.CASCADE, null=True, blank=True)
     analyte_id = models.ForeignKey(
          Analyte, on_delete=models.CASCADE, null=True, blank=True)
     manufactural_id = models.ForeignKey(
@@ -152,8 +170,6 @@ class ActivityLogUnits(models.Model):
     date_of_addition = models.DateTimeField(blank=True, null=True)  
     date_of_updation = models.DateTimeField(blank=True, null=True, auto_now=True)
     field_name = models.CharField(max_length=255, null= True)
-    added_by = models.ForeignKey(
-        UserAccount, on_delete=models.CASCADE, null=True, blank=True)
     actions = models.CharField(
         max_length=50, choices= ACTIONS, default= 'Added', verbose_name='Which action is performed?')
     status = models.CharField(
@@ -167,12 +183,12 @@ class ActivityLogUnits(models.Model):
         verbose_name = 'History'
 
 class News(models.Model):
+    organization_id = models.ForeignKey(
+        Organization, on_delete=models.CASCADE, null=True, blank=True)
     title = models.CharField(max_length=255, blank=False, null=True)
     description = models.TextField()
     picture = models.ImageField(upload_to='news_pictures/', blank=True, null=True)
     date_of_addition = models.DateTimeField(blank=True, null=True) 
-    added_by = models.ForeignKey(
-        UserAccount, on_delete=models.CASCADE, null=True, blank=True)
     def __str__(self):
         return self.title
 
