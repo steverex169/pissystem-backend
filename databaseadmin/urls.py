@@ -1,5 +1,5 @@
 from django.urls import path
-from databaseadmin.views import NewsListView,InstrumentsAPIView, InstrumentsUpdateAPIView, InstrumentTypeView,AnalyteUpdateAPIView, AnalyteAPIView, MethodsAPIView, MethodsUpdateAPIView, SchemeAPIView,SchemeUpdateAPIView, UpdateInstrumentTypeView,   UnitsAPIView, UnitsListAPIView, UnitsUpdateAPIView, ActivityLogDatabaseadmin, ReagentsListAPIView, ReagentsPostAPIView, ReagentsPutAPIView ,ManufacturalListAPIView, ManufacturalPostAPIView, ManufacturalPutAPIView
+from databaseadmin.views import NewsListView,InstrumentsAPIView, InstrumentsUpdateAPIView, InstrumentTypeView,AnalyteUpdateAPIView, AnalyteAPIView, MethodsAPIView, MethodsUpdateAPIView, SchemeAPIView, SchemePostAPIView, SchemeUpdateAPIView, UpdateInstrumentTypeView,   UnitsAPIView, UnitsListAPIView, UnitsUpdateAPIView, ActivityLogDatabaseadmin, ReagentsListAPIView, ReagentsPostAPIView, ReagentsPutAPIView ,ManufacturalListAPIView, ManufacturalPostAPIView, ManufacturalPutAPIView, SampleListView, SamplePostView
 
 urlpatterns = [
     path('units_update/<id>', UnitsUpdateAPIView.as_view(), name='units_update'),
@@ -20,9 +20,11 @@ urlpatterns = [
          MethodsAPIView.as_view(), name='methods-list'),
     path('update-method-list/<id>',
         MethodsUpdateAPIView.as_view(), name='update-method-list'), 
-    path('scheme-list',
-         SchemeAPIView.as_view(), name='scheme-list'),
-    path('update-scheme-list/<id>',
+    path('scheme-list/<id>',
+         SchemeAPIView.as_view(), name='scheme-list/<id>'),
+    path('post-scheme',
+        SchemePostAPIView.as_view(), name='post-scheme'),
+    path('update-scheme-list',
         SchemeUpdateAPIView.as_view(), name='update-scheme-list'),    
     path('analyte-list',
         AnalyteAPIView.as_view(), name='analyte-list'),
@@ -34,4 +36,8 @@ urlpatterns = [
         InstrumentsUpdateAPIView.as_view(), name='update-instrument-list'),
     path('news-list',
          NewsListView.as_view(), name='news-list'),
+    path('sample-list/<id>',
+         SampleListView.as_view(), name='sample-list'),
+    path('post-sample',
+         SamplePostView.as_view(), name='post-sample'),
 ]

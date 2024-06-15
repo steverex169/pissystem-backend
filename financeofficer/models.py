@@ -1,8 +1,6 @@
 from django.db import models
 
 # Create your models here.
-
-from django.contrib.gis.db import models
 from account.models import UserAccount
 # from financeadmin.models import BankAccount, Bank
 from staff.models import Staff
