@@ -1,5 +1,5 @@
 from django.urls import path
-from databaseadmin.views import UnitsListAPIView, NewsListView,InstrumentsAPIView, InstrumentsUpdateAPIView, InstrumentTypeView,AnalyteUpdateAPIView, AnalyteAPIView, MethodsAPIView, UpdateInstrumentTypeView,  MethodsUpdateAPIView, UnitsAPIView, UnitsUpdateAPIView, ActivityLogDatabaseadmin, ReagentsListAPIView, ReagentsPostAPIView, ReagentsPutAPIView ,ManufacturalListAPIView, ManufacturalPostAPIView, ManufacturalPutAPIView
+from databaseadmin.views import NewsListView,InstrumentsAPIView, InstrumentsUpdateAPIView, InstrumentTypeView,AnalyteUpdateAPIView, AnalyteAPIView, MethodsAPIView, MethodsUpdateAPIView, SchemeAPIView, SchemePostAPIView, SchemeUpdateAPIView, UpdateInstrumentTypeView,   UnitsAPIView, UnitsListAPIView, UnitsUpdateAPIView, ActivityLogDatabaseadmin, ReagentsListAPIView, ReagentsPostAPIView, ReagentsPutAPIView ,ManufacturalListAPIView, ManufacturalPostAPIView, ManufacturalPutAPIView, SampleListView, SamplePostView
 
 urlpatterns = [
     path('units_update/<id>', UnitsUpdateAPIView.as_view(), name='units_update'),
@@ -11,7 +11,7 @@ urlpatterns = [
     path('reagent_list', ReagentsListAPIView.as_view(), name='reagent_list'), 
     path('manufactural_update/<id>', ManufacturalPutAPIView.as_view(), name='manufactural_update'),
     path('manufactural_create', ManufacturalPostAPIView.as_view(), name='manufactural_create'),
-    path('manufactural_list', ManufacturalListAPIView.as_view(), name='manufactural_list'),
+    path('manufactural_list', ManufacturalListAPIView.as_view(), name='manufactural_list'), 
         path('instrument-type-list',
          InstrumentTypeView.as_view(), name='instrument-type-list'),
     path('update-instrument-type-list/<id>',
@@ -19,7 +19,13 @@ urlpatterns = [
     path('methods-list',
          MethodsAPIView.as_view(), name='methods-list'),
     path('update-method-list/<id>',
-        MethodsUpdateAPIView.as_view(), name='update-method-list'),
+        MethodsUpdateAPIView.as_view(), name='update-method-list'), 
+    path('scheme-list/<id>',
+         SchemeAPIView.as_view(), name='scheme-list/<id>'),
+    path('post-scheme',
+        SchemePostAPIView.as_view(), name='post-scheme'),
+    path('update-scheme-list',
+        SchemeUpdateAPIView.as_view(), name='update-scheme-list'),    
     path('analyte-list',
         AnalyteAPIView.as_view(), name='analyte-list'),
     path('update-analyte/<id>',
@@ -30,4 +36,8 @@ urlpatterns = [
         InstrumentsUpdateAPIView.as_view(), name='update-instrument-list'),
     path('news-list',
          NewsListView.as_view(), name='news-list'),
+    path('sample-list/<id>',
+         SampleListView.as_view(), name='sample-list'),
+    path('post-sample',
+         SamplePostView.as_view(), name='post-sample'),
 ]

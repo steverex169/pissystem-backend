@@ -1,5 +1,5 @@
 from datetime import datetime
-from django.contrib.gis.db import models
+from django.db import models
 from organization.models import Organization
 from account.models import UserAccount
 
