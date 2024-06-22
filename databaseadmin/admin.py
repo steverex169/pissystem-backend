@@ -13,8 +13,8 @@ class InstrumentTypeAdmin(admin.ModelAdmin):
     search_fields = ('id', 'name', 'date_of_addition', )
 
 class UnitsTypeAdmin(admin.ModelAdmin):
-    list_display = ('id', 'name', 'date_of_addition', )
-    search_fields = ('id', 'name', 'date_of_addition', )
+    list_display = ('id', 'name', 'formula','date_of_addition', )
+    search_fields = ('id', 'name','formula', 'date_of_addition', )
 
 class ManufacturalAdmin(admin.ModelAdmin):
     list_display = ('id', 'name', 'telephone', 'city', 'country', 'address', 'date_of_addition', )
@@ -33,8 +33,14 @@ class ReagentsAdmin(admin.ModelAdmin):
     search_fields = ('id', 'name', 'date_of_addition', 'code','status')
 
 class AnalyteAdmin(admin.ModelAdmin):
-    list_display = ('id', 'name', 'date_of_addition', 'code','status')
-    search_fields = ('id', 'name', 'date_of_addition', 'code','status')
+    list_display = ('id', 'name', 'date_of_addition', 'code', 'method', 'instrument', 'get_reagents', 'unit', 'status')
+    search_fields = ('id', 'name', 'date_of_addition', 'code', 'method', 'instrument', 'reagents__name', 'unit', 'status')
+
+    def get_reagents(self, obj):
+        return ', '.join([reagent.name for reagent in obj.reagents.all()])
+
+    get_reagents.short_description = 'Reagents'
+
 class InstrumentAdmin(admin.ModelAdmin):
     list_display = ('id', 'name', 'date_of_addition', 'code','status','manufactural','instrument_type')
     search_fields = ('id', 'name', 'date_of_addition', 'code','status','manufactural','instrument_type')

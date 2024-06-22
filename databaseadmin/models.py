@@ -30,6 +30,7 @@ class Units(models.Model):
     organization_id = models.ForeignKey(
         Organization, on_delete=models.CASCADE, null=True, blank=True)
     name = models.CharField(max_length=255, blank=False, null=True)
+    formula = models.CharField(max_length=255, blank=False, null=True)
     date_of_addition = models.DateTimeField(blank=True, null=True)  # Changed to DateTimeField
 
     def __str__(self):
@@ -42,9 +43,9 @@ class Manufactural(models.Model):
     organization_id = models.ForeignKey(
         Organization, on_delete=models.CASCADE, null=True, blank=True)
     name = models.CharField(max_length=255, blank=False, null=True)
-    address = models.CharField(max_length=255, blank=False, null=True)
+    address = models.CharField(max_length=255, blank=True, null=True)
     country = models.CharField(max_length=255, blank=False, null=True)
-    telephone = models.CharField(max_length=255, blank=False, null=True)
+    telephone = models.CharField(max_length=255, blank=True, null=True)
     city =models.CharField(max_length=255, blank=False, null=True)
     date_of_addition = models.DateTimeField(blank=True, null=True) 
     def __str__(self):
@@ -67,23 +68,19 @@ class Method(models.Model):
     class Meta:       
         verbose_name = 'Method'
 
+# class Analyte(models.Model):
+#     organization_id = models.ForeignKey(
+#         Organization, on_delete=models.CASCADE, null=True, blank=True)
+#     name = models.CharField(max_length=255, blank=True, null=True)
+#     code = models.PositiveBigIntegerField(blank=True, null=True)
+#     date_of_addition = models.DateTimeField(blank=True, null=True) 
+#     status = models.CharField(
+#         max_length=50, choices=STATUS, default='Inactive', blank=True)
+#     def __str__(self):
+#         return self.name
 
-
-class Analyte(models.Model):
-    organization_id = models.ForeignKey(
-        Organization, on_delete=models.CASCADE, null=True, blank=True)
-    name = models.CharField(max_length=255, blank=True, null=True)
-    added_by= models.ForeignKey(
-        UserAccount, on_delete=models.CASCADE, null=True, blank=True) 
-    code = models.PositiveBigIntegerField(blank=True, null=True)
-    date_of_addition = models.DateTimeField(blank=True, null=True) 
-    status = models.CharField(
-        max_length=50, choices=STATUS, default='Inactive', blank=True)
-    def __str__(self):
-        return self.name
-
-    class Meta:       
-        verbose_name = 'Analyte'
+#     class Meta:       
+#         verbose_name = 'Analyte'
 
 class Reagents(models.Model):
     organization_id = models.ForeignKey(
@@ -131,7 +128,54 @@ class Instrument(models.Model):
     class Meta:
         verbose_name = 'Instrument'
 
+class Analyte(models.Model):
+    organization_id = models.ForeignKey(
+        Organization, on_delete=models.CASCADE, null=True, blank=True)
+    name = models.CharField(max_length=255, blank=True, null=True)
+    code = models.PositiveBigIntegerField(blank=True, null=True)
+    date_of_addition = models.DateTimeField(blank=True, null=True)
+    method = models.ForeignKey(
+        Method, on_delete=models.SET_NULL, null=True, blank=True)
+    instrument = models.ForeignKey(
+        Instrument, on_delete=models.SET_NULL, null=True, blank=True)
+    reagents = models.ManyToManyField(Reagents, blank=True)  # Change to ManyToManyField
+    unit = models.ForeignKey(
+        Units, on_delete=models.SET_NULL, null=True, blank=True)
+    status = models.CharField(
+        max_length=50, choices=STATUS, default='Inactive', blank=True)
+    allowed_units = models.ManyToManyField(Units, related_name="allowed_units")
+    master_unit = models.ForeignKey(
+        Units, on_delete=models.SET_NULL, related_name="master_unit", null=True, blank=True)
+
+    def __str__(self):
+        return self.name
+
+    class Meta:
+        verbose_name = 'Analyte'
+
 class Scheme(models.Model):
+    organization_id = models.ForeignKey(
+        Organization, on_delete=models.CASCADE, null=True, blank=True)
+    scheme_name = models.CharField(max_length=255, blank=True, null=True)
+    cycle_no = models.PositiveBigIntegerField(blank=True, null=True)
+    rounds = models.PositiveBigIntegerField(blank=True, null=True)
+    cycle = models.CharField(
+        max_length=50, choices=CYCLE, default='Months', blank=True)  
+    start_date = models.DateTimeField(blank=True, null=True)
+    end_date = models.DateTimeField(blank=True, null=True)
+    analytes = models.ManyToManyField(Analyte, blank=True)
+    status = models.CharField(
+        max_length=50, choices=STATUS, default='Inactive', blank=True)
+    def __str__(self):
+        return self.name
+
+    class Meta:       
+        verbose_name = 'Scheme'
+        
+
+
+
+class ActivityLogUnits(models.Model):
     organization_id = models.ForeignKey(
         Organization, on_delete=models.CASCADE, null=True, blank=True)
     scheme_name = models.CharField(max_length=255, blank=True, null=True)
