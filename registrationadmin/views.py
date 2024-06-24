@@ -15,7 +15,7 @@ from django.http import JsonResponse
 from django.db.models import Count
 from django.db.models import Q
 from account.models import UserAccount
-
+from staff.models import Staff
 from helpers.mail import send_mail
 from django.conf import settings
 
@@ -48,78 +48,133 @@ class ApproveUnapproveLabView(APIView):
     parser_classes = (parsers.MultiPartParser, parsers.FormParser,)
 
     # Patch request to update data of the Lab for approval
+    def put(self, request, *args, **kwargs):
+        try:
+            staff = Staff.objects.get(account_id=kwargs.get('id'))
+            try:
+                lab = Lab.objects.get(id=request.data['lab_id'])
+
+                request.data._mutable = True
+
+                # If shared percentage (referee fee percentage) value is coming to API
+                # It means it is approved operation otherwise it is assumed to be unapproved operation
+                if request.data['is_approved'] == 'true':
+                    request.data['status'] = 'Approved'
+                else:
+                    request.data['status'] = 'Unapproved'
+
+                request.data['done_by'] = staff.id
+                request.data['done_at'] = datetime.now()
+                request.data._mutable = False
+
+                serializer = LabInformationSerializer(
+                    lab, data=request.data, partial=True)
+
+                if serializer.is_valid():
+                    serializer.save()
+
+                    if request.data['is_approved'] == 'true':
+                        subject, from_email, to = 'Approval Notification', settings.EMAIL_HOST_USER, lab.email
+
+                        data = {
+                            'lab_name': lab.name,
+                            'email': lab.email,
+                            'login_link': settings.LINK_OF_REACT_APP + "/login"
+                        }
+
+                        send_mail(subject, "approval-mail.html",
+                                  from_email, to, data)
+                        audit_data = {}
+                        audit_data['lab_id'] = str(
+                            serializer.data['id'])
+                        audit_data['generated_at'] = str(
+                            serializer.data['done_at'])
+                    else:
+                        subject, from_email, to = 'Non-Approval Notification', settings.EMAIL_HOST_USER, lab.email
+
+                        data = {
+                            'lab_name': lab.name,
+                            'contact_email': "complaints@labhazir.com",
+                            'contact_number': "+923018540968"
+                        }
+
+                        send_mail(subject, "nonapproval-mail.html",
+                                  from_email, to, data)
+
+                    return Response({"status": status.HTTP_200_OK, "data": serializer.data, "message": "Lab has been approved successfully."})
+                else:
+                    return Response({"status": status.HTTP_400_BAD_REQUEST, "message": serializer._errors})
+
+            except Lab.DoesNotExist:
+                return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "Sorry! No lab exist with this id."})
+
+        except Staff.DoesNotExist:
+            return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "Sorry! No staff exist with this id."})
 
 
 # API for displaying list of approved labs
-# class ApprovedLabsView(APIView):
-#     permission_classes = (IsAuthenticated,)
-
-#     # Get request to get data of the cart
-#     def get(self, request, *args, **kwargs):
-#         try:
-#             approved_labs = Lab.objects.filter(
-#                 status="Approved")
-#             offertest = OfferedTest.objects.filter(
-#                         lab_id=approved_labs).annotate(
-#                 num_offered_tests=Count('test_id'),
-#             )
-#             serializer_class = LabInformationSerializer(
-#                 approved_labs, many=True)
-
-#             for i in range(0, len(approved_labs)):
-#                 serializer_class.data[i]['lab_address'] = approved_labs[i].address
-#                 serializer_class.data[i]['lab_email'] = approved_labs[i].email
-#                 serializer_class.data[i]['lab_city'] = approved_labs[i].city
-#                 serializer_class.data[i]['lab_phone'] = approved_labs[i].landline
-#                 serializer_class.data[i]['offered_tests'] = offertest[i].num_offered_tests
-#                 serializer_class.data[i]['lab_name'] = approved_labs[i].name
-#                 print("offeref test have or not", offertest[i].num_offered_tests)
-#                 serializer_class.data[i]['pathologists'] = approved_labs[i].pathologists
-#                 serializer_class.data[i]['sample_collectors'] = approved_labs[i].sample_collectors
-#                 serializer_class.data[i]['quality_certificates'] = approved_labs[i].quality_certificates
-
-
-#             return Response({"status": status.HTTP_200_OK, "data": serializer_class.data})
-
-#         except Lab.DoesNotExist:
-#             return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "Sorry! No pending labs exist."})
 class ApprovedLabsView(APIView):
-    permission_classes = (AllowAny,)
+    permission_classes = (IsAuthenticated,)
 
+    # Get request to get data of the cart
     def get(self, request, *args, **kwargs):
         try:
-            approved_labs = Lab.objects.filter(status="Approved", is_active="Yes")
-            offertest = OfferedTest.objects.filter(lab_id__in=approved_labs).values('lab_id').annotate(num_offered_tests=Count('test_id', distinct=True))
-            pathologist = Pathologist.objects.filter(lab_id__in=approved_labs).values('lab_id').annotate(num_pathologist=Count('id', distinct=True))
-            scolletor = SampleCollector.objects.filter(lab_id__in=approved_labs).values('lab_id').annotate(num_scollector=Count('id', distinct=True))
-            # qualityc = QualityCertificate.objects.filter(lab_id__in=approved_labs).values('lab_id').annotate(num_qualityc=Count('id', distinct=True))
-            print("offertest", offertest)
+            approved_labs = Lab.objects.filter(
+                status="Approved")
+            serializer_class = LabInformationSerializer(
+                approved_labs, many=True)
 
-            serializer_class = LabInformationSerializer(approved_labs, many=True)
-
-            for i in range(len(approved_labs)):
-                lab_id = approved_labs[i].id
-
-                matching_offertest = next((item for item in offertest if item['lab_id'] == lab_id), None)
-                # matching_qualityc = next((item for item in qualityc if item['lab_id'] == lab_id), None)
-                matching_scolletor = next((item for item in scolletor if item['lab_id'] == lab_id), None)
-                matching_pathologist = next((item for item in pathologist if item['lab_id'] == lab_id), None)
-
-                serializer_class.data[i]['offered_tests'] = matching_offertest['num_offered_tests'] if matching_offertest else 0
-                # serializer_class.data[i]['quality_certificates'] = matching_qualityc['num_qualityc'] if matching_qualityc else 0
-                serializer_class.data[i]['sample_collectors'] = matching_scolletor['num_scollector'] if matching_scolletor else 0
-                serializer_class.data[i]['pathologists'] = matching_pathologist['num_pathologist'] if matching_pathologist else 0
-
+            for i in range(0, len(approved_labs)):
                 serializer_class.data[i]['lab_address'] = approved_labs[i].address
                 serializer_class.data[i]['lab_email'] = approved_labs[i].email
                 serializer_class.data[i]['lab_city'] = approved_labs[i].city
                 serializer_class.data[i]['lab_phone'] = approved_labs[i].landline
+                
                 serializer_class.data[i]['lab_name'] = approved_labs[i].name
+               
+
 
             return Response({"status": status.HTTP_200_OK, "data": serializer_class.data})
 
         except Lab.DoesNotExist:
             return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "Sorry! No pending labs exist."})
+# class ApprovedLabsView(APIView):
+#     permission_classes = (AllowAny,)
+
+#     def get(self, request, *args, **kwargs):
+#         try:
+#             approved_labs = Lab.objects.filter(status="Approved", is_active="Yes")
+#             offertest = OfferedTest.objects.filter(lab_id__in=approved_labs).values('lab_id').annotate(num_offered_tests=Count('test_id', distinct=True))
+#             pathologist = Pathologist.objects.filter(lab_id__in=approved_labs).values('lab_id').annotate(num_pathologist=Count('id', distinct=True))
+#             scolletor = SampleCollector.objects.filter(lab_id__in=approved_labs).values('lab_id').annotate(num_scollector=Count('id', distinct=True))
+#             # qualityc = QualityCertificate.objects.filter(lab_id__in=approved_labs).values('lab_id').annotate(num_qualityc=Count('id', distinct=True))
+#             print("offertest", offertest)
+
+#             serializer_class = LabInformationSerializer(approved_labs, many=True)
+
+#             for i in range(len(approved_labs)):
+#                 lab_id = approved_labs[i].id
+
+#                 matching_offertest = next((item for item in offertest if item['lab_id'] == lab_id), None)
+#                 # matching_qualityc = next((item for item in qualityc if item['lab_id'] == lab_id), None)
+#                 matching_scolletor = next((item for item in scolletor if item['lab_id'] == lab_id), None)
+#                 matching_pathologist = next((item for item in pathologist if item['lab_id'] == lab_id), None)
+
+#                 serializer_class.data[i]['offered_tests'] = matching_offertest['num_offered_tests'] if matching_offertest else 0
+#                 # serializer_class.data[i]['quality_certificates'] = matching_qualityc['num_qualityc'] if matching_qualityc else 0
+#                 serializer_class.data[i]['sample_collectors'] = matching_scolletor['num_scollector'] if matching_scolletor else 0
+#                 serializer_class.data[i]['pathologists'] = matching_pathologist['num_pathologist'] if matching_pathologist else 0
+
+#                 serializer_class.data[i]['lab_address'] = approved_labs[i].address
+#                 serializer_class.data[i]['lab_email'] = approved_labs[i].email
+#                 serializer_class.data[i]['lab_city'] = approved_labs[i].city
+#                 serializer_class.data[i]['lab_phone'] = approved_labs[i].landline
+#                 serializer_class.data[i]['lab_name'] = approved_labs[i].name
+
+#             return Response({"status": status.HTTP_200_OK, "data": serializer_class.data})
+
+#         except Lab.DoesNotExist:
+#             return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "Sorry! No pending labs exist."})
 
 
 

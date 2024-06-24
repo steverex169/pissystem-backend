@@ -21,11 +21,16 @@ class UnitsListAPIView(APIView):
             serialized_data = []
             for unit in units_list:
                 unit_data = model_to_dict(unit)
+                if unit.added_by_id:  # Check if added_by_id is not None
+                    user_account = UserAccount.objects.get(id=unit.added_by_id)
+                    unit_data['added_by'] = user_account.username
+                else:
+                    unit_data['added_by'] = None
                 serialized_data.append(unit_data)
             return Response({"status": status.HTTP_200_OK, "data": serialized_data})
         except Units.DoesNotExist:
-            return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "No Records Exist."})
-
+            return Response({"status": status.  HTTP_400_BAD_REQUEST, "message": "No Record Exist."})
+        
 class UnitsAPIView(APIView):
     permission_classes = (AllowAny,)  # AllowAny temporarily for demonstration
 

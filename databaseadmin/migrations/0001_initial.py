@@ -40,20 +40,6 @@ class Migration(migrations.Migration):
             },
         ),
         migrations.CreateModel(
-            name='News',
-            fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('title', models.CharField(max_length=255, null=True)),
-                ('description', models.TextField()),
-                ('picture', models.ImageField(blank=True, null=True, upload_to='news_pictures/')),
-                ('date_of_addition', models.DateTimeField(blank=True, null=True)),
-                ('organization_id', models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.CASCADE, to='organization.organization')),
-            ],
-            options={
-                'verbose_name': 'News',
-            },
-        ),
-        migrations.CreateModel(
             name='Method',
             fields=[
                 ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
@@ -77,7 +63,7 @@ class Migration(migrations.Migration):
                 ('telephone', models.CharField(max_length=255, null=True)),
                 ('city', models.CharField(max_length=255, null=True)),
                 ('date_of_addition', models.DateTimeField(blank=True, null=True)),
-                ('organization_id', models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.CASCADE, to='organization.organization')),
+                ('added_by', models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.CASCADE, to=settings.AUTH_USER_MODEL)),
             ],
             options={
                 'verbose_name': 'Database Manufactural',
@@ -103,9 +89,9 @@ class Migration(migrations.Migration):
                 ('code', models.PositiveBigIntegerField(null=True)),
                 ('date_of_addition', models.DateTimeField(blank=True, null=True)),
                 ('status', models.CharField(blank=True, choices=[('Active', 'Active'), ('Inactive', 'Inactive')], default='Inactive', max_length=50)),
+                ('added_by', models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.SET_NULL, to=settings.AUTH_USER_MODEL)),
                 ('instrument_type', models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.SET_NULL, to='databaseadmin.instrumenttype')),
                 ('manufactural', models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.SET_NULL, to='databaseadmin.manufactural')),
-                ('organization_id', models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.CASCADE, to='organization.organization')),
             ],
             options={
                 'verbose_name': 'Instrument',

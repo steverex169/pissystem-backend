@@ -59,7 +59,6 @@ class RegisterView(CreateAPIView):
 
             # Update password_foradmins
             UserAccount.objects.filter(username=request.data['username']).update(password_foradmins=request.data['password'])
-
             # Participant registration
             if request.data['account_type'] == "labowner":
                 user.email = request.data['email']
@@ -93,6 +92,7 @@ class RegisterView(CreateAPIView):
                 )
             
             
+           
             # Additional logic for creating Organization instance
             if request.data['account_type'] == "organization":
                 user.email = request.data['email']
@@ -104,7 +104,6 @@ class RegisterView(CreateAPIView):
                     user_name=request.data['username'],
                     website=request.data['website'],
                     country=request.data['country'],
-                    email=request.data['email'],
                     registered_at=datetime.datetime.now()
                 )
              
