@@ -1,5 +1,4 @@
 from django.contrib import admin
-from django.contrib.gis.admin import OSMGeoAdmin
 from labowner.models import  Lab, Result, ActivityLog, LabPayment, Pathologist, OfferedTest, SampleCollector, Staff
 
 

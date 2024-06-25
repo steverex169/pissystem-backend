@@ -1,6 +1,8 @@
 from django.db import models
 from organization.models import Organization
 from django.utils import timezone
+from account.models import UserAccount
+
 # table of units
 ACTIONS= (
     ('Updated', 'Updated'),
@@ -10,6 +12,10 @@ ACTIONS= (
 STATUS = (
     ('Active', 'Active'),
     ('Inactive', 'Inactive'),
+)
+CYCLE = (
+    ('Months', 'Months'),
+    ('Year', 'Year'),
 )
 TYPE= (
     ('Units', 'Units'),
@@ -24,6 +30,7 @@ class Units(models.Model):
     organization_id = models.ForeignKey(
         Organization, on_delete=models.CASCADE, null=True, blank=True)
     name = models.CharField(max_length=255, blank=False, null=True)
+    formula = models.CharField(max_length=255, blank=False, null=True)
     date_of_addition = models.DateTimeField(blank=True, null=True)  # Changed to DateTimeField
 
     def __str__(self):
@@ -36,9 +43,9 @@ class Manufactural(models.Model):
     organization_id = models.ForeignKey(
         Organization, on_delete=models.CASCADE, null=True, blank=True)
     name = models.CharField(max_length=255, blank=False, null=True)
-    address = models.CharField(max_length=255, blank=False, null=True)
+    address = models.CharField(max_length=255, blank=True, null=True)
     country = models.CharField(max_length=255, blank=False, null=True)
-    telephone = models.CharField(max_length=255, blank=False, null=True)
+    telephone = models.CharField(max_length=255, blank=True, null=True)
     city =models.CharField(max_length=255, blank=False, null=True)
     date_of_addition = models.DateTimeField(blank=True, null=True) 
     def __str__(self):
@@ -61,19 +68,19 @@ class Method(models.Model):
     class Meta:       
         verbose_name = 'Method'
 
-class Analyte(models.Model):
-    organization_id = models.ForeignKey(
-        Organization, on_delete=models.CASCADE, null=True, blank=True)
-    name = models.CharField(max_length=255, blank=True, null=True)
-    code = models.PositiveBigIntegerField(blank=True, null=True)
-    date_of_addition = models.DateTimeField(blank=True, null=True) 
-    status = models.CharField(
-        max_length=50, choices=STATUS, default='Inactive', blank=True)
-    def __str__(self):
-        return self.name
+# class Analyte(models.Model):
+#     organization_id = models.ForeignKey(
+#         Organization, on_delete=models.CASCADE, null=True, blank=True)
+#     name = models.CharField(max_length=255, blank=True, null=True)
+#     code = models.PositiveBigIntegerField(blank=True, null=True)
+#     date_of_addition = models.DateTimeField(blank=True, null=True) 
+#     status = models.CharField(
+#         max_length=50, choices=STATUS, default='Inactive', blank=True)
+#     def __str__(self):
+#         return self.name
 
-    class Meta:       
-        verbose_name = 'Analyte'
+#     class Meta:       
+#         verbose_name = 'Analyte'
 
 class Reagents(models.Model):
     organization_id = models.ForeignKey(
@@ -121,9 +128,93 @@ class Instrument(models.Model):
     class Meta:
         verbose_name = 'Instrument'
 
+class Analyte(models.Model):
+    organization_id = models.ForeignKey(
+        Organization, on_delete=models.CASCADE, null=True, blank=True)
+    name = models.CharField(max_length=255, blank=True, null=True)
+    code = models.PositiveBigIntegerField(blank=True, null=True)
+    date_of_addition = models.DateTimeField(blank=True, null=True)
+    method = models.ForeignKey(
+        Method, on_delete=models.SET_NULL, null=True, blank=True)
+    instrument = models.ForeignKey(
+        Instrument, on_delete=models.SET_NULL, null=True, blank=True)
+    reagents = models.ManyToManyField(Reagents, blank=True)  # Change to ManyToManyField
+    unit = models.ForeignKey(
+        Units, on_delete=models.SET_NULL, null=True, blank=True)
+    status = models.CharField(
+        max_length=50, choices=STATUS, default='Inactive', blank=True)
+    allowed_units = models.ManyToManyField(Units, related_name="allowed_units")
+    master_unit = models.ForeignKey(
+        Units, on_delete=models.SET_NULL, related_name="master_unit", null=True, blank=True)
+
+    def __str__(self):
+        return self.name
+
+    class Meta:
+        verbose_name = 'Analyte'
+
+class Scheme(models.Model):
+    organization_id = models.ForeignKey(
+        Organization, on_delete=models.CASCADE, null=True, blank=True)
+    scheme_name = models.CharField(max_length=255, blank=True, null=True)
+    cycle_no = models.PositiveBigIntegerField(blank=True, null=True)
+    rounds = models.PositiveBigIntegerField(blank=True, null=True)
+    cycle = models.CharField(
+        max_length=50, choices=CYCLE, default='Months', blank=True)  
+    start_date = models.DateTimeField(blank=True, null=True)
+    end_date = models.DateTimeField(blank=True, null=True)
+    analytes = models.ManyToManyField(Analyte, blank=True)
+    status = models.CharField(
+        max_length=50, choices=STATUS, default='Inactive', blank=True)
+    def __str__(self):
+        return self.name
+
+    class Meta:       
+        verbose_name = 'Scheme'
+        
+
+
+
 class ActivityLogUnits(models.Model):
     organization_id = models.ForeignKey(
         Organization, on_delete=models.CASCADE, null=True, blank=True)
+    scheme_name = models.CharField(max_length=255, blank=True, null=True)
+    cycle_no = models.PositiveBigIntegerField(blank=True, null=True)
+    rounds = models.PositiveBigIntegerField(blank=True, null=True)
+    cycle = models.CharField(
+        max_length=50, choices=CYCLE, default='Months', blank=True)  
+    start_date = models.DateTimeField(blank=True, null=True)
+    end_date = models.DateTimeField(blank=True, null=True)
+    analytes = models.ManyToManyField(Analyte, blank=True)
+    status = models.CharField(
+        max_length=50, choices=STATUS, default='Inactive', blank=True)
+    def __str__(self):
+        return self.name
+
+    class Meta:       
+        verbose_name = 'Scheme'
+
+class Sample(models.Model):
+    organization_id = models.ForeignKey(
+         Organization, on_delete=models.CASCADE, null=True, blank=True)
+    account_id = models.OneToOneField(
+        UserAccount, on_delete=models.CASCADE, primary_key=False, null=True, blank=True)
+    sampleno = models.CharField(max_length=255, blank=False, null=True)
+    details = models.TextField()
+    notes = models.TextField(max_length=255, blank=False, null=True)
+    scheme = models.TextField(blank=True, null=True) 
+    # added_by = models.ForeignKey(
+    #     UserAccount, on_delete=models.CASCADE, null=True, blank=True)
+        
+    def __str__(self):
+        return self.sampleno
+
+    class Meta:
+        verbose_name = 'Sample'
+
+class ActivityLogUnits(models.Model):
+    organization_id = models.ForeignKey(
+        Organization, on_delete=models.CASCADE, related_name='databaseadmin_activity_log_units', null=True, blank=True)
     analyte_id = models.ForeignKey(
          Analyte, on_delete=models.CASCADE, null=True, blank=True)
     manufactural_id = models.ForeignKey(
@@ -138,6 +229,12 @@ class ActivityLogUnits(models.Model):
         Instrument, on_delete=models.CASCADE, null=True, blank=True)
     method_id = models.ForeignKey(
         Method, on_delete=models.CASCADE, null=True, blank=True)
+    scheme_id = models.ForeignKey(
+        Scheme, on_delete=models.CASCADE, null=True, blank=True)
+    sample_id = models.ForeignKey(
+        Sample, on_delete=models.CASCADE, null=True, blank=True)
+    start_date = models.DateTimeField(null=True, blank=True)
+    end_date = models.DateTimeField(null=True, blank=True)
     old_value = models.TextField(null= True, blank=True)
     new_value = models.TextField(null= True, blank=True)
     date_of_addition = models.DateTimeField(blank=True, null=True)  
@@ -147,6 +244,8 @@ class ActivityLogUnits(models.Model):
         max_length=50, choices= ACTIONS, default= 'Added', verbose_name='Which action is performed?')
     status = models.CharField(
         max_length=50, choices=STATUS, default='Inactive', blank=True)
+    cycle = models.CharField(
+        max_length=50, choices=CYCLE, default='Months', blank=True)
     type = models.CharField(
         max_length=50, choices= TYPE, default= 'Units', verbose_name='Form type?')
     def __str__(self):

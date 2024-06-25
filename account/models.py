@@ -25,6 +25,7 @@ OPTIONS = (
 )
 
 
+
 class UserAccount(AbstractUser):
     email = models.EmailField(max_length=70, blank=False, unique=False)
     account_type = models.CharField(

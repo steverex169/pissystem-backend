@@ -3,8 +3,7 @@ import datetime
 import re
 from ssl import CertificateError
 from sys import audit
-from pytz import timezone
-import pytz
+
 import shortuuid
 import requests
 from django.db.models import Max
@@ -30,7 +29,6 @@ from labowner.models import FINANCIAL_SETTLEMENT, Result, ActivityLog, Lab, LabC
 
 # from medicaltest.models import Test, Unit
 from labowner.serializers import ResultSerializer, ActivityLogSerializer, LabCorporateSerializer, LabInformationSerializer, LabPaymentSerializer, PathologistSerializer, SampleCollectorSerializer, OfferedTestSerializer
-from django.contrib.gis.geos import Point
 from django.conf import settings
 
 from staff.models import Marketer, Staff
