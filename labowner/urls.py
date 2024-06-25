@@ -1,9 +1,10 @@
 from django.urls import path
 
-from labowner.views import  ForChartCalculationView, LabNamesView, OfferedRadiologyShareListView, OfferedPackageShareListView, OfferedProfileShareListView, QualityCertificateCollectionPointView, ActivityLogView, OfferedTestCollectionPointView, OfferedTestDiscountListView, OfferedTestShareListView, LabInformationView, FeedbackListView, LabListView, LabProfileView, LabSettingsView, OfferedTestListView, OfferedTestView, PathologistListView, PathologistView, TestAppointmentCompletedListView, TestAppointmentInProcessListView, discountAllOfferedTestView, discountOfferedTestListView, LabPaymentView
+from labowner.views import  ForChartCalculationView, LabNamesView, OfferedRadiologyShareListView, OfferedPackageShareListView, OfferedProfileShareListView, QualityCertificateCollectionPointView, ActivityLogView, OfferedTestCollectionPointView, OfferedTestDiscountListView, OfferedTestShareListView, LabInformationView, FeedbackListView, LabListView, LabProfileView, LabSettingsView, OfferedTestListView, OfferedTestView, PathologistListView, PathologistView, TestAppointmentCompletedListView, TestAppointmentInProcessListView, discountAllOfferedTestView, discountOfferedTestListView, LabPaymentView, LabListByOrganization
 
 urlpatterns = [
 
+    path('participant-information/<id>', LabListByOrganization.as_view(), name='participant-information'),
     path('lab-names/',
          LabNamesView.as_view(), name='lab-names/'),
     path('lab-information/<account_id>',

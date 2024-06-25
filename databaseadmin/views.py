@@ -14,6 +14,7 @@ from rest_framework.authtoken.serializers import AuthTokenSerializer
 from django.utils import timezone
 from account.models import UserAccount
 from organization.models import Organization
+from django.shortcuts import get_object_or_404
 import datetime
 class UnitsListAPIView(APIView):
 
@@ -466,7 +467,6 @@ class ReagentsListAPIView(APIView):
         
         except Reagents.DoesNotExist:
             return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "No Record Exist."})
-
 # Reagents Post API 
 class ReagentsPostAPIView(APIView):
     permission_classes = (AllowAny,)  # AllowAny temporarily for demonstration
@@ -728,7 +728,6 @@ class ManufacturalPutAPIView(APIView):
             return Response({"status": status.HTTP_400_BAD_REQUEST, "message": str(e)})
 
 
-
 class MethodsAPIView(APIView):
     permission_classes = (AllowAny,)  # AllowAny temporarily for demonstration
 
@@ -969,7 +968,7 @@ class SchemeUpdateAPIView(APIView):
             scheme = Scheme.objects.get(id=kwargs.get('id'))
 
             # Store old values before updating
-            old_values = {field: getattr(method, field) for field in ["scheme_name", "cycle_no", "rounds", "cycle", "status"]}
+            old_values = {field: getattr(scheme, field) for field in ["scheme_name", "cycle_no", "rounds", "cycle", "status"]}
             
             serializer = SchemeSerializer(scheme, data=request.data, partial=True)
 
@@ -993,7 +992,6 @@ class SchemeUpdateAPIView(APIView):
                     field_name="Changes",
                     old_value= ", ".join([f"{field}: {old_values[field]}" for field in changed_fields]),
                     new_value=changes_string,
-                    added_by=request.user,
                     actions="Updated",
                     type="Scheme",
                 )
@@ -1312,6 +1310,7 @@ class AnalyteAPIView(APIView):
         except Exception as e:
             return Response({"status": status.HTTP_400_BAD_REQUEST, "message": str(e)})
 
+
 class AnalyteUpdateAPIView(APIView):
     permission_classes = (AllowAny,)  # Adjust permission classes as needed
 
@@ -1427,7 +1426,7 @@ class SampleListView(APIView):
 
     def get(self, request, *args, **kwargs):
         try:
-            sample = Sample.objects.get(account_id=kwargs.get('id'))
+            account_id = kwargs.get('id')
 
             staff_user = Staff.objects.get(id=account_id)  # Corrected the variable name
             organization = staff_user.organization_id

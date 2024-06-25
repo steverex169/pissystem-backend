@@ -26,6 +26,7 @@ from django.contrib.auth.models import update_last_login
 from staff.models import Staff
 from organization.models import Organization
 from django.utils import timezone
+from labowner.models import Lab
 # Redirect to admin
 
 
@@ -55,6 +56,7 @@ class RegisterView(CreateAPIView):
 
             user_data = serializer.data
             user = UserAccount.objects.get(username=request.data['username'])
+            
 
             # Update password_foradmins
             UserAccount.objects.filter(username=request.data['username']).update(password_foradmins=request.data['password'])
@@ -69,25 +71,27 @@ class RegisterView(CreateAPIView):
                     account_id=user,
                     # organization_id=request.data['added_by'],
                     user_name=request.data['username'],
-                    city=request.data['name'],
-                    name=request.data['city'],
+                    city=request.data['city'],
+                    name=request.data['name'],
                     department=request.data['department'],
                     organization_id = organization,
                     country=request.data['country'],
-                    address=request.data['address'],
+                    # address=request.data['address'],
                     district=request.data['district'],
                     Select_schemes=request.data['Select_schemes'],
-                   
-                    email=request.data['email'],
-                    landline=request.data['landline'],
-                    
-                    
+                    organization = request.data['organization'],
+                    state = request.data['state'],
+                    billing_address = request.data['billing_address'],
+                    shipping_address = request.data['shipping_address'],
+                    email=request.data['email'],   
+                    email_participant=request.data['email_participant'],
                     lab_staff_name=request.data['lab_staff_name'],
                     lab_staff_designation=request.data['lab_staff_designation'],
                     landline_registered_by=request.data['landline_registered_by'],
                     website=request.data['website'],
                    
                 )
+            
             
            
             # Additional logic for creating Organization instance
@@ -99,7 +103,6 @@ class RegisterView(CreateAPIView):
                     account_id=user,
                     name=request.data['name'],
                     user_name=request.data['username'],
-                    email=request.data['email'],
                     website=request.data['website'],
                     country=request.data['country'],
                     registered_at=datetime.datetime.now()
@@ -191,7 +194,7 @@ class LoginView(APIView):
                         elif lab.status == "Pending":
                             return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "Your lab is pending for approval. Please contact admins for further details."})
                         elif lab.status == "Unapproved":
-                            return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "Your lab account is not approved by Lab Hazir. Please contact our customer care for further details."})
+                            return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "Your lab account is not approved by NHS NEQAS. Please contact our customer care for further details."})
                     except:
                         UserAccount.objects.get(id=user_account.id).delete()
                         return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "Sorry! Your registration was not completed properly. Please register again."})

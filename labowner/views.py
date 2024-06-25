@@ -3,7 +3,8 @@ import datetime
 import re
 from ssl import CertificateError
 from sys import audit
-
+from pytz import timezone
+import pytz
 import shortuuid
 import requests
 from django.db.models import Max
@@ -25,6 +26,7 @@ from financeofficer.models import PaymentIn
 from financeofficer.serializers import PaymentInSerializer
 from helpers.mail import send_mail
 from labowner.models import FINANCIAL_SETTLEMENT, Result, ActivityLog, Lab, LabCorporate, OfferedTest, Pathologist, SampleCollector
+from organization.models import Organization
 
 
 # from medicaltest.models import Test, Unit
@@ -351,8 +353,6 @@ class LabInformationView(APIView):
         except UserAccount.DoesNotExist:
             return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "Sorry! Account with this doesn't exist. Please create account first."})
 
-
-
 # API for showing and changing information of a lab
 class LabProfileView(APIView):
     permission_classes = (AllowAny,)
@@ -387,9 +387,7 @@ class LabProfileView(APIView):
                     print("account email", request.data['email'])
                     ad = UserAccount.objects.filter(id=lab.account_id.id).update(email=request.data['email'])
                     print("email in useraccount", ad)
-            
-            # Remove hash sign if there is any in the address (Google Map API doesn't work if address has hash sign)
-            request.data['address'] = request.data['address']
+          
             
             request.data._mutable = False  # All changes are done so immute data
 
@@ -405,6 +403,93 @@ class LabProfileView(APIView):
 
         except Lab.DoesNotExist:
             return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "Sorry! Account with this id doesn't exist. Please create account first."})
+
+
+        
+# GET API to fetch all participants of a specific organization
+class LabListByOrganization(APIView):
+    permission_classes = (AllowAny,)
+
+    def get(self, request, *args, **kwargs):
+        try:
+            id = kwargs.get('id')
+            print("iddd", id)
+            organization1 = Organization.objects.get(account_id=id)
+            organization_id = organization1.id
+            # Fetch all labs related to the organization
+            labs = Lab.objects.filter(organization_id=organization_id)
+
+            # Check if any labs were found
+            if labs.exists():
+                serializer_class = LabInformationSerializer(labs, many=True)
+                return Response({
+                    "status": status.HTTP_200_OK,"data": serializer_class.data}, status=status.HTTP_200_OK)
+            else:
+                return Response({
+                    "status": status.HTTP_404_NOT_FOUND, "message": "No labs found for the given organization."}, status=status.HTTP_404_NOT_FOUND)
+        
+        except Exception as e:
+            return Response({
+                "status": status.HTTP_500_INTERNAL_SERVER_ERROR, "message": str(e) }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+   
+# class LabListByOrganization(APIView):
+#     # serializer_class = LabInformationSerializer
+
+#     def get(self, request, *args, **kwargs):
+#         organization_id = kwargs.get('organization_id')
+#         try:
+#             # Fetch all labs related to the organization
+#             labs = Lab.objects.filter(organization_id=organization_id)
+
+#             # Check if any labs were found
+#             if labs.exists():
+#                 serializer_class = LabInformationSerializer(labs, many=True)
+#                 return Response({
+#                     "status": status.HTTP_200_OK,"data": serializer_class.data}, status=status.HTTP_200_OK)
+#             else:
+#                 return Response({
+#                     "status": status.HTTP_404_NOT_FOUND, "message": "No labs found for the given organization."}, status=status.HTTP_404_NOT_FOUND)
+        
+#         except Exception as e:
+#             return Response({
+#                 "status": status.HTTP_500_INTERNAL_SERVER_ERROR, "message": str(e) }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+       
+#     # Patch request to update data of the Lab information
+#     def put(self, request, *args, **kwargs):
+#         try:
+#             lab = Lab.objects.get(account_id=kwargs.get('account_id'))
+#             print(lab.account_id.id)
+
+#             request.data._mutable = True  # Make data mutable first
+#             if request.data['email']:
+#                 email_exists = UserAccount.objects.exclude(id=lab.account_id.id).filter(email=request.data['email']).exists()
+#                 if email_exists:
+#                     return Response({"message": "email error"})
+#                 else:
+#                     print("emsilkcdkd", email_exists)
+#                     request.data['email'] = request.data['email']
+#                     print("account email", request.data['email'])
+#                     ad = UserAccount.objects.filter(id=lab.account_id.id).update(email=request.data['email'])
+#                     print("email in useraccount", ad)
+            
+#             # Remove hash sign if there is any in the address (Google Map API doesn't work if address has hash sign)
+#             request.data['address'] = request.data['address']
+            
+#             request.data._mutable = False  # All changes are done so immute data
+
+#             print(type(lab))
+#             serializer = LabInformationSerializer(lab, data=request.data, partial=True)
+
+#             if serializer.is_valid():
+#                 serializer.save()
+
+#                 return Response({"status": status.HTTP_200_OK, "data": serializer.data, "message": "Updated Successfully"})
+#             else:
+#                 return Response({"status": status.HTTP_400_BAD_REQUEST, "message": serializer._errors})
+
+#         except Lab.DoesNotExist:
+#             return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "Sorry! Account with this id doesn't exist. Please create account first."})
 
 
 # API for showing and changing information of a lab
