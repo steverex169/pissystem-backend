@@ -70,13 +70,6 @@ class RegisterView(CreateAPIView):
                     email=request.data['email'],
                     website=request.data['website'],
                     country=request.data['country'],
-                    photo=request.data['photo'],
-                    user_name=request.data['username'],
-                    email=request.data['email'],
-                    phone=request.data['phone'],
-                    city=request.data['city'],
-                    country=request.data['country'],
-                    address=request.data['address'],
                     registered_at=datetime.datetime.now()
                 )
              

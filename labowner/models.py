@@ -84,6 +84,14 @@ STATUS = (
     ('Cencel Request', 'Cencel Request'),
     ('Cencel', 'Cencel'),
 )
+RESULT_STATUS = (
+    ('Pending', 'Pending'),
+    ('Approved', 'Approved'),
+    ('Accept', 'Accept'),
+    ('Unapproved', 'Unapproved'),
+    ('Cencel Request', 'Cencel Request'),
+    ('Submited', 'Submited'),
+)
 
 GENDER = (
     ('Male', 'Male'),
@@ -464,6 +472,7 @@ class ActivityLog(models.Model):
 class Result(models.Model):
     organization_id = models.ForeignKey(
         Organization, on_delete=models.CASCADE, null=True, blank=True)
+    scheme_id = models.CharField(max_length=255, blank=True, null=True)
     lab_id = models.ForeignKey(Lab, on_delete=models.CASCADE, verbose_name='Lab', primary_key=False, null=True, blank=False)
     analyte = models.ForeignKey(Analyte, on_delete=models.CASCADE, verbose_name='Analyte', primary_key=False, null=True, blank=False)
     units = models.ForeignKey(Units, on_delete=models.CASCADE, verbose_name='Units', primary_key=False, null=True, blank=False)
@@ -471,7 +480,8 @@ class Result(models.Model):
     method = models.ForeignKey(Method, on_delete=models.CASCADE, verbose_name='Method', primary_key=False, null=True, blank=False)
     reagents = models.ForeignKey(Reagents, on_delete=models.CASCADE, verbose_name='Reagents', primary_key=False, null=True, blank=False)
     result = models.CharField(max_length=255, blank=True, null=True)
-
+    result_status = models.CharField(
+        max_length=50, choices=RESULT_STATUS, default='Pending')
 
     def __str__(self):
         return self.result

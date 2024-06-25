@@ -1,6 +1,6 @@
 from django.urls import path
 
-from labowner.views import  ForChartCalculationView, LabNamesView, OfferedRadiologyShareListView, OfferedPackageShareListView, OfferedProfileShareListView, QualityCertificateCollectionPointView, ActivityLogView, OfferedTestCollectionPointView, OfferedTestDiscountListView, OfferedTestShareListView, LabInformationView, FeedbackListView, LabListView, LabProfileView, LabSettingsView, OfferedTestListView, OfferedTestView, PathologistListView, PathologistView, TestAppointmentCompletedListView, TestAppointmentInProcessListView, discountAllOfferedTestView, discountOfferedTestListView, LabPaymentView
+from labowner.views import ParticipentResultView, ForChartCalculationView, LabNamesView, OfferedRadiologyShareListView, OfferedPackageShareListView, OfferedProfileShareListView, QualityCertificateCollectionPointView, ActivityLogView, OfferedTestCollectionPointView, OfferedTestDiscountListView, OfferedTestShareListView, LabInformationView, FeedbackListView, LabListView, LabProfileView, LabSettingsView, OfferedTestListView, OfferedTestView, PathologistListView, PathologistView, TestAppointmentCompletedListView, TestAppointmentInProcessListView, discountAllOfferedTestView, discountOfferedTestListView, LabPaymentView
 
 urlpatterns = [
 
@@ -58,5 +58,6 @@ urlpatterns = [
     path('activity-log/<id>', ActivityLogView.as_view(), name='activity-log'),
 #     path('manufactural-list', ManufacturalList.as_view(), name='manufactural-list'),
     path('ForChartCalculation', ForChartCalculationView.as_view(), name='ForChartCalculation'),
+    path('PaticipentResult/<id>', ParticipentResultView.as_view(), name='PaticipentResult'),
 
 ]
