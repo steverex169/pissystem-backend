@@ -63,7 +63,7 @@ class Migration(migrations.Migration):
                 ('telephone', models.CharField(max_length=255, null=True)),
                 ('city', models.CharField(max_length=255, null=True)),
                 ('date_of_addition', models.DateTimeField(blank=True, null=True)),
-                ('added_by', models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.CASCADE, to=settings.AUTH_USER_MODEL)),
+                # ('added_by', models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.CASCADE, to=settings.AUTH_USER_MODEL)),
             ],
             options={
                 'verbose_name': 'Database Manufactural',
@@ -89,7 +89,7 @@ class Migration(migrations.Migration):
                 ('code', models.PositiveBigIntegerField(null=True)),
                 ('date_of_addition', models.DateTimeField(blank=True, null=True)),
                 ('status', models.CharField(blank=True, choices=[('Active', 'Active'), ('Inactive', 'Inactive')], default='Inactive', max_length=50)),
-                ('added_by', models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.SET_NULL, to=settings.AUTH_USER_MODEL)),
+                # ('added_by', models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.SET_NULL, to=settings.AUTH_USER_MODEL)),
                 ('instrument_type', models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.SET_NULL, to='databaseadmin.instrumenttype')),
                 ('manufactural', models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.SET_NULL, to='databaseadmin.manufactural')),
             ],
