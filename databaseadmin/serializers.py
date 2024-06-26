@@ -35,7 +35,10 @@ class MethodSerializer(serializers.ModelSerializer):
 class AnalyteSerializer(serializers.ModelSerializer):
     class Meta:
         model = Analyte
-        fields = ('__all__') 
+        fields = '__all__'
+        extra_kwargs = {
+            'reagents': {'required': False},
+        }
 
 class InstrumentSerializer(serializers.ModelSerializer):
     class Meta:
