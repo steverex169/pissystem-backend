@@ -184,6 +184,8 @@ ACTIONS= (
 class Lab(models.Model):
     organization_id = models.ForeignKey(
         Organization, on_delete=models.CASCADE, null=True, blank=True)
+    staff_id = models.ForeignKey(
+        Staff, on_delete=models.CASCADE, null=True, blank=True)
     account_id = models.OneToOneField(
         UserAccount, on_delete=models.CASCADE, primary_key=False, null=True)
     name = models.CharField(max_length=255, blank=False,
@@ -223,8 +225,8 @@ class Lab(models.Model):
         Marketer, on_delete=models.CASCADE, primary_key=False, null=True, blank=True, verbose_name="Marketer")
     status = models.CharField(
         max_length=50, choices=STATUS, default='Pending')
-    done_by = models.ForeignKey(
-        Staff, on_delete=models.CASCADE, primary_key=False, null=True, blank=True, verbose_name="Approved/Unapproved by")
+    # done_by = models.ForeignKey(
+    #     Staff, on_delete=models.CASCADE, primary_key=False, null=True, blank=True, verbose_name="Approved/Unapproved by")
     done_at = models.DateTimeField(
         max_length=255, blank=True, null=True, verbose_name="Approved/Unapproved at")
     postalcode = models.CharField(

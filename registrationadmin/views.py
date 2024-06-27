@@ -28,6 +28,7 @@ class PendingLabsView(APIView):
     # Get request to get data of the cart
     def get(self, request, *args, **kwargs):
         try:
+            
             pending_labs = Lab.objects.filter(
                 status="Pending")
             serializer_class = LabInformationSerializer(

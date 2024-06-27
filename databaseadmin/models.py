@@ -1,6 +1,9 @@
 from django.db import models
+from account.models import UserAccount
 from organization.models import Organization
 from django.utils import timezone
+
+from staff.models import Staff
 # table of units
 ACTIONS= (
     ('Updated', 'Updated'),
@@ -178,6 +181,8 @@ class ActivityLogUnits(models.Model):
 class News(models.Model):
     organization_id = models.ForeignKey(
         Organization, on_delete=models.CASCADE, null=True, blank=True)
+    added_by = models.ForeignKey(
+        UserAccount, on_delete=models.CASCADE, null=True, blank=True)
     title = models.CharField(max_length=255, blank=False, null=True)
     description = models.TextField()
     picture = models.ImageField(upload_to='news_pictures/', blank=True, null=True)
