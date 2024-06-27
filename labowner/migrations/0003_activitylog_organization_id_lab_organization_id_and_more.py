@@ -7,17 +7,22 @@ import django.db.models.deletion
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('staff', '0004_alter_staff_staff_type'),
+        ('labowner', '0002_result'),
     ]
 
     operations = [
         migrations.AddField(
-            model_name='marketer',
+            model_name='activitylog',
             name='organization_id',
             field=models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.CASCADE, to='organization.organization'),
         ),
         migrations.AddField(
-            model_name='staff',
+            model_name='lab',
+            name='organization_id',
+            field=models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.CASCADE, to='organization.organization'),
+        ),
+        migrations.AddField(
+            model_name='result',
             name='organization_id',
             field=models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.CASCADE, to='organization.organization'),
         ),

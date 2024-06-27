@@ -2,7 +2,7 @@
 
 from django.db import migrations, models
 import django.db.models.deletion
-
+from django.conf import settings
 
 class Migration(migrations.Migration):
 
@@ -47,7 +47,11 @@ class Migration(migrations.Migration):
                 ('description', models.TextField()),
                 ('picture', models.ImageField(blank=True, null=True, upload_to='news_pictures/')),
                 ('date_of_addition', models.DateTimeField(blank=True, null=True)),
+<<<<<<< HEAD
                 ('organization_id', models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.CASCADE, to='organization.organization')),
+=======
+                ('added_by', models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.CASCADE, to=settings.AUTH_USER_MODEL)),
+>>>>>>> 30ad4d4c8811498c31ce828000a2820f71ca808a
             ],
             options={
                 'verbose_name': 'News',

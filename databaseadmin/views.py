@@ -1188,7 +1188,6 @@ class AnalyteUpdateAPIView(APIView):
         except Exception as e:
             return Response({"status": status.HTTP_400_BAD_REQUEST, "message": str(e)})
    
-
 #Analyte adding equipments
 class AnalytesEquipmentsAPIView(APIView):
     permission_classes = (AllowAny,)  # Adjust permission classes as needed
@@ -1387,7 +1386,7 @@ class AnalyteUpdateUnitsAPIView(APIView):
 class NewsListView(APIView):
     permission_classes = (AllowAny,)
 
-    def get(self, request, *args, **kwargs):
+    def get(self, request, args, *kwargs):
         try:
             news = News.objects.all()
             serialized_data = []
@@ -1407,7 +1406,7 @@ class NewsListView(APIView):
         except News.DoesNotExist:
             return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "No Record Exist."})
 
-    def post(self, request, *args, **kwargs):
+    def post(self, request, args, *kwargs):
         serializer = NewsSerializer(data=request.data)
         if serializer.is_valid():
             try:
