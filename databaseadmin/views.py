@@ -56,10 +56,6 @@ class UnitsAPIView(APIView):
             # Retrieve the organization associated with the staff user
             organization = staff_user.organization_id
             
-            # user_id = request.data['added_by']
-            # print("id", request.data['added_by'])
-            # organization = Organization.objects.get(account_id=user_id)
-
             # Create a new unit
             unit = Units.objects.create(
                 organization_id=organization,
