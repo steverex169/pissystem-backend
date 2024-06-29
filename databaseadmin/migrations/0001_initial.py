@@ -65,7 +65,7 @@ class Migration(migrations.Migration):
                 ('details', models.TextField()),
                 ('notes', models.TextField(max_length=255, null=True)),
                 ('scheme', models.TextField(blank=True, null=True)),
-                ('account_id', models.OneToOneField(blank=True, null=True, on_delete=django.db.models.deletion.CASCADE, to=settings.AUTH_USER_MODEL)),
+                # ('account_id', models.OneToOneField(blank=True, null=True, on_delete=django.db.models.deletion.CASCADE, to=settings.AUTH_USER_MODEL)),
                 ('organization_id', models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.CASCADE, to='organization.organization')),
             ],
             options={

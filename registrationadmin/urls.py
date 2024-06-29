@@ -4,12 +4,12 @@ from registrationadmin.views import  SharePercentageApprovedLabTestListView, Lab
 
 urlpatterns = [
     # URLs for the labs
-    path('pending-labs',
-         PendingLabsView.as_view(), name='pending-labs'),
-    path('approved-labs',
-         ApprovedLabsView.as_view(), name='approved-labs'),
-    path('unapproved-labs',
-         UnapprovedLabsView.as_view(), name='unapproved-labs'),
+    path('pending-labs/<id>',
+         PendingLabsView.as_view(), name='pending-labs/<id>'),
+    path('approved-labs/<id>',
+         ApprovedLabsView.as_view(), name='approved-labs/<id>'),
+    path('unapproved-labs/<id>',
+         UnapprovedLabsView.as_view(), name='unapproved-labs/<id>'),
     path('approve-unapprove-lab/<id>',
          ApproveUnapproveLabView.as_view(), name='approve-unapprove-lab'),
 

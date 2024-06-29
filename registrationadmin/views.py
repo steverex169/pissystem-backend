@@ -28,19 +28,24 @@ from django.conf import settings
 class PendingLabsView(APIView):
     permission_classes = (IsAuthenticated,)
 
-    # Get request to get data of the cart
     def get(self, request, *args, **kwargs):
         try:
-            pending_labs = Lab.objects.filter(
-                status="Pending")
-            serializer_class = LabInformationSerializer(
-                pending_labs, many=True)
-            for i in range(0, len(pending_labs)):
-                if (pending_labs[i].marketer_id != None):
-                    serializer_class.data[i]['marketer_name'] = pending_labs[i].marketer_id.name
-                    serializer_class.data[i]['marketer_phone'] = pending_labs[i].marketer_id.phone
-            return Response({"status": status.HTTP_200_OK, "data": serializer_class.data})
+            staff = Staff.objects.get(account_id=kwargs.get('id'))
+            organization = staff.organization_id
+            pending_labs = Lab.objects.filter(organization_id=organization, status="Pending")
+            
+            serializer = LabInformationSerializer(pending_labs, many=True)
+            data = serializer.data
 
+            for i, lab in enumerate(pending_labs):
+                if lab.marketer_id is not None:
+                    data[i]['marketer_name'] = lab.marketer_id.name
+                    data[i]['marketer_phone'] = lab.marketer_id.phone
+
+            return Response({"status": status.HTTP_200_OK, "data": data})
+
+        except Staff.DoesNotExist:
+            return Response({"status": status.HTTP_404_NOT_FOUND, "message": "Staff not found."})
         except Lab.DoesNotExist:
             return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "Sorry! No pending labs exist."})
 
@@ -122,8 +127,13 @@ class ApprovedLabsView(APIView):
     # Get request to get data of the cart
     def get(self, request, *args, **kwargs):
         try:
+            staff = Staff.objects.get(account_id=kwargs.get('id'))
+            organization = staff.organization_id
+           
+            
+
             approved_labs = Lab.objects.filter(
-                status="Approved")
+               organization_id=organization, status="Approved")
             serializer_class = LabInformationSerializer(
                 approved_labs, many=True)
 
@@ -141,6 +151,7 @@ class ApprovedLabsView(APIView):
 
         except Lab.DoesNotExist:
             return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "Sorry! No pending labs exist."})
+   
 # class ApprovedLabsView(APIView):
 #     permission_classes = (AllowAny,)
 
@@ -188,7 +199,10 @@ class UnapprovedLabsView(APIView):
     # Get request to get data of the cart
     def get(self, request, *args, **kwargs):
         try:
-            unapproved_labs = Lab.objects.filter(Q(status="Unapproved") or Q(is_active="No"))
+            staff = Staff.objects.get(account_id=kwargs.get('id'))
+            organization = staff.organization_id
+            
+            unapproved_labs = Lab.objects.filter(Q(organization_id=organization, status="Unapproved") or Q(is_active="No"))
             serializer_class = LabInformationSerializer(
                 unapproved_labs, many=True)
             for i in range(len(unapproved_labs)):
