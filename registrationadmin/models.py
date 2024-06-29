@@ -2,27 +2,30 @@ from django.db import models
 from organization.models import Organization
 from django.utils import timezone
 from account.models import UserAccount
-
+from databaseadmin.models import Scheme
 ACTIONS= (
     ('Updated', 'Updated'),
     ('Added', 'Added'),
     ('Deleted', 'Deleted'),
 )
 STATUS = (
-    ('Active', 'Active'),
-    ('Inactive', 'Inactive'),
-)
-Option = (
     ('Created', 'Created'),
     ('Ready', 'Ready'),
-    ('Issued', 'Issued'),
     ('Open', 'Open'),
-    ('Saved', 'Saved'),
-    ('Submitted', 'Submitted'),
     ('Closed', 'Closed'),
     ('Report Available', 'Report Available'),
-
 )
+# Option = (
+#     ('Created', 'Created'),
+#     ('Ready', 'Ready'),
+#     ('Issued', 'Issued'),
+#     ('Open', 'Open'),
+#     ('Saved', 'Saved'),
+#     ('Submitted', 'Submitted'),
+#     ('Closed', 'Closed'),
+#     ('Report Available', 'Report Available'),
+
+# )
 
 class Round(models.Model):
     account_id = models.OneToOneField(
@@ -30,13 +33,15 @@ class Round(models.Model):
     organization_id = models.ForeignKey(
         Organization, on_delete=models.CASCADE, null=True, blank=True)
     rounds = models.PositiveBigIntegerField(blank=True, null=True) 
-    scheme = models.CharField(max_length=255, blank=True, null=True)
+    scheme = models.ForeignKey(
+        Scheme, on_delete=models.CASCADE, null=True, blank=True)
+    cycle_no = models.CharField(max_length=255, blank=True, null=True)
     sample = models.CharField(max_length=255, blank=True, null=True)
     issue_date = models.DateTimeField(blank=True, null=True)
     closing_date = models.DateTimeField(blank=True, null=True)
     notes = models.CharField(max_length=255, blank=True, null=True)
     status = models.CharField(
-        max_length=50, choices=Option, default='Inactive', blank=True)
+        max_length=50, choices=STATUS, blank=True)
     def __str__(self):
         return self.name
 
@@ -62,7 +67,7 @@ class ActivityLogUnits(models.Model):
     actions = models.CharField(
         max_length=50, choices= ACTIONS, default= 'Added', verbose_name='Which action is performed?')
     status = models.CharField(
-        max_length=50, choices=STATUS, default='Inactive', blank=True)
+        max_length=50, choices=STATUS, blank=True)
     
     # type = models.CharField(
     #     max_length=50, choices= TYPE, default= 'Units', verbose_name='Form type?')

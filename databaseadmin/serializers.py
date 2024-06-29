@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from databaseadmin.models import News,Instrument, Units, Analyte, ActivityLogUnits, Reagents, Manufactural, Method, Scheme, Sample, InstrumentType
+from databaseadmin.models import News,Instrument, Units, Analyte, ActivityLogUnits, Reagents, Manufactural, Method, Scheme, Cycle, Sample, InstrumentType
 
 
 class UnitsSerializer(serializers.ModelSerializer):
@@ -35,7 +35,20 @@ class MethodSerializer(serializers.ModelSerializer):
 class SchemeSerializer(serializers.ModelSerializer):
     class Meta:
         model = Scheme
-        fields = ('__all__')            
+        fields = ('__all__')     
+
+class CycleSerializer(serializers.ModelSerializer):
+    noofanalytes = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Cycle
+        fields = (
+            'id', 'organization_id', 'scheme_name', 'cycle_no', 'rounds', 'cycle', 
+            'start_date', 'end_date', 'status', 'analytes', 'noofanalytes'
+        )
+
+    def get_noofanalytes(self, obj):
+        return obj.noofanalytes  
 
 class AnalyteSerializer(serializers.ModelSerializer):
     noofreagents = serializers.IntegerField(read_only=True) 

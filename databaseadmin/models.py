@@ -166,6 +166,22 @@ class Analyte(models.Model):
 class Scheme(models.Model):
     organization_id = models.ForeignKey(
         Organization, on_delete=models.CASCADE, null=True, blank=True)
+    name = models.CharField(max_length=255, blank=True, null=True)
+    added_by= models.ForeignKey(
+        UserAccount, on_delete=models.CASCADE, null=True, blank=True) 
+    
+    date_of_addition = models.DateTimeField(blank=True, null=True) 
+    status = models.CharField(
+        max_length=50, choices=STATUS, default='Inactive', blank=True)
+    def __str__(self):
+        return self.name
+
+    class Meta:       
+        verbose_name = 'Scheme'
+
+class Cycle(models.Model):
+    organization_id = models.ForeignKey(
+        Organization, on_delete=models.CASCADE, null=True, blank=True)
     scheme_name = models.CharField(max_length=255, blank=True, null=True)
     cycle_no = models.PositiveBigIntegerField(blank=True, null=True)
     rounds = models.PositiveBigIntegerField(blank=True, null=True)
@@ -191,7 +207,7 @@ class ActivityLogUnits(models.Model):
     organization_id = models.ForeignKey(
         Organization, on_delete=models.CASCADE, null=True, blank=True)
     scheme_name = models.CharField(max_length=255, blank=True, null=True)
-    cycle_no = models.PositiveBigIntegerField(blank=True, null=True)
+    cycle_no = models.CharField(max_length=255, blank=True, null=True)
     rounds = models.PositiveBigIntegerField(blank=True, null=True)
     cycle = models.CharField(
         max_length=50, choices=CYCLE, default='Months', blank=True)  
@@ -200,11 +216,16 @@ class ActivityLogUnits(models.Model):
     analytes = models.ManyToManyField(Analyte, blank=True)
     status = models.CharField(
         max_length=50, choices=STATUS, default='Inactive', blank=True)
+    
+    @property
+    def noofanalytes(self):
+        return self.analytes.count()
+
     def __str__(self):
         return self.name
 
     class Meta:       
-        verbose_name = 'Scheme'
+        verbose_name = 'Cycle'
 
 class Sample(models.Model):
     organization_id = models.ForeignKey(
@@ -243,6 +264,8 @@ class ActivityLogUnits(models.Model):
         Method, on_delete=models.CASCADE, null=True, blank=True)
     scheme_id = models.ForeignKey(
         Scheme, on_delete=models.CASCADE, null=True, blank=True)
+    cycle_id = models.ForeignKey(
+        Cycle, on_delete=models.CASCADE, null=True, blank=True)
     sample_id = models.ForeignKey(
         Sample, on_delete=models.CASCADE, null=True, blank=True)
     start_date = models.DateTimeField(null=True, blank=True)
