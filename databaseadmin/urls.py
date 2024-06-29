@@ -1,5 +1,5 @@
 from django.urls import path
-from databaseadmin.views import AnalyteUpdateReagentsAPIView,AnalyteAddReagentsAPIView,AnalytesReagentsAPIView,AnalyteAddReagents,AnalytesListAPIView,MethodsPostAPIView,InstrumentsPostAPIView,InstrumentTypeCreateView,UnitsListAPIView,NewsListView,InstrumentsAPIView, InstrumentsUpdateAPIView, InstrumentTypeView,AnalyteUpdateAPIView, AnalyteAPIView, MethodsAPIView, UpdateInstrumentTypeView,  MethodsUpdateAPIView, UnitsAPIView, UnitsUpdateAPIView, ActivityLogDatabaseadmin, ReagentsListAPIView, ReagentsPostAPIView, ReagentsPutAPIView ,ManufacturalListAPIView, ManufacturalPostAPIView, ManufacturalPutAPIView, SchemeAPIView, SchemePostAPIView, SchemeUpdateAPIView, SampleListView, SamplePostView
+from databaseadmin.views import AnalyteUpdateUnitsAPIView,AnalytesUnitsAPIView,AnalyteAddUnitsAPIView,AnalyteUpdateMethodsAPIView, AnalyteAddMethodsAPIView,AnalytesMethodsAPIView,AnalyteUpdateEquipmentsAPIView,AnalytesEquipmentsAPIView,AnalyteAddEquipmentsAPIView,AnalyteUpdateReagentsAPIView,AnalyteAddReagentsAPIView,AnalytesReagentsAPIView,AnalyteAddReagents,AnalytesListAPIView,MethodsPostAPIView,InstrumentsPostAPIView,InstrumentTypeCreateView,UnitsListAPIView,NewsListView,InstrumentsAPIView, InstrumentsUpdateAPIView, InstrumentTypeView,AnalyteUpdateAPIView, AnalyteAPIView, MethodsAPIView, UpdateInstrumentTypeView,  MethodsUpdateAPIView, UnitsAPIView, UnitsUpdateAPIView, ActivityLogDatabaseadmin, ReagentsListAPIView, ReagentsPostAPIView, ReagentsPutAPIView ,ManufacturalListAPIView, ManufacturalPostAPIView, ManufacturalPutAPIView, SchemeAPIView, SchemePostAPIView, SchemeUpdateAPIView, SampleListView, SamplePostView
 
 urlpatterns = [
     path('units_update/<id>', UnitsUpdateAPIView.as_view(), name='units_update'),
@@ -58,4 +58,28 @@ urlpatterns = [
     path('analyte-update-reagent/<id>',
          AnalyteUpdateReagentsAPIView.as_view(), name='analyte-update-reagent'),
 
+
+    #analyte adding equipments
+     path('analyte-equipments-list/<id>',
+         AnalytesEquipmentsAPIView.as_view(), name='analyte-equipments-list'),     
+    path('analyte-add-equipments/<id>',
+        AnalyteAddEquipmentsAPIView.as_view(), name='analyte-add-equipments'),
+    path('analyte-update-equipments/<id>',
+         AnalyteUpdateEquipmentsAPIView.as_view(), name='analyte-update-equipments'),
+
+    #analyte adding methods
+     path('analyte-methods-list/<id>',
+         AnalytesMethodsAPIView.as_view(), name='analyte-methods-list'),     
+    path('analyte-add-methods/<id>',
+        AnalyteAddMethodsAPIView.as_view(), name='analyte-add-methods'),
+    path('analyte-update-methods/<id>',
+         AnalyteUpdateMethodsAPIView.as_view(), name='analyte-update-methods'),
+
+    #analyte adding units
+     path('analyte-units-list/<id>',
+         AnalytesUnitsAPIView.as_view(), name='analyte-units-list'),     
+    path('analyte-add-units/<id>',
+        AnalyteAddUnitsAPIView.as_view(), name='analyte-add-units'),
+    path('analyte-update-units/<id>',
+         AnalyteUpdateUnitsAPIView.as_view(), name='analyte-update-units'),
 ]
