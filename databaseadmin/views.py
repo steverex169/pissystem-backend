@@ -671,7 +671,10 @@ class ManufacturalPutAPIView(APIView):
             # Store old values before updating
             old_values = {field: getattr(manufactural, field) for field in ["name", "city", "country"]}
             
-            serializer = ManufacturalSerializer(manufactural, data=request.data, partial=True)
+            # Convert 'undefined' values to None before passing to serializer
+            data = {key: value if value != 'undefined' else None for key, value in request.data.items()}
+            
+            serializer = ManufacturalSerializer(manufactural, data=data, partial=True)
 
             if serializer.is_valid():
                 updated_manufactural = serializer.save()
@@ -984,92 +987,67 @@ class UpdateInstrumentTypeView(APIView):
 class AnalytesReagentsAPIView(APIView):
     permission_classes = (AllowAny,)  # Adjust permission classes as needed
 
-    def get(self, request, *args, **kwargs):
+    def get(self, request, id, *args, **kwargs):
         try:
-            # Get the staff user's account_id
-            account_id = kwargs.get('id')
-            
-            # Fetch the staff user based on account_id
-            staff_user = Staff.objects.get(account_id=account_id)
-            
-            # Retrieve the organization associated with the staff user
-            organization = staff_user.organization_id
-            
-            # Filter analytes based on the organization
-            analyte_list = Analyte.objects.filter(organization_id=organization)
+            analyte = Analyte.objects.get(id=id)
+            reagents = analyte.reagents.all()  # Fetch all reagents associated with the analyte
+            reagent_ids = [reagent.id for reagent in reagents]
             
             # Serialize data
-            serialized_data = AnalyteSerializer(analyte_list, many=True).data
+            serialized_data = {
+                #"analyte": AnalyteSerializer(analyte).data,
+                "reagents": reagent_ids  # Send list of reagent IDs
+            }
             
             return Response({"status": status.HTTP_200_OK, "data": serialized_data})
         
-        except Staff.DoesNotExist:
-            return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "Invalid account_id."})
-        
         except Analyte.DoesNotExist:
-            return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "No Analyte records found."})
+            return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "Analyte not found."})
+        
+        except Exception as e:
+            return Response({"status": status.HTTP_400_BAD_REQUEST, "message": str(e)})
+
 
 class AnalyteAddReagentsAPIView(APIView):
     permission_classes = (AllowAny,)
 
     def post(self, request, id, *args, **kwargs):
         try:
-            account_id = request.data.get('added_by')
-            if not account_id:
-                return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "Invalid account_id."})
-
-            staff_user = Staff.objects.get(account_id=account_id)
             analyte = Analyte.objects.get(id=id)
             
+            # Ensure 'reagents' is parsed as a list of integers
             reagents = request.data.get('reagents', [])
-            analyte.reagents.set(reagents)
+            if isinstance(reagents, str):
+                reagents = list(map(int, reagents.split(',')))
+            
+            analyte.reagents.set(reagents)  # Assuming reagents are passed as a list of IDs
             analyte.save()
 
             return Response({"status": status.HTTP_200_OK, "message": "Reagents added to analyte successfully."})
-        except Staff.DoesNotExist:
-            return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "Invalid account_id."})
         except Analyte.DoesNotExist:
             return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "Analyte not found."})
         except Exception as e:
             return Response({"status": status.HTTP_400_BAD_REQUEST, "message": str(e)})
 
 class AnalyteUpdateReagentsAPIView(APIView):
-    permission_classes = (AllowAny,)  # Adjust permission classes as needed
+    permission_classes = (AllowAny,)
 
-    def put(self, request, *args, **kwargs):
+    def put(self, request, id, *args, **kwargs):
         try:
-            # Fetch the staff user based on account_id
-            account_id = request.data.get('added_by')  # Use 'added_by' from request data
-            staff_user = Staff.objects.get(account_id=account_id)
-            
-            # Retrieve the organization associated with the staff user
-            organization = staff_user.organization_id
-            
-            # Update Analyte Reagent association
-            analyte_id = kwargs.get('id')
-            analyte = Analyte.objects.get(id=analyte_id)
-
-            # Assuming 'reagents' is a list of reagent IDs passed in request data
+            analyte = Analyte.objects.get(id=id)
             reagents = request.data.get('reagents', [])
-            analyte.reagents.set(reagents)
-
-            # Serialize the updated analyte
-            analyte_serializer = AnalyteSerializer(analyte)
-
-            return Response({
-                "status": status.HTTP_200_OK,
-                "analyte_data": analyte_serializer.data,
-                "message": "Reagents updated for Analyte successfully."
-            })
-
-        except Staff.DoesNotExist:
-            return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "Invalid account_id."})
-
+            if isinstance(reagents, str):
+                reagents = list(map(int, reagents.split(',')))
+            
+            analyte.reagents.set(reagents)  # Assuming reagents are passed as a list of IDs
+            analyte.save()
+            serialized_data = AnalyteSerializer(analyte).data
+            return Response({"status": status.HTTP_200_OK, "analyte_data": serialized_data, "message": "Reagents updated for Analyte successfully."})
         except Analyte.DoesNotExist:
             return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "Analyte does not exist."})
-
         except Exception as e:
             return Response({"status": status.HTTP_400_BAD_REQUEST, "message": str(e)})
+
 
 #analytes
         
@@ -1257,3 +1235,215 @@ class NewsListView(APIView):
                 return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "User does not exist."})
 
         return Response({"status": status.HTTP_400_BAD_REQUEST, "errors": serializer.errors})
+#Analyte adding equipments
+class AnalytesEquipmentsAPIView(APIView):
+    permission_classes = (AllowAny,)  # Adjust permission classes as needed
+
+    def get(self, request, id, *args, **kwargs):
+        try:
+            analyte = Analyte.objects.get(id=id)
+            instruments = analyte.instruments.all()  # Fetch all instruments associated with the analyte
+            instrument_ids = [instrument.id for instrument in instruments]
+            
+            # Serialize data
+            serialized_data = {
+                #"analyte": AnalyteSerializer(analyte).data,
+                "equipments": instrument_ids  # Send list of instrument IDs
+            }
+            
+            return Response({"status": status.HTTP_200_OK, "data": serialized_data})
+        
+        except Analyte.DoesNotExist:
+            return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "Analyte not found."})
+        
+        except Exception as e:
+            return Response({"status": status.HTTP_400_BAD_REQUEST, "message": str(e)})
+
+
+class AnalyteAddEquipmentsAPIView(APIView):
+    permission_classes = (AllowAny,)
+
+    def post(self, request, id, *args, **kwargs):
+        try:
+            analyte = Analyte.objects.get(id=id)
+            
+            # Ensure 'instruments' is parsed as a list of integers
+            instruments = request.data.get('equipments', [])
+            if isinstance(instruments, str):
+                instruments = list(map(int, instruments.split(',')))
+            
+            analyte.instruments.set(instruments)  # Assuming instruments are passed as a list of IDs
+            analyte.save()
+
+            return Response({"status": status.HTTP_200_OK, "message": "Equipments added to analyte successfully."})
+        except Analyte.DoesNotExist:
+            return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "Analyte not found."})
+        except Exception as e:
+            return Response({"status": status.HTTP_400_BAD_REQUEST, "message": str(e)})
+
+class AnalyteUpdateEquipmentsAPIView(APIView):
+    permission_classes = (AllowAny,)
+
+    def put(self, request, id, *args, **kwargs):
+        try:
+            analyte = Analyte.objects.get(id=id)
+            instruments = request.data.get('equipments', [])
+            if isinstance(instruments, str):
+                instruments = list(map(int, instruments.split(',')))
+            
+            analyte.instruments.set(instruments)  # Assuming instruments are passed as a list of IDs
+            analyte.save()
+            serialized_data = AnalyteSerializer(analyte).data
+            return Response({"status": status.HTTP_200_OK, "analyte_data": serialized_data, "message": "Equipments updated for Analyte successfully."})
+        except Analyte.DoesNotExist:
+            return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "Analyte does not exist."})
+        except Exception as e:
+            return Response({"status": status.HTTP_400_BAD_REQUEST, "message": str(e)})
+
+#Analyte adding methods
+class AnalytesMethodsAPIView(APIView):
+    permission_classes = (AllowAny,)  # Adjust permission classes as needed
+
+    def get(self, request, id, *args, **kwargs):
+        try:
+            analyte = Analyte.objects.get(id=id)
+            methods = analyte.methods.all()  # Fetch all methods associated with the analyte
+            method_ids = [method.id for method in methods]
+            
+            # Serialize data
+            serialized_data = {
+                #"analyte": AnalyteSerializer(analyte).data,
+                "methods": method_ids  # Send list of methods IDs
+            }
+            
+            return Response({"status": status.HTTP_200_OK, "data": serialized_data})
+        
+        except Analyte.DoesNotExist:
+            return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "Analyte not found."})
+        
+        except Exception as e:
+            return Response({"status": status.HTTP_400_BAD_REQUEST, "message": str(e)})
+
+
+class AnalyteAddMethodsAPIView(APIView):
+    permission_classes = (AllowAny,)
+
+    def post(self, request, id, *args, **kwargs):
+        try:
+            analyte = Analyte.objects.get(id=id)
+            
+            # Ensure 'methods' is parsed as a list of integers
+            methods = request.data.get('methods', [])
+            if isinstance(methods, str):
+                methods = list(map(int, methods.split(',')))
+            
+            analyte.methods.set(methods)  # Assuming methods are passed as a list of IDs
+            analyte.save()
+
+            return Response({"status": status.HTTP_200_OK, "message": "Methods added to analyte successfully."})
+        except Analyte.DoesNotExist:
+            return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "Analyte not found."})
+        except Exception as e:
+            return Response({"status": status.HTTP_400_BAD_REQUEST, "message": str(e)})
+
+class AnalyteUpdateMethodsAPIView(APIView):
+    permission_classes = (AllowAny,)
+
+    def put(self, request, id, *args, **kwargs):
+        try:
+            analyte = Analyte.objects.get(id=id)
+            methods = request.data.get('methods', [])
+            if isinstance(methods, str):
+                methods = list(map(int, methods.split(',')))
+            
+            analyte.methods.set(methods)  # Assuming methods are passed as a list of IDs
+            analyte.save()
+            serialized_data = AnalyteSerializer(analyte).data
+            return Response({"status": status.HTTP_200_OK, "analyte_data": serialized_data, "message": "Methods updated for Analyte successfully."})
+        except Analyte.DoesNotExist:
+            return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "Analyte does not exist."})
+        except Exception as e:
+            return Response({"status": status.HTTP_400_BAD_REQUEST, "message": str(e)})
+
+#Analyte adding units
+class AnalytesUnitsAPIView(APIView):
+    permission_classes = (AllowAny,)  # Adjust permission classes as needed
+
+    def get(self, request, id, *args, **kwargs):
+        try:
+            analyte = Analyte.objects.get(id=id)
+            units = analyte.units.all()  # Fetch all units associated with the analyte
+            unit_ids = [unit.id for unit in units]
+            
+            # Serialize data
+            serialized_data = {
+                #"analyte": AnalyteSerializer(analyte).data,
+                "units": unit_ids,  # Send list of units IDs
+                "master_unit": analyte.master_unit.id if analyte.master_unit else None
+            }
+            
+            return Response({"status": status.HTTP_200_OK, "data": serialized_data})
+        
+        except Analyte.DoesNotExist:
+            return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "Analyte not found."})
+        
+        except Exception as e:
+            return Response({"status": status.HTTP_400_BAD_REQUEST, "message": str(e)})
+
+
+class AnalyteAddUnitsAPIView(APIView):
+    permission_classes = (AllowAny,)
+
+    def post(self, request, id, *args, **kwargs):
+        try:
+            analyte = Analyte.objects.get(id=id)
+            
+            # Ensure 'units' and 'masterUnit' are parsed correctly
+            units = request.data.get('units', [])
+            if isinstance(units, str):
+                units = list(map(int, units.split(',')))
+
+            master_unit_id = request.data.get('masterUnit', None)
+
+            if master_unit_id:
+                master_unit = Units.objects.get(id=master_unit_id)
+                analyte.master_unit = master_unit
+
+            analyte.units.set(units)  # Assuming units are passed as a list of IDs
+            analyte.save()
+
+            return Response({"status": status.HTTP_200_OK, "message": "Units added to analyte successfully."})
+        except Analyte.DoesNotExist:
+            return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "Analyte not found."})
+        except Units.DoesNotExist:
+            return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "Master unit not found."})
+        except Exception as e:
+            return Response({"status": status.HTTP_400_BAD_REQUEST, "message": str(e)})
+
+class AnalyteUpdateUnitsAPIView(APIView):
+    permission_classes = (AllowAny,)
+
+    def put(self, request, id, *args, **kwargs):
+        try:
+            analyte = Analyte.objects.get(id=id)
+            units = request.data.get('units', [])
+            if isinstance(units, str):
+                units = list(map(int, units.split(',')))
+
+            master_unit_id = request.data.get('masterUnit', None)
+
+            if master_unit_id:
+                master_unit = Units.objects.get(id=master_unit_id)
+                analyte.master_unit = master_unit
+
+            analyte.units.set(units)  # Assuming units are passed as a list of IDs
+            analyte.save()
+
+            serialized_data = AnalyteSerializer(analyte).data
+            return Response({"status": status.HTTP_200_OK, "analyte_data": serialized_data, "message": "Units updated for Analyte successfully."})
+        except Analyte.DoesNotExist:
+            return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "Analyte does not exist."})
+        except Units.DoesNotExist:
+            return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "Master unit not found."})
+        except Exception as e:
+            return Response({"status": status.HTTP_400_BAD_REQUEST, "message": str(e)})

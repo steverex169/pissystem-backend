@@ -33,12 +33,14 @@ class MethodSerializer(serializers.ModelSerializer):
         fields = ('__all__')              
 
 class AnalyteSerializer(serializers.ModelSerializer):
+    noofreagents = serializers.IntegerField(read_only=True) 
+    noofmethods = serializers.IntegerField(read_only=True) 
+    noofinstruments = serializers.IntegerField(read_only=True) 
+    master_unit_name = serializers.CharField(read_only=True)
+
     class Meta:
         model = Analyte
-        fields = '__all__'
-        extra_kwargs = {
-            'reagents': {'required': False},
-        }
+        fields = ('__all__') 
 
 class InstrumentSerializer(serializers.ModelSerializer):
     class Meta:
