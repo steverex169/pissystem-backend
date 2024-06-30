@@ -1,5 +1,5 @@
 from django.urls import path
-from databaseadmin.views import NewsListView,InstrumentsAPIView, InstrumentsUpdateAPIView, InstrumentTypeView,AnalyteUpdateAPIView, AnalyteAPIView, MethodsAPIView, MethodsUpdateAPIView, SchemeAPIView, SchemePostAPIView, SchemeUpdateAPIView, UpdateInstrumentTypeView,   UnitsAPIView, UnitsListAPIView, UnitsUpdateAPIView, ActivityLogDatabaseadmin, ReagentsListAPIView, ReagentsPostAPIView, ReagentsPutAPIView ,ManufacturalListAPIView, ManufacturalPostAPIView, ManufacturalPutAPIView, SampleListView, SamplePostView
+from databaseadmin.views import NewsListView,InstrumentsAPIView, InstrumentsUpdateAPIView, InstrumentTypeView,AnalyteUpdateAPIView, AnalyteAPIView, MethodsAPIView, MethodsUpdateAPIView, SchemeAPIView, SchemeUpdateAPIView, SchemeDeleteAPIView, CycleAPIView, CyclePostAPIView, CycleUpdateAPIView, CycleDeleteAPIView, UpdateInstrumentTypeView, UnitsAPIView, UnitsListAPIView, UnitsUpdateAPIView, ActivityLogDatabaseadmin, ReagentsListAPIView, ReagentsPostAPIView, ReagentsPutAPIView ,ManufacturalListAPIView, ManufacturalPostAPIView, ManufacturalPutAPIView, SampleListView, SamplePostView, CycleAnalyteAPIView, CycleAddAnalyteAPIView, CycleUpdateAnalyteAPIView
 
 urlpatterns = [
     path('units_update/<id>', UnitsUpdateAPIView.as_view(), name='units_update'),
@@ -20,12 +20,20 @@ urlpatterns = [
          MethodsAPIView.as_view(), name='methods-list'),
     path('update-method-list/<id>',
         MethodsUpdateAPIView.as_view(), name='update-method-list'), 
-    path('scheme-list/<id>',
-         SchemeAPIView.as_view(), name='scheme-list/<id>'),
-    path('post-scheme',
-        SchemePostAPIView.as_view(), name='post-scheme'),
-    path('update-scheme-list',
-        SchemeUpdateAPIView.as_view(), name='update-scheme-list'),    
+    path('scheme-list',
+        SchemeAPIView.as_view(), name='scheme-list'),
+    path('update-scheme/<id>',
+        SchemeUpdateAPIView.as_view(), name='update-scheme/<id>'),   
+    path('delete-scheme/<id>',
+        SchemeDeleteAPIView.as_view(), name='delete-scheme/<id>'),
+    path('cycle-list/<id>',
+         CycleAPIView.as_view(), name='cycle-list/<id>'),
+    path('post-cycle',
+        CyclePostAPIView.as_view(), name='post-cycle'),
+    path('update-cycle-list/<id>',
+        CycleUpdateAPIView.as_view(), name='update-cycle-list/<id>'),  
+    path('delete-cycle/<id>',
+        CycleDeleteAPIView.as_view(), name='delete-cycle/<id>'), 
     path('analyte-list',
         AnalyteAPIView.as_view(), name='analyte-list'),
     path('update-analyte/<id>',
@@ -40,4 +48,13 @@ urlpatterns = [
          SampleListView.as_view(), name='sample-list'),
     path('post-sample',
          SamplePostView.as_view(), name='post-sample'),
+
+    
+    # Cycle Analytes
+    path('cycle-analyte-list/<id>',
+         CycleAnalyteAPIView.as_view(), name='cycle-analyte-list'),     
+    path('cycle-add-analyte/<id>',
+        CycleAddAnalyteAPIView.as_view(), name='cycle-add-analyte'),
+    path('cycle-update-analyte/<id>',
+         CycleUpdateAnalyteAPIView.as_view(), name='cycle-update-analyte'),
 ]

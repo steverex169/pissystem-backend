@@ -18,7 +18,7 @@ class Migration(migrations.Migration):
             fields=[
                 ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
                 ('rounds', models.PositiveBigIntegerField(blank=True, null=True)),
-                ('scheme', models.CharField(blank=True, max_length=255, null=True)),
+              
                 ('issue_date', models.DateTimeField(blank=True, null=True)),
                 ('closing_date', models.DateTimeField(blank=True, null=True)),
                 ('notes', models.CharField(blank=True, max_length=255, null=True)),

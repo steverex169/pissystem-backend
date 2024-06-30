@@ -1,12 +1,12 @@
 from django.contrib import admin
-from databaseadmin.models import News,Instrument, Method, Scheme, Sample, InstrumentType,ActivityLogUnits, Units, Reagents, Manufactural, Analyte
+from databaseadmin.models import Cycle,News,Instrument, Method, Scheme, Sample, InstrumentType,ActivityLogUnits, Units, Reagents, Manufactural, Analyte
 
 # Register your models here.
 
 class ActivityLogUnitsAdmin(admin.ModelAdmin):
 
-    list_display = ('id', 'organization_id', 'reagent_id','method_id', 'scheme_id', 'sample_id',  'start_date', 'end_date', 'analyte_id', 'instrumenttype_id','unit_id', 'manufactural_id', 'type','old_value', 'new_value', 'date_of_addition','actions','status', 'cycle')
-    search_fields = ('id', 'organization_id', 'reagent_id','method_id',  'scheme_id', 'sample_id',  'start_date', 'end_date','analyte_id', 'instrumenttype_id','unit_id', 'manufactural_id', 'type','old_value', 'new_value', 'date_of_addition','actions','status', 'cycle')
+    list_display = ('id', 'organization_id', 'reagent_id','method_id', 'scheme_id', 'cycle_id', 'sample_id',  'start_date', 'end_date', 'analyte_id', 'instrumenttype_id','unit_id', 'manufactural_id', 'type','old_value', 'new_value', 'date_of_addition','actions','status', 'cycle')
+    search_fields = ('id', 'organization_id', 'reagent_id','method_id',  'scheme_id', 'cycle_id',  'sample_id',  'start_date', 'end_date','analyte_id', 'instrumenttype_id','unit_id', 'manufactural_id', 'type','old_value', 'new_value', 'date_of_addition','actions','status', 'cycle')
 
 class InstrumentTypeAdmin(admin.ModelAdmin):
     list_display = ('id', 'name', 'date_of_addition', )
@@ -25,8 +25,15 @@ class MethodAdmin(admin.ModelAdmin):
     search_fields = ('id', 'name', 'date_of_addition','code','status')
 
 class SchemeAdmin(admin.ModelAdmin):
-    list_display = ('id', 'organization_id', 'scheme_name', 'cycle_no', 'rounds','cycle', 'start_date', 'end_date', 'status')
-    search_fields = ('id', 'organization_id', 'scheme_name', 'cycle_no', 'rounds','cycle', 'start_date', 'end_date', 'status')
+    list_display = ('id', 'name', 'date_of_addition', 'status')
+    search_fields = ('id', 'name', 'date_of_addition', 'status')
+
+class CycleAdmin(admin.ModelAdmin):
+    list_display = ('id', 'organization_id','noofanalytes', 'scheme_name', 'cycle_no', 'rounds','cycle', 'start_date', 'end_date', 'status')
+    search_fields = ('id', 'organization_id','noofanalytes', 'scheme_name', 'cycle_no', 'rounds','cycle', 'start_date', 'end_date', 'status')
+
+    def get_analyte(self, obj):
+        return ', '.join([analyte.name for analyte in obj.analyte.all()])
 
 class ReagentsAdmin(admin.ModelAdmin):
     list_display = ('id', 'name', 'date_of_addition', 'code','status')
@@ -35,6 +42,7 @@ class ReagentsAdmin(admin.ModelAdmin):
 class AnalyteAdmin(admin.ModelAdmin):
     list_display = ('id', 'name', 'date_of_addition', 'code','status')
     search_fields = ('id', 'name', 'date_of_addition', 'code','status')
+
 class InstrumentAdmin(admin.ModelAdmin):
     list_display = ('id', 'name', 'date_of_addition', 'code','status','manufactural','instrument_type')
     search_fields = ('id', 'name', 'date_of_addition', 'code','status','manufactural','instrument_type')
@@ -57,3 +65,4 @@ admin.site.register(Method, MethodAdmin)
 admin.site.register(Scheme, SchemeAdmin)
 admin.site.register(Instrument, InstrumentAdmin)
 admin.site.register(Sample, SampleAdmin)
+admin.site.register(Cycle, CycleAdmin)
