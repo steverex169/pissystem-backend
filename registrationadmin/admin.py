@@ -1,5 +1,5 @@
 from django.contrib import admin
-from registrationadmin.models import Round, ActivityLogUnits
+from .models import Round, ActivityLogUnits
 
 # Register your models here.
 
