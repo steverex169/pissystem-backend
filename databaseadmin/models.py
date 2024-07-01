@@ -1,5 +1,6 @@
-from django.db import models
+
 from account.models import UserAccount
+from django.db import models
 from organization.models import Organization
 from django.utils import timezone
 
@@ -140,7 +141,7 @@ class Analyte(models.Model):
         Units, on_delete=models.SET_NULL, null=True, blank=True)
     status = models.CharField(
         max_length=50, choices=STATUS, default='Inactive', blank=True)
-    allowed_units = models.ManyToManyField(Units, related_name="allowed_units")
+   
     master_unit = models.ForeignKey(
         Units, on_delete=models.SET_NULL, related_name="master_unit", null=True, blank=True)
 

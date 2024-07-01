@@ -1,5 +1,5 @@
 from django.urls import path
-from databaseadmin.views import AnalyteUpdateReagentsAPIView,AnalyteAddReagentsAPIView,AnalytesReagentsAPIView,AnalyteAddReagents,AnalytesListAPIView,MethodsPostAPIView,InstrumentsPostAPIView,InstrumentTypeCreateView,UnitsListAPIView,NewsListView,InstrumentsAPIView, InstrumentsUpdateAPIView, InstrumentTypeView,AnalyteUpdateAPIView, AnalyteAPIView, MethodsAPIView, UpdateInstrumentTypeView,MethodsUpdateAPIView, UnitsAPIView, UnitsUpdateAPIView, ActivityLogDatabaseadmin, ReagentsListAPIView, ReagentsPostAPIView, ReagentsPutAPIView ,ManufacturalListAPIView, ManufacturalPostAPIView, ManufacturalPutAPIView
+from databaseadmin.views import AnalyteUpdateReagentsAPIView,AnalyteAddReagentsAPIView,AnalytesReagentsAPIView,AnalyteAddReagents,AnalytesListAPIView,MethodsPostAPIView,InstrumentsPostAPIView,InstrumentTypeCreateView, UnitsListAPIView,NewsListView,NewsAddAPIView,InstrumentsAPIView, InstrumentsUpdateAPIView, InstrumentTypeView,AnalyteUpdateAPIView, AnalyteAPIView, MethodsAPIView, UpdateInstrumentTypeView,MethodsUpdateAPIView, UnitsAPIView, UnitsUpdateAPIView, ActivityLogDatabaseadmin, ReagentsListAPIView, ReagentsPostAPIView, ReagentsPutAPIView ,ManufacturalListAPIView, ManufacturalPostAPIView, ManufacturalPutAPIView
 
 urlpatterns = [
     path('units_update/<id>', UnitsUpdateAPIView.as_view(), name='units_update'),
@@ -37,8 +37,12 @@ urlpatterns = [
          InstrumentsPostAPIView.as_view(), name='instrument-create'),     
     path('update-instrument-list/<id>',
         InstrumentsUpdateAPIView.as_view(), name='update-instrument-list'),
-    path('news-list',
+    path('news-list/<id>',
          NewsListView.as_view(), name='news-list'),
+    # path('news-list-participant/<id>',
+    #      NewsListViewParticipant.as_view(), name='news-list-participantt'),
+    path('news-add',
+         NewsAddAPIView.as_view(), name='news-add'),
 
     #analyte adding reagents
      path('analyte-reagents-list/<id>',

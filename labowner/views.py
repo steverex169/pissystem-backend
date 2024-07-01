@@ -378,15 +378,15 @@ class LabProfileView(APIView):
             print(lab.account_id.id)
 
             request.data._mutable = True  # Make data mutable first
-            if request.data['email']:
-                email_exists = UserAccount.objects.exclude(id=lab.account_id.id).filter(email=request.data['email']).exists()
+            if request.data['email_participant']:
+                email_exists = UserAccount.objects.exclude(id=lab.account_id.id).filter(email_participant=request.data['email_participant']).exists()
                 if email_exists:
-                    return Response({"message": "email error"})
+                    return Response({"message": "email_participant error"})
                 else:
                     print("emsilkcdkd", email_exists)
-                    request.data['email'] = request.data['email']
-                    print("account email", request.data['email'])
-                    ad = UserAccount.objects.filter(id=lab.account_id.id).update(email=request.data['email'])
+                    request.data['email_participant'] = request.data['email_participant']
+                    print("account email", request.data['email_participant'])
+                    ad = UserAccount.objects.filter(id=lab.account_id.id).update(email_participant=request.data['email_participant'])
                     print("email in useraccount", ad)
           
             

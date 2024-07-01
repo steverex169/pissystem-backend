@@ -246,7 +246,7 @@ class Lab(models.Model):
     website = models.URLField(max_length=200, blank=True, null=True, verbose_name='Website')
     district = models.CharField(max_length=255, blank=True, null=True)
     landline_registered_by = models.CharField(
-        max_length=20, blank=False, null=True, help_text="Please use the format: +922134552799")
+        max_length=30, blank=False, null=True, help_text="Please use the format: +922134552799")
     def __str__(self):
         return self.name
 
