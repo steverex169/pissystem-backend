@@ -14,6 +14,8 @@ from django.contrib.sites.shortcuts import get_current_site
 from organization.models import Organization
 from organization.serializers import OrganizationSerializer
 from account.models import UserAccount
+from staff.models import Staff
+from django.forms.models import model_to_dict
 
 # Create your views here.
 class RegisterOrganizationView(APIView):
@@ -122,4 +124,43 @@ class RegisterOrganizationView(APIView):
 
         except Organization.DoesNotExist:
             return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "No such Organization to delete."})
+class OrganizationListView(APIView):
 
+    permission_classes = (AllowAny,)
+
+    def get(self, request, *args, **kwargs):
+        try:
+            organization_list = Organization.objects.all()
+            serialized_data = []
+            for organization in organization_list:
+                organization_data = model_to_dict(organization)
+                serialized_data.append(organization_data)
+            return Response({"status": status.HTTP_200_OK, "data": serialized_data})
+        except Organization.DoesNotExist:
+            return Response({"status": status.  HTTP_400_BAD_REQUEST, "message": "No Record Exist."})
+class OrganizationListUpdateAPIView(APIView):
+    def put(self, request, *args, **kwargs):
+        try:
+            organization = Organization.objects.get(id=kwargs.get('id'))
+            serializer = OrganizationSerializer(organization, data=request.data, partial=True)
+
+            if serializer.is_valid():
+                serializer.save()
+                return Response({"status": status.HTTP_200_OK, "data": serializer.data, "message": "Updated Successfully"})
+            else:
+                return Response({"status": status.HTTP_400_BAD_REQUEST, "message": serializer.errors})
+
+        except Organization.DoesNotExist:
+            return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "Sorry! Account with this id doesn't exist. Please create account first."})
+    # Delete request to delete one cart item
+class OrganizationListDeleteAPIView(APIView):    
+    def delete(self, request, *args, **kwargs):
+        # Here what we are passing as id from url is the cart item id
+        try:
+            # Get the item which is not checkedout yet through id to delete
+            organization = Organization.objects.get(id=kwargs.get('id'))
+            UserAccount.objects.get(id=organization.account_id.id).delete()
+            return Response({"status": status.HTTP_200_OK, "message": "Organization data  deleted successfully."})
+
+        except Organization.DoesNotExist:
+            return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "No such Organization to delete."})
