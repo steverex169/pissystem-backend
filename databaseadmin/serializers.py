@@ -1,6 +1,35 @@
 from rest_framework import serializers
-from databaseadmin.models import News,Instrument, Units, Analyte, ActivityLogUnits, Reagents, Manufactural, Method, InstrumentType
+from databaseadmin.models import ParticipantSector,ParticipantType,Department,Designation,District,City,News,Instrument, Units, Analyte, ActivityLogUnits, Reagents, Manufactural, Method, InstrumentType
 
+
+class CitySerializer(serializers.ModelSerializer):
+    class Meta:
+        model = City
+        fields = ('__all__')
+
+class DistrictSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = District
+        fields = ('__all__')
+class DepartmentSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Department
+        fields = ('__all__')
+
+class DesignationSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Designation
+        fields = ('__all__')
+
+class ParticipantTypeSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ParticipantType
+        fields = ('__all__')
+
+class ParticipantSectorSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ParticipantSector
+        fields = ('__all__')
 
 class UnitsSerializer(serializers.ModelSerializer):
     class Meta:

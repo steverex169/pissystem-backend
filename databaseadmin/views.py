@@ -1,8 +1,8 @@
 from rest_framework import status
 from rest_framework.response import Response
 from rest_framework.views import APIView
-from databaseadmin.models import News,Instrument, Units, ActivityLogUnits,Reagents , Manufactural, Method,InstrumentType, Analyte
-from databaseadmin.serializers import NewsSerializer,InstrumentSerializer, MethodSerializer,AnalyteSerializer, InstrumentTypeSerializer, UnitsSerializer, ActivityLogUnitsSerializer, ReagentsSerializer, ManufacturalSerializer
+from databaseadmin.models import ParticipantType,ParticipantSector,Department,Designation,District,City,News,Instrument, Units, ActivityLogUnits,Reagents , Manufactural, Method,InstrumentType, Analyte
+from databaseadmin.serializers import ParticipantTypeSerializer, ParticipantSectorSerializer,DepartmentSerializer,DesignationSerializer,DistrictSerializer,CitySerializer,NewsSerializer,InstrumentSerializer, MethodSerializer,AnalyteSerializer, InstrumentTypeSerializer, UnitsSerializer, ActivityLogUnitsSerializer, ReagentsSerializer, ManufacturalSerializer
 from staff.models import Staff
 from django.forms.models import model_to_dict
 from django.http import HttpResponseRedirect
@@ -14,6 +14,829 @@ from django.utils import timezone
 from account.models import UserAccount
 from organization.models import Organization
 import datetime
+
+class ParticipantSectorListAPIView(APIView):
+
+    def get(self, request, *args, **kwargs):
+        try:
+            # Get the staff user's account_id
+            account_id = kwargs.get('id')
+            
+            # Fetch the staff user based on account_id
+            staff_user = Staff.objects.get(account_id=account_id)
+            
+            # Retrieve the organization associated with the staff user
+            organization = staff_user.organization_id
+            
+            # Filter sector based on the organization
+            sector_list = ParticipantSector.objects.filter(organization_id=organization)
+            
+            # Serialize data
+            serialized_data = [model_to_dict(sector) for sector in sector_list]
+            
+            return Response({"status": status.HTTP_200_OK, "data": serialized_data})
+        
+        except Staff.DoesNotExist:
+            return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "Invalid account_id."})
+        
+        except ParticipantSector.DoesNotExist:
+            return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "No sector records found."})
+
+class ParticipantSectorCreateAPIView(APIView):
+    permission_classes = (AllowAny,)  # Temporary permission setting for demonstration
+
+    def post(self, request, *args, **kwargs):
+        try:
+            # Fetch the staff user based on account_id
+            account_id = request.data.get('added_by')  # Use 'added_by' from request data
+            staff_user = Staff.objects.get(account_id=account_id)
+            
+            # Retrieve the organization associated with the staff user
+            organization = staff_user.organization_id
+            
+            # Create a new sector
+            sector = ParticipantSector.objects.create(
+                organization_id=organization,
+                name=request.data['name'],
+                date_of_addition=timezone.now(),
+            )
+            changes_string = f"name: {request.data['name']}, "
+
+            # Save data in activity log
+            activity_log = ActivityLogUnits.objects.create(
+                sector_id=sector,
+                old_value="", 
+                new_value=changes_string, 
+                date_of_addition=timezone.now(),
+                actions='Added'  # Specify action as 'Added'
+            )
+
+            # Serialize the created sector and activity log
+            sector_serializer = ParticipantSectorSerializer(sector)
+            activity_log_serializer = ActivityLogUnitsSerializer(activity_log)
+
+            return Response({
+                "status": status.HTTP_201_CREATED,
+                "sector_data": sector_serializer.data,
+                "activity_log_data": activity_log_serializer.data,
+                "message": "ParticipantSector added successfully."
+            })
+
+        except Staff.DoesNotExist:
+            return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "Invalid account_id."})
+
+        except Exception as e:
+            return Response({"status": status.HTTP_400_BAD_REQUEST, "message": str(e)})
+
+class ParticipantSectorUpdateAPIView(APIView):
+    permission_classes = (AllowAny,)  # Temporary permission setting for demonstration
+
+    def put(self, request, *args, **kwargs):
+        try:
+            # Fetch the staff user based on account_id
+            account_id = request.data.get('added_by')  # Use 'added_by' from request data
+            staff_user = Staff.objects.get(account_id=account_id)
+            
+            # Retrieve the organization associated with the staff user
+            organization = staff_user.organization_id
+            
+            # Retrieve the existing sector object
+            sector = ParticipantSector.objects.get(id=kwargs.get('id'))
+            
+            # Get the old value before updating the sector
+            old_values = {
+                'name': sector.name,
+            }
+            
+            # Serialize the updated data
+            serializer = ParticipantSectorSerializer(sector, data=request.data, partial=True)
+
+            if serializer.is_valid():
+                # Save the updated data to the ParticipantSector table
+                updated_sector = serializer.save()
+
+                # Retrieve new values after updating
+                new_values = {
+                    'name': updated_sector.name,
+                }
+
+                # Find the fields that have changed
+                changed_fields = {field: new_values[field] for field in new_values if new_values[field] != old_values[field]}
+
+                # Concatenate all changes into a single string
+                changes_string = ", ".join([f"{field}: {changed_fields[field]}" for field in changed_fields])
+                
+                # Create a new entry in the ActivityLogUnits table
+                ActivityLogUnits.objects.create(
+                    sector_id=sector,
+                    old_value=", ".join([f"{field}: {old_values[field]}" for field in changed_fields]),
+                    new_value=changes_string, 
+                    date_of_addition=timezone.now(),
+                    actions='Updated'  
+                )
+
+                return Response({
+                    "status": status.HTTP_200_OK,
+                    "data": serializer.data,
+                    "message": "ParticipantSector Information updated successfully."
+                })
+            else:
+                return Response({"status": status.HTTP_400_BAD_REQUEST, "message": serializer.errors})
+
+        except Staff.DoesNotExist:
+            return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "Invalid account_id."})
+
+        except ParticipantSector.DoesNotExist:
+            return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "No such record exists."})
+
+        except Exception as e:
+            return Response({"status": status.HTTP_400_BAD_REQUEST, "message": str(e)})
+
+class ParticipantTypeListAPIView(APIView):
+
+    def get(self, request, *args, **kwargs):
+        try:
+            # Get the staff user's account_id
+            account_id = kwargs.get('id')
+            
+            # Fetch the staff user based on account_id
+            staff_user = Staff.objects.get(account_id=account_id)
+            
+            # Retrieve the organization associated with the staff user
+            organization = staff_user.organization_id
+            
+            # Filter type based on the organization
+            type_list = ParticipantType.objects.filter(organization_id=organization)
+            
+            # Serialize data
+            serialized_data = [model_to_dict(type) for type in type_list]
+            
+            return Response({"status": status.HTTP_200_OK, "data": serialized_data})
+        
+        except Staff.DoesNotExist:
+            return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "Invalid account_id."})
+        
+        except ParticipantType.DoesNotExist:
+            return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "No type records found."})
+
+class ParticipantTypeCreateAPIView(APIView):
+    permission_classes = (AllowAny,)  # Temporary permission setting for demonstration
+
+    def post(self, request, *args, **kwargs):
+        try:
+            # Fetch the staff user based on account_id
+            account_id = request.data.get('added_by')  # Use 'added_by' from request data
+            staff_user = Staff.objects.get(account_id=account_id)
+            
+            # Retrieve the organization associated with the staff user
+            organization = staff_user.organization_id
+            
+            # Create a new type
+            type = ParticipantType.objects.create(
+                organization_id=organization,
+                name=request.data['name'],
+                date_of_addition=timezone.now(),
+            )
+            changes_string = f"name: {request.data['name']}, "
+
+            # Save data in activity log
+            activity_log = ActivityLogUnits.objects.create(
+                type_id=type,
+                old_value="", 
+                new_value=changes_string, 
+                date_of_addition=timezone.now(),
+                actions='Added'  # Specify action as 'Added'
+            )
+
+            # Serialize the created type and activity log
+            type_serializer = ParticipantTypeSerializer(type)
+            activity_log_serializer = ActivityLogUnitsSerializer(activity_log)
+
+            return Response({
+                "status": status.HTTP_201_CREATED,
+                "type_data": type_serializer.data,
+                "activity_log_data": activity_log_serializer.data,
+                "message": "ParticipantType added successfully."
+            })
+
+        except Staff.DoesNotExist:
+            return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "Invalid account_id."})
+
+        except Exception as e:
+            return Response({"status": status.HTTP_400_BAD_REQUEST, "message": str(e)})
+
+class ParticipantTypeUpdateAPIView(APIView):
+    permission_classes = (AllowAny,)  # Temporary permission setting for demonstration
+
+    def put(self, request, *args, **kwargs):
+        try:
+            # Fetch the staff user based on account_id
+            account_id = request.data.get('added_by')  # Use 'added_by' from request data
+            staff_user = Staff.objects.get(account_id=account_id)
+            
+            # Retrieve the organization associated with the staff user
+            organization = staff_user.organization_id
+            
+            # Retrieve the existing type object
+            type = ParticipantType.objects.get(id=kwargs.get('id'))
+            
+            # Get the old value before updating the type
+            old_values = {
+                'name': type.name,
+            }
+            
+            # Serialize the updated data
+            serializer = ParticipantTypeSerializer(type, data=request.data, partial=True)
+
+            if serializer.is_valid():
+                # Save the updated data to the ParticipantType table
+                updated_type = serializer.save()
+
+                # Retrieve new values after updating
+                new_values = {
+                    'name': updated_type.name,
+                }
+
+                # Find the fields that have changed
+                changed_fields = {field: new_values[field] for field in new_values if new_values[field] != old_values[field]}
+
+                # Concatenate all changes into a single string
+                changes_string = ", ".join([f"{field}: {changed_fields[field]}" for field in changed_fields])
+                
+                # Create a new entry in the ActivityLogUnits table
+                ActivityLogUnits.objects.create(
+                    type_id=type,
+                    old_value=", ".join([f"{field}: {old_values[field]}" for field in changed_fields]),
+                    new_value=changes_string, 
+                    date_of_addition=timezone.now(),
+                    actions='Updated'  
+                )
+
+                return Response({
+                    "status": status.HTTP_200_OK,
+                    "data": serializer.data,
+                    "message": "ParticipantType Information updated successfully."
+                })
+            else:
+                return Response({"status": status.HTTP_400_BAD_REQUEST, "message": serializer.errors})
+
+        except Staff.DoesNotExist:
+            return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "Invalid account_id."})
+
+        except ParticipantType.DoesNotExist:
+            return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "No such record exists."})
+
+        except Exception as e:
+            return Response({"status": status.HTTP_400_BAD_REQUEST, "message": str(e)})
+
+class CityListAPIView(APIView):
+
+    def get(self, request, *args, **kwargs):
+        try:
+            # Get the staff user's account_id
+            account_id = kwargs.get('id')
+            
+            # Fetch the staff user based on account_id
+            staff_user = Staff.objects.get(account_id=account_id)
+            
+            # Retrieve the organization associated with the staff user
+            organization = staff_user.organization_id
+            
+            # Filter city based on the organization
+            city_list = City.objects.filter(organization_id=organization)
+            
+            # Serialize data
+            serialized_data = [model_to_dict(city) for city in city_list]
+            
+            return Response({"status": status.HTTP_200_OK, "data": serialized_data})
+        
+        except Staff.DoesNotExist:
+            return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "Invalid account_id."})
+        
+        except City.DoesNotExist:
+            return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "No City records found."})
+
+class CityCreateAPIView(APIView):
+    permission_classes = (AllowAny,)  # Temporary permission setting for demonstration
+
+    def post(self, request, *args, **kwargs):
+        try:
+            # Fetch the staff user based on account_id
+            account_id = request.data.get('added_by')  # Use 'added_by' from request data
+            staff_user = Staff.objects.get(account_id=account_id)
+            
+            # Retrieve the organization associated with the staff user
+            organization = staff_user.organization_id
+            
+            # Create a new city
+            city = City.objects.create(
+                organization_id=organization,
+                name=request.data['name'],
+                date_of_addition=timezone.now(),
+            )
+            changes_string = f"name: {request.data['name']}, "
+
+            # Save data in activity log
+            activity_log = ActivityLogUnits.objects.create(
+                city_id=city,
+                old_value="", 
+                new_value=changes_string, 
+                date_of_addition=timezone.now(),
+                actions='Added'  # Specify action as 'Added'
+            )
+
+            # Serialize the created city and activity log
+            city_serializer = CitySerializer(city)
+            activity_log_serializer = ActivityLogUnitsSerializer(activity_log)
+
+            return Response({
+                "status": status.HTTP_201_CREATED,
+                "city_data": city_serializer.data,
+                "activity_log_data": activity_log_serializer.data,
+                "message": "City added successfully."
+            })
+
+        except Staff.DoesNotExist:
+            return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "Invalid account_id."})
+
+        except Exception as e:
+            return Response({"status": status.HTTP_400_BAD_REQUEST, "message": str(e)})
+
+class CityUpdateAPIView(APIView):
+    permission_classes = (AllowAny,)  # Temporary permission setting for demonstration
+
+    def put(self, request, *args, **kwargs):
+        try:
+            # Fetch the staff user based on account_id
+            account_id = request.data.get('added_by')  # Use 'added_by' from request data
+            staff_user = Staff.objects.get(account_id=account_id)
+            
+            # Retrieve the organization associated with the staff user
+            organization = staff_user.organization_id
+            
+            # Retrieve the existing city object
+            city = City.objects.get(id=kwargs.get('id'))
+            
+            # Get the old value before updating the city
+            old_values = {
+                'name': city.name,
+            }
+            
+            # Serialize the updated data
+            serializer = CitySerializer(city, data=request.data, partial=True)
+
+            if serializer.is_valid():
+                # Save the updated data to the City table
+                updated_city = serializer.save()
+
+                # Retrieve new values after updating
+                new_values = {
+                    'name': updated_city.name,
+                }
+
+                # Find the fields that have changed
+                changed_fields = {field: new_values[field] for field in new_values if new_values[field] != old_values[field]}
+
+                # Concatenate all changes into a single string
+                changes_string = ", ".join([f"{field}: {changed_fields[field]}" for field in changed_fields])
+                
+                # Create a new entry in the ActivityLogUnits table
+                ActivityLogUnits.objects.create(
+                    city_id=city,
+                    old_value=", ".join([f"{field}: {old_values[field]}" for field in changed_fields]),
+                    new_value=changes_string, 
+                    date_of_addition=timezone.now(),
+                    actions='Updated'  
+                )
+
+                return Response({
+                    "status": status.HTTP_200_OK,
+                    "data": serializer.data,
+                    "message": "City Information updated successfully."
+                })
+            else:
+                return Response({"status": status.HTTP_400_BAD_REQUEST, "message": serializer.errors})
+
+        except Staff.DoesNotExist:
+            return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "Invalid account_id."})
+
+        except City.DoesNotExist:
+            return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "No such record exists."})
+
+        except Exception as e:
+            return Response({"status": status.HTTP_400_BAD_REQUEST, "message": str(e)})
+
+class DistrictListAPIView(APIView):
+
+    def get(self, request, *args, **kwargs):
+        try:
+            # Get the staff user's account_id
+            account_id = kwargs.get('id')
+            
+            # Fetch the staff user based on account_id
+            staff_user = Staff.objects.get(account_id=account_id)
+            
+            # Retrieve the organization associated with the staff user
+            organization = staff_user.organization_id
+            
+            # Filter district based on the organization
+            district_list = District.objects.filter(organization_id=organization)
+            
+            # Serialize data
+            serialized_data = [model_to_dict(district) for district in district_list]
+            
+            return Response({"status": status.HTTP_200_OK, "data": serialized_data})
+        
+        except Staff.DoesNotExist:
+            return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "Invalid account_id."})
+        
+        except District.DoesNotExist:
+            return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "No District records found."})
+
+class DistrictCreateAPIView(APIView):
+    permission_classes = (AllowAny,)  # Temporary permission setting for demonstration
+
+    def post(self, request, *args, **kwargs):
+        try:
+            # Fetch the staff user based on account_id
+            account_id = request.data.get('added_by')  # Use 'added_by' from request data
+            staff_user = Staff.objects.get(account_id=account_id)
+            
+            # Retrieve the organization associated with the staff user
+            organization = staff_user.organization_id
+            
+            # Create a new district
+            district = District.objects.create(
+                organization_id=organization,
+                name=request.data['name'],
+                date_of_addition=timezone.now(),
+            )
+            changes_string = f"name: {request.data['name']}, "
+
+            # Save data in activity log
+            activity_log = ActivityLogUnits.objects.create(
+                district_id=district,
+                old_value="", 
+                new_value=changes_string, 
+                date_of_addition=timezone.now(),
+                actions='Added'  # Specify action as 'Added'
+            )
+
+            # Serialize the created district and activity log
+            district_serializer = DistrictSerializer(district)
+            activity_log_serializer = ActivityLogUnitsSerializer(activity_log)
+
+            return Response({
+                "status": status.HTTP_201_CREATED,
+                "district_data": district_serializer.data,
+                "activity_log_data": activity_log_serializer.data,
+                "message": "District added successfully."
+            })
+
+        except Staff.DoesNotExist:
+            return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "Invalid account_id."})
+
+        except Exception as e:
+            return Response({"status": status.HTTP_400_BAD_REQUEST, "message": str(e)})
+
+class DistrictUpdateAPIView(APIView):
+    permission_classes = (AllowAny,)  # Temporary permission setting for demonstration
+
+    def put(self, request, *args, **kwargs):
+        try:
+            # Fetch the staff user based on account_id
+            account_id = request.data.get('added_by')  # Use 'added_by' from request data
+            staff_user = Staff.objects.get(account_id=account_id)
+            
+            # Retrieve the organization associated with the staff user
+            organization = staff_user.organization_id
+            
+            # Retrieve the existing district object
+            district = District.objects.get(id=kwargs.get('id'))
+            
+            # Get the old value before updating the district
+            old_values = {
+                'name': district.name,
+            }
+            
+            # Serialize the updated data
+            serializer = DistrictSerializer(district, data=request.data, partial=True)
+
+            if serializer.is_valid():
+                # Save the updated data to the district table
+                updated_district = serializer.save()
+
+                # Retrieve new values after updating
+                new_values = {
+                    'name': updated_district.name,
+                }
+
+                # Find the fields that have changed
+                changed_fields = {field: new_values[field] for field in new_values if new_values[field] != old_values[field]}
+
+                # Concatenate all changes into a single string
+                changes_string = ", ".join([f"{field}: {changed_fields[field]}" for field in changed_fields])
+                
+                # Create a new entry in the ActivityLogUnits table
+                ActivityLogUnits.objects.create(
+                    district_id=district,
+                    old_value=", ".join([f"{field}: {old_values[field]}" for field in changed_fields]),
+                    new_value=changes_string, 
+                    date_of_addition=timezone.now(),
+                    actions='Updated'  
+                )
+
+                return Response({
+                    "status": status.HTTP_200_OK,
+                    "data": serializer.data,
+                    "message": "District Information updated successfully."
+                })
+            else:
+                return Response({"status": status.HTTP_400_BAD_REQUEST, "message": serializer.errors})
+
+        except Staff.DoesNotExist:
+            return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "Invalid account_id."})
+
+        except District.DoesNotExist:
+            return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "No such record exists."})
+
+        except Exception as e:
+            return Response({"status": status.HTTP_400_BAD_REQUEST, "message": str(e)})
+
+class DepartmentListAPIView(APIView):
+
+    def get(self, request, *args, **kwargs):
+        try:
+            # Get the staff user's account_id
+            account_id = kwargs.get('id')
+            
+            # Fetch the staff user based on account_id
+            staff_user = Staff.objects.get(account_id=account_id)
+            
+            # Retrieve the organization associated with the staff user
+            organization = staff_user.organization_id
+            
+            # Filter department based on the organization
+            department_list = Department.objects.filter(organization_id=organization)
+            
+            # Serialize data
+            serialized_data = [model_to_dict(department) for department in department_list]
+            
+            return Response({"status": status.HTTP_200_OK, "data": serialized_data})
+        
+        except Staff.DoesNotExist:
+            return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "Invalid account_id."})
+        
+        except Department.DoesNotExist:
+            return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "No Department records found."})
+
+class DepartmentCreateAPIView(APIView):
+    permission_classes = (AllowAny,)  # Temporary permission setting for demonstration
+
+    def post(self, request, *args, **kwargs):
+        try:
+            # Fetch the staff user based on account_id
+            account_id = request.data.get('added_by')  # Use 'added_by' from request data
+            staff_user = Staff.objects.get(account_id=account_id)
+            
+            # Retrieve the organization associated with the staff user
+            organization = staff_user.organization_id
+            
+            # Create a new department
+            department = Department.objects.create(
+                organization_id=organization,
+                name=request.data['name'],
+                date_of_addition=timezone.now(),
+            )
+            changes_string = f"name: {request.data['name']}, "
+
+            # Save data in activity log
+            activity_log = ActivityLogUnits.objects.create(
+                department_id=department,
+                old_value="", 
+                new_value=changes_string, 
+                date_of_addition=timezone.now(),
+                actions='Added'  # Specify action as 'Added'
+            )
+
+            # Serialize the created department and activity log
+            department_serializer = DepartmentSerializer(department)
+            activity_log_serializer = ActivityLogUnitsSerializer(activity_log)
+
+            return Response({
+                "status": status.HTTP_201_CREATED,
+                "department_data": department_serializer.data,
+                "activity_log_data": activity_log_serializer.data,
+                "message": "Department added successfully."
+            })
+
+        except Staff.DoesNotExist:
+            return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "Invalid account_id."})
+
+        except Exception as e:
+            return Response({"status": status.HTTP_400_BAD_REQUEST, "message": str(e)})
+
+class DepartmentUpdateAPIView(APIView):
+    permission_classes = (AllowAny,)  # Temporary permission setting for demonstration
+
+    def put(self, request, *args, **kwargs):
+        try:
+            # Fetch the staff user based on account_id
+            account_id = request.data.get('added_by')  # Use 'added_by' from request data
+            staff_user = Staff.objects.get(account_id=account_id)
+            
+            # Retrieve the organization associated with the staff user
+            organization = staff_user.organization_id
+            
+            # Retrieve the existing department object
+            department = Department.objects.get(id=kwargs.get('id'))
+            
+            # Get the old value before updating the department
+            old_values = {
+                'name': department.name,
+            }
+            
+            # Serialize the updated data
+            serializer = DepartmentSerializer(department, data=request.data, partial=True)
+
+            if serializer.is_valid():
+                # Save the updated data to the department table
+                updated_department = serializer.save()
+
+                # Retrieve new values after updating
+                new_values = {
+                    'name': updated_department.name,
+                }
+
+                # Find the fields that have changed
+                changed_fields = {field: new_values[field] for field in new_values if new_values[field] != old_values[field]}
+
+                # Concatenate all changes into a single string
+                changes_string = ", ".join([f"{field}: {changed_fields[field]}" for field in changed_fields])
+                
+                # Create a new entry in the ActivityLogUnits table
+                ActivityLogUnits.objects.create(
+                    department_id=department,
+                    old_value=", ".join([f"{field}: {old_values[field]}" for field in changed_fields]),
+                    new_value=changes_string, 
+                    date_of_addition=timezone.now(),
+                    actions='Updated'  
+                )
+
+                return Response({
+                    "status": status.HTTP_200_OK,
+                    "data": serializer.data,
+                    "message": "Department Information updated successfully."
+                })
+            else:
+                return Response({"status": status.HTTP_400_BAD_REQUEST, "message": serializer.errors})
+
+        except Staff.DoesNotExist:
+            return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "Invalid account_id."})
+
+        except Department.DoesNotExist:
+            return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "No such record exists."})
+
+        except Exception as e:
+            return Response({"status": status.HTTP_400_BAD_REQUEST, "message": str(e)})
+
+class DesignationListAPIView(APIView):
+
+    def get(self, request, *args, **kwargs):
+        try:
+            # Get the staff user's account_id
+            account_id = kwargs.get('id')
+            
+            # Fetch the staff user based on account_id
+            staff_user = Staff.objects.get(account_id=account_id)
+            
+            # Retrieve the organization associated with the staff user
+            organization = staff_user.organization_id
+            
+            # Filter designation based on the organization
+            designation_list = Designation.objects.filter(organization_id=organization)
+            
+            # Serialize data
+            serialized_data = [model_to_dict(designation) for designation in designation_list]
+            
+            return Response({"status": status.HTTP_200_OK, "data": serialized_data})
+        
+        except Staff.DoesNotExist:
+            return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "Invalid account_id."})
+        
+        except Designation.DoesNotExist:
+            return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "No Designation records found."})
+
+class DesignationCreateAPIView(APIView):
+    permission_classes = (AllowAny,)  # Temporary permission setting for demonstration
+
+    def post(self, request, *args, **kwargs):
+        try:
+            # Fetch the staff user based on account_id
+            account_id = request.data.get('added_by')  # Use 'added_by' from request data
+            staff_user = Staff.objects.get(account_id=account_id)
+            
+            # Retrieve the organization associated with the staff user
+            organization = staff_user.organization_id
+            
+            # Create a new designation
+            designation = Designation.objects.create(
+                organization_id=organization,
+                name=request.data['name'],
+                date_of_addition=timezone.now(),
+            )
+            changes_string = f"name: {request.data['name']}, "
+
+            # Save data in activity log
+            activity_log = ActivityLogUnits.objects.create(
+                designation_id=designation,
+                old_value="", 
+                new_value=changes_string, 
+                date_of_addition=timezone.now(),
+                actions='Added'  # Specify action as 'Added'
+            )
+
+            # Serialize the created designation and activity log
+            designation_serializer = DesignationSerializer(designation)
+            activity_log_serializer = ActivityLogUnitsSerializer(activity_log)
+
+            return Response({
+                "status": status.HTTP_201_CREATED,
+                "designation_data": designation_serializer.data,
+                "activity_log_data": activity_log_serializer.data,
+                "message": "Designation added successfully."
+            })
+
+        except Staff.DoesNotExist:
+            return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "Invalid account_id."})
+
+        except Exception as e:
+            return Response({"status": status.HTTP_400_BAD_REQUEST, "message": str(e)})
+
+class DesignationUpdateAPIView(APIView):
+    permission_classes = (AllowAny,)  # Temporary permission setting for demonstration
+
+    def put(self, request, *args, **kwargs):
+        try:
+            # Fetch the staff user based on account_id
+            account_id = request.data.get('added_by')  # Use 'added_by' from request data
+            staff_user = Staff.objects.get(account_id=account_id)
+            
+            # Retrieve the organization associated with the staff user
+            organization = staff_user.organization_id
+            
+            # Retrieve the existing designation object
+            designation = Designation.objects.get(id=kwargs.get('id'))
+            
+            # Get the old value before updating the designation
+            old_values = {
+                'name': designation.name,
+            }
+            
+            # Serialize the updated data
+            serializer = DesignationSerializer(designation, data=request.data, partial=True)
+
+            if serializer.is_valid():
+                # Save the updated data to the designation table
+                updated_designation = serializer.save()
+
+                # Retrieve new values after updating
+                new_values = {
+                    'name': updated_designation.name,
+                }
+
+                # Find the fields that have changed
+                changed_fields = {field: new_values[field] for field in new_values if new_values[field] != old_values[field]}
+
+                # Concatenate all changes into a single string
+                changes_string = ", ".join([f"{field}: {changed_fields[field]}" for field in changed_fields])
+                
+                # Create a new entry in the ActivityLogUnits table
+                ActivityLogUnits.objects.create(
+                    designation_id=designation,
+                    old_value=", ".join([f"{field}: {old_values[field]}" for field in changed_fields]),
+                    new_value=changes_string, 
+                    date_of_addition=timezone.now(),
+                    actions='Updated'  
+                )
+
+                return Response({
+                    "status": status.HTTP_200_OK,
+                    "data": serializer.data,
+                    "message": "Designation Information updated successfully."
+                })
+            else:
+                return Response({"status": status.HTTP_400_BAD_REQUEST, "message": serializer.errors})
+
+        except Staff.DoesNotExist:
+            return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "Invalid account_id."})
+
+        except Designation.DoesNotExist:
+            return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "No such record exists."})
+
+        except Exception as e:
+            return Response({"status": status.HTTP_400_BAD_REQUEST, "message": str(e)})
+
 class UnitsListAPIView(APIView):
 
     def get(self, request, *args, **kwargs):
@@ -57,10 +880,9 @@ class UnitsAPIView(APIView):
             unit = Units.objects.create(
                 organization_id=organization,
                 name=request.data['name'],
-                formula=request.data['formula'],
                 date_of_addition=timezone.now(),
             )
-            changes_string = f"name: {request.data['name']}{request.data['formula']}, "
+            changes_string = f"name: {request.data['name']}, "
 
             # Save data in activity log
             activity_log = ActivityLogUnits.objects.create(
@@ -106,7 +928,6 @@ class UnitsUpdateAPIView(APIView):
             # Get the old value before updating the unit
             old_values = {
                 'name': unit.name,
-                'formula': unit.formula,
             }
             
             # Serialize the updated data
@@ -119,7 +940,6 @@ class UnitsUpdateAPIView(APIView):
                 # Retrieve new values after updating
                 new_values = {
                     'name': updated_unit.name,
-                    'formula': updated_unit.formula,
                 }
 
                 # Find the fields that have changed
@@ -1364,6 +2184,29 @@ class AnalyteUpdateMethodsAPIView(APIView):
             return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "Analyte does not exist."})
         except Exception as e:
             return Response({"status": status.HTTP_400_BAD_REQUEST, "message": str(e)})
+
+#Analytes assocaited with unit~
+class AnalytesByUnitAPIView(APIView):
+    permission_classes = (AllowAny,)  # Adjust permissions as needed
+
+    def get(self, request, id, *args, **kwargs):
+        try:
+            # Retrieve the Units object based on id
+            unit = Units.objects.get(id=id)
+            
+            # Retrieve all analytes associated with the unit
+            analytes = Analyte.objects.filter(units=unit)
+            
+            # Serialize the queryset of analytes
+            serializer = AnalyteSerializer(analytes, many=True)
+            
+            return Response({"status": status.HTTP_200_OK, "data": serializer.data})
+        
+        except Units.DoesNotExist:
+            return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "Units object does not exist."})
+        
+        except Exception as e:
+            return Response({"status": status.HTTP_500_INTERNAL_SERVER_ERROR, "message": str(e)})
 
 #Analyte adding units
 class AnalytesUnitsAPIView(APIView):
