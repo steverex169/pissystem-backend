@@ -83,6 +83,7 @@ class RoundAPIView(APIView):
         
         except Round.DoesNotExist:
             return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "No Round records found."})
+
 class RoundPostAPIView(APIView):
     permission_classes = (AllowAny,)
 
@@ -106,6 +107,7 @@ class RoundPostAPIView(APIView):
                 scheme=scheme,  # Assign the fetched Scheme object
                 cycle_no=request.data['cycle_no'],
                 sample=request.data['sample'],
+                participants=request.data['participants'],
                 issue_date=request.data['issue_date'],
                 closing_date=request.data['closing_date'],
                 notes=request.data['notes'],
@@ -190,7 +192,7 @@ class RoundUpdateAPIView(APIView):
             round = Round.objects.get(id=kwargs.get('id'))
 
             # Store old values before updating
-            old_values = {field: getattr(round, field) for field in ["rounds", "scheme", "cycle_no", "sample", "issue_date", "closing_date", "notes", "status"]}
+            old_values = {field: getattr(round, field) for field in ["rounds", "scheme", "cycle_no", "sample", "participants", "issue_date", "closing_date", "notes", "status"]}
             
             serializer = RoundSerializer(round, data=request.data, partial=True)
 
@@ -198,7 +200,7 @@ class RoundUpdateAPIView(APIView):
                 updated_unit = serializer.save()
                 
                 # Retrieve new values after updating
-                new_values = {field: getattr(updated_unit, field) for field in ["rounds", "scheme", "cycle_no", "sample", "issue_date", "closing_date", "notes", "status"]}
+                new_values = {field: getattr(updated_unit, field) for field in ["rounds", "scheme", "cycle_no", "sample", "participants", "issue_date", "closing_date", "notes", "status"]}
 
                 # Find the fields that have changed
                 changed_fields = {field: new_values[field] for field in new_values if new_values[field] != old_values[field]}

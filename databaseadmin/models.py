@@ -150,7 +150,8 @@ class Scheme(models.Model):
 class Cycle(models.Model):
     organization_id = models.ForeignKey(
         Organization, on_delete=models.CASCADE, null=True, blank=True)
-    scheme_name = models.CharField(max_length=255, blank=True, null=True)
+    scheme_name = models.ForeignKey(
+        Scheme, on_delete=models.CASCADE, null=True, blank=True)
     cycle_no = models.CharField(max_length=255, blank=True, null=True)
     rounds = models.PositiveBigIntegerField(blank=True, null=True)
     cycle = models.CharField(

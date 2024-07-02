@@ -40,6 +40,7 @@ class Round(models.Model):
         Scheme, on_delete=models.CASCADE, null=True, blank=True)
     cycle_no = models.CharField(max_length=255, blank=True, null=True)
     sample = models.CharField(max_length=255, blank=True, null=True)
+    participants = models.CharField(max_length=255, blank=True, null=True)
     issue_date = models.DateTimeField(blank=True, null=True)
     closing_date = models.DateTimeField(blank=True, null=True)
     notes = models.CharField(max_length=255, blank=True, null=True)

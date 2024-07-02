@@ -751,18 +751,27 @@ class CycleAPIView(APIView):
             # Retrieve the organization associated with the staff user
             organization = staff_user.organization_id
 
-            # Filter schemes based on the organization
+            # Filter cycles based on the organization
             cycle_list = Cycle.objects.filter(organization_id=organization)
 
             serialized_data = []
             for cycle in cycle_list:
-                # Retrieve analyte names associated with the scheme
-                analyte_names = [analyte.name for analyte in cycle.analytes.all()]
-                
                 # Serialize cycle data
                 cycle_data = model_to_dict(cycle)
-                cycle_data['analytes'] = analyte_names  # Replace analyte IDs with names
+                # Add analyte count to the serialized data
+                cycle_data['analytes'] = cycle.noofanalytes
+
+                # Get the scheme name
+                scheme = cycle.scheme_name
+                if scheme:
+                    cycle_data['scheme_name'] = scheme.name
+                    cycle_data['scheme_id'] = scheme.id
+                else:
+                    cycle_data['scheme_name'] = None
+                    cycle_data['scheme_id'] = None  # Handle case where scheme is None
+
                 serialized_data.append(cycle_data)
+
 
             return Response({"status": status.HTTP_200_OK, "data": serialized_data})
         
@@ -784,12 +793,13 @@ class CyclePostAPIView(APIView):
             
             # Retrieve the organization associated with the staff user
             organization = staff_user.organization_id
-
+            scheme_id = request.data.get('scheme_name')  # Assuming 'scheme' is sent in the request data
+            scheme = get_object_or_404(Scheme, pk=scheme_id)
 
             # Create a new Analyte
             cycle = Cycle.objects.create(
                 organization_id= organization,
-                scheme_name=request.data['scheme_name'],
+                scheme_name=scheme,
                 cycle_no=request.data['cycle_no'],
                 cycle=request.data['cycle'],
                 start_date=request.data['start_date'],
