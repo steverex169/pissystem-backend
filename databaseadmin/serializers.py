@@ -1,6 +1,5 @@
 from rest_framework import serializers
-from databaseadmin.models import News,Instrument, Units, Analyte, ActivityLogUnits, Reagents, Manufactural, Method, Scheme, Cycle, Sample, InstrumentType
-from databaseadmin.models import ParticipantSector,ParticipantType,Department,Designation,District,City,News,Instrument, Units, Analyte, ActivityLogUnits, Reagents, Manufactural, Method, InstrumentType
+from databaseadmin.models import ParticipantSector,ParticipantType,Department,Designation,District,City,News,Instrument, Units, Analyte, ActivityLogUnits, Reagents, Manufactural, Method, Scheme, Cycle, Sample, InstrumentType
 
 
 class CitySerializer(serializers.ModelSerializer):

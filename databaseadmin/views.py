@@ -1,13 +1,14 @@
 from rest_framework import status
 from rest_framework.response import Response
 from rest_framework.views import APIView
-from databaseadmin.models import News,Instrument, Units, ActivityLogUnits,Reagents , Manufactural, Method,InstrumentType, Analyte
-from databaseadmin.serializers import NewsSerializer,InstrumentSerializer, MethodSerializer,AnalyteSerializer, InstrumentTypeSerializer, UnitsSerializer, ActivityLogUnitsSerializer, ReagentsSerializer, ManufacturalSerializer, Scheme, Cycle,Sample
-from labowner.models import Lab
+
 from databaseadmin.models import ParticipantType,ParticipantSector,Department,Designation,District,City,News,Instrument, Units, ActivityLogUnits,Reagents , Manufactural, Method,InstrumentType, Analyte
-from databaseadmin.serializers import ParticipantTypeSerializer, ParticipantSectorSerializer,DepartmentSerializer,DesignationSerializer,DistrictSerializer,CitySerializer,NewsSerializer,InstrumentSerializer, MethodSerializer,AnalyteSerializer, InstrumentTypeSerializer, UnitsSerializer, ActivityLogUnitsSerializer, ReagentsSerializer, ManufacturalSerializer
+
+from databaseadmin.serializers import NewsSerializer,InstrumentSerializer, MethodSerializer,AnalyteSerializer, InstrumentTypeSerializer, UnitsSerializer, ActivityLogUnitsSerializer, ReagentsSerializer, ManufacturalSerializer, Scheme, Cycle,Sample,ParticipantTypeSerializer, ParticipantSectorSerializer,DepartmentSerializer,DesignationSerializer,DistrictSerializer,CitySerializer,SchemeSerializer, CycleSerializer,  SampleSerializer
+
+from labowner.models import Lab
 from staff.models import Staff
-from databaseadmin.serializers import NewsSerializer,InstrumentSerializer, MethodSerializer, SchemeSerializer, CycleSerializer, AnalyteSerializer, InstrumentTypeSerializer, UnitsSerializer, ActivityLogUnitsSerializer, ReagentsSerializer, ManufacturalSerializer, SampleSerializer
+
 from django.forms.models import model_to_dict
 from django.http import HttpResponseRedirect
 from rest_framework.permissions import IsAuthenticated, AllowAny
@@ -2082,17 +2083,9 @@ class AnalytesReagentsAPIView(APIView):
 
     def get(self, request, id, *args, **kwargs):
         try:
-            # Get the staff user's account_id
-            account_id = kwargs.get('id')
-            
-            # Fetch the staff user based on account_id
-            staff_user = Staff.objects.get(account_id=account_id)
-            
-            # Retrieve the organization associated with the staff user
-            organization = staff_user.organization_id
-            
-            # Filter analytes based on the organization
-            analyte_list = Analyte.objects.filter(organization_id=organization)
+            analyte = Analyte.objects.get(id=id)
+            reagents = analyte.reagents.all()  # Fetch all reagents associated with the analyte
+            reagent_ids = [reagent.id for reagent in reagents]
             
             # Serialize data
             serialized_data = {
@@ -2108,45 +2101,46 @@ class AnalytesReagentsAPIView(APIView):
         except Exception as e:
             return Response({"status": status.HTTP_400_BAD_REQUEST, "message": str(e)})
 
+
 class AnalyteAddReagentsAPIView(APIView):
     permission_classes = (AllowAny,)
 
-def post(self, request, id, *args, **kwargs):
-    try:
-        analyte = Analyte.objects.get(id=id)
-        
-        # Ensure 'reagents' is parsed as a list of integers
-        reagents = request.data.get('reagents', [])
-        if isinstance(reagents, str):
-            reagents = list(map(int, reagents.split(',')))
-        
-        analyte.reagents.set(reagents)  # Assuming reagents are passed as a list of IDs
-        analyte.save()
+    def post(self, request, id, *args, **kwargs):
+        try:
+            analyte = Analyte.objects.get(id=id)
+            
+            # Ensure 'reagents' is parsed as a list of integers
+            reagents = request.data.get('reagents', [])
+            if isinstance(reagents, str):
+                reagents = list(map(int, reagents.split(',')))
+            
+            analyte.reagents.set(reagents)  # Assuming reagents are passed as a list of IDs
+            analyte.save()
 
-        return Response({"status": status.HTTP_200_OK, "message": "Reagents added to analyte successfully."})
-    except Analyte.DoesNotExist:
-        return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "Analyte not found."})
-    except Exception as e:
-        return Response({"status": status.HTTP_400_BAD_REQUEST, "message": str(e)})
+            return Response({"status": status.HTTP_200_OK, "message": "Reagents added to analyte successfully."})
+        except Analyte.DoesNotExist:
+            return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "Analyte not found."})
+        except Exception as e:
+            return Response({"status": status.HTTP_400_BAD_REQUEST, "message": str(e)})
 
 class AnalyteUpdateReagentsAPIView(APIView):
     permission_classes = (AllowAny,)
 
-def put(self, request, id, *args, **kwargs):
-    try:
-        analyte = Analyte.objects.get(id=id)
-        reagents = request.data.get('reagents', [])
-        if isinstance(reagents, str):
-            reagents = list(map(int, reagents.split(',')))
-        
-        analyte.reagents.set(reagents)  # Assuming reagents are passed as a list of IDs
-        analyte.save()
-        serialized_data = AnalyteSerializer(analyte).data
-        return Response({"status": status.HTTP_200_OK, "analyte_data": serialized_data, "message": "Reagents updated for Analyte successfully."})
-    except Analyte.DoesNotExist:
-        return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "Analyte does not exist."})
-    except Exception as e:
-        return Response({"status": status.HTTP_400_BAD_REQUEST, "message": str(e)})
+    def put(self, request, id, *args, **kwargs):
+        try:
+            analyte = Analyte.objects.get(id=id)
+            reagents = request.data.get('reagents', [])
+            if isinstance(reagents, str):
+                reagents = list(map(int, reagents.split(',')))
+            
+            analyte.reagents.set(reagents)  # Assuming reagents are passed as a list of IDs
+            analyte.save()
+            serialized_data = AnalyteSerializer(analyte).data
+            return Response({"status": status.HTTP_200_OK, "analyte_data": serialized_data, "message": "Reagents updated for Analyte successfully."})
+        except Analyte.DoesNotExist:
+            return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "Analyte does not exist."})
+        except Exception as e:
+            return Response({"status": status.HTTP_400_BAD_REQUEST, "message": str(e)})
 
 #analytes
         
