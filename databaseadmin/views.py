@@ -1,7 +1,9 @@
 from rest_framework import status
 from rest_framework.response import Response
 from rest_framework.views import APIView
-from databaseadmin.models import News,Instrument, Units, ActivityLogUnits,Reagents , Manufactural, Method, Scheme, Cycle, InstrumentType, Analyte, Sample
+from databaseadmin.models import News,Instrument, Units, ActivityLogUnits,Reagents , Manufactural, Method,InstrumentType, Analyte
+from databaseadmin.serializers import NewsSerializer,InstrumentSerializer, MethodSerializer,AnalyteSerializer, InstrumentTypeSerializer, UnitsSerializer, ActivityLogUnitsSerializer, ReagentsSerializer, ManufacturalSerializer, Scheme, Cycle,Sample
+from labowner.models import Lab
 from staff.models import Staff
 from databaseadmin.serializers import NewsSerializer,InstrumentSerializer, MethodSerializer, SchemeSerializer, CycleSerializer, AnalyteSerializer, InstrumentTypeSerializer, UnitsSerializer, ActivityLogUnitsSerializer, ReagentsSerializer, ManufacturalSerializer, SampleSerializer
 from django.forms.models import model_to_dict
@@ -582,6 +584,7 @@ class ManufacturalListAPIView(APIView):
         try:
             # Get the staff user's account_id
             account_id = kwargs.get('id')
+            print("AAAAAAAAA", account_id)
             
             # Fetch the staff user based on account_id
             staff_user = Staff.objects.get(account_id=account_id)
@@ -765,6 +768,7 @@ class MethodsPostAPIView(APIView):
         try:
             # Fetch the staff user based on account_id
             account_id = request.data.get('added_by')
+            
             staff_user = Staff.objects.get(account_id=account_id)
             
             # Retrieve the organization associated with the staff user
@@ -1257,9 +1261,17 @@ class AnalytesReagentsAPIView(APIView):
 
     def get(self, request, id, *args, **kwargs):
         try:
-            analyte = Analyte.objects.get(id=id)
-            reagents = analyte.reagents.all()  # Fetch all reagents associated with the analyte
-            reagent_ids = [reagent.id for reagent in reagents]
+            # Get the staff user's account_id
+            account_id = kwargs.get('id')
+            
+            # Fetch the staff user based on account_id
+            staff_user = Staff.objects.get(account_id=account_id)
+            
+            # Retrieve the organization associated with the staff user
+            organization = staff_user.organization_id
+            
+            # Filter analytes based on the organization
+            analyte_list = Analyte.objects.filter(organization_id=organization)
             
             # Serialize data
             serialized_data = {
@@ -1318,23 +1330,61 @@ def put(self, request, id, *args, **kwargs):
 #analytes
         
 class AnalytesListAPIView(APIView):
-    def get(self, request, *args, **kwargs):
+    #   *******************API for geeting Ananlytes on Stafff Dashboard*******************
+    # def get(self, request, *args, **kwargs):
+    #     try:
+    #         # Get the staff user's account_id
+    #         account_id = kwargs.get('id')
+            
+    #         # Fetch the staff user based on account_id
+    #         staff_user = Staff.objects.get(account_id=account_id)
+            
+    #         # Retrieve the organization associated with the staff user
+    #         organization = staff_user.organization_id
+            
+    #         # Filter analytes based on the organization
+    #         analyte_list = Analyte.objects.filter(organization_id=organization)
+            
+    #         # Serialize data
+    #         serialized_data = AnalyteSerializer(analyte_list, many=True).data
+            
+    #         return Response({"status": status.HTTP_200_OK, "data": serialized_data})
+        
+        # except Staff.DoesNotExist:
+        #     return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "Invalid account_id."})
+        
+        # except Analyte.DoesNotExist:
+        #     return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "No Analyte records found."})
+
+#  *****************API for getting Ananlytes on Stafff + Participant Dashboard********************
+      def get(self, request, *args, **kwargs):
         try:
-            # Get the staff user's account_id
-            account_id = kwargs.get('id')
-            
-            # Fetch the staff user based on account_id
-            staff_user = Staff.objects.get(account_id=account_id)
-            
-            # Retrieve the organization associated with the staff user
-            organization = staff_user.organization_id
-            
-            # Filter analytes based on the organization
-            analyte_list = Analyte.objects.filter(organization_id=organization)
-            
-            # Serialize data
+            user_id = kwargs.get('id')
+            # Fetch user_type based on user_id
+            try:
+                user_type = UserAccount.objects.get(id=user_id)
+            except UserAccount.DoesNotExist:
+                return Response({
+                    "status": status.HTTP_400_BAD_REQUEST,
+                    "message": "User account not found."
+                }, status=status.HTTP_400_BAD_REQUEST)
+            # print("vvvvvvvvvvv", user_id, user_type)
+            if user_type.account_type == 'labowner':
+                try:
+                    participant = Lab.objects.get(account_id=user_id)
+                    organization = participant.organization_id
+                    analyte_list = Analyte.objects.filter(organization_id=organization)
+                except Lab.DoesNotExist:
+                    return Response({
+                        "status": status.HTTP_404_NOT_FOUND,
+                        "message": "Lab not found."
+                    }, status=status.HTTP_404_NOT_FOUND)
+            else:
+                    staff_user = Staff.objects.get(account_id=user_id)
+                    organization = staff_user.organization_id
+                    analyte_list = Analyte.objects.filter(organization_id=organization)
+
             serialized_data = AnalyteSerializer(analyte_list, many=True).data
-            
             return Response({"status": status.HTTP_200_OK, "data": serialized_data})
         
         except Staff.DoesNotExist:
@@ -1342,6 +1392,7 @@ class AnalytesListAPIView(APIView):
         
         except Analyte.DoesNotExist:
             return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "No Analyte records found."})
+
 
 class AnalyteAPIView(APIView):
     permission_classes = (AllowAny,)  # Temporary permission setting for demonstration
@@ -1657,48 +1708,177 @@ class AnalyteUpdateAPIView(APIView):
             return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "No such record exists."})
         except Exception as e:
             return Response({"status": status.HTTP_400_BAD_REQUEST, "message": str(e)})
-   
+        
+
 class NewsListView(APIView):
     permission_classes = (AllowAny,)
-
+    # API FOR STAFF + Participant dashboard**************
     def get(self, request, *args, **kwargs):
         try:
-            news = News.objects.all()
-            serialized_data = []
-            for newss in news:
-                news_data = {
-                    'id': newss.id,
-                    'title': newss.title,
-                    'date_of_addition': newss.date_of_addition,
-                    'description': newss.description,
-                    'picture': newss.picture.url if newss.picture else None,
-                    # Add other fields as needed
-                }
-                serialized_data.append(news_data)
+            user_id = kwargs.get('id')
+            if not user_id:
+                return Response({
+                    "status": status.HTTP_400_BAD_REQUEST,
+                    "message": "User ID not provided."
+                }, status=status.HTTP_400_BAD_REQUEST)
+            
+            # Fetch user_type based on user_id
+            try:
+                user_type = UserAccount.objects.get(id=user_id)
+            except UserAccount.DoesNotExist:
+                return Response({
+                    "status": status.HTTP_400_BAD_REQUEST,
+                    "message": "User account not found."
+                }, status=status.HTTP_400_BAD_REQUEST)
+            
+            newss = None
+            if user_type.account_type == 'labowner':
+                try:
+                    participant = Lab.objects.get(account_id=user_id)
+                    organization = participant.organization_id
+                    if organization is None:
+                        raise Organization.DoesNotExist
+                    newss = News.objects.filter(organization_id=organization.id)
+                except Lab.DoesNotExist:
+                    return Response({
+                        "status": status.HTTP_404_NOT_FOUND,
+                        "message": "Lab not found."
+                    }, status=status.HTTP_404_NOT_FOUND)
+            else:
+                try:
+                    staff_member = Staff.objects.get(account_id=user_id)
+                    organization = staff_member.organization_id
+                    # staff_member = Staff.objects.get(account_id=user_id)
+                    # organization = staff_member.organization_id
+                    if organization is None:
+                        raise Organization.DoesNotExist
+                    newss = News.objects.filter(organization_id=organization.id)
+                    
+                except Staff.DoesNotExist:
+                    return Response({
+                        "status": status.HTTP_404_NOT_FOUND,
+                        "message": "Staff member not found."
+                    }, status=status.HTTP_404_NOT_FOUND)
 
-            return Response({"status": status.HTTP_200_OK, "data": serialized_data})
+            if newss is not None and newss.exists():
+                serializer = NewsSerializer(newss, many=True)
+                return Response({
+                    "status": status.HTTP_200_OK,
+                    "data": serializer.data
+                }, status=status.HTTP_200_OK)
+            else:
+                return Response({
+                    "status": status.HTTP_404_NOT_FOUND,
+                    "message": "No news found."
+                }, status=status.HTTP_404_NOT_FOUND)
+        
+        except Organization.DoesNotExist:
+            return Response({
+                "status": status.HTTP_404_NOT_FOUND,
+                "message": "Organization not found."
+            }, status=status.HTTP_404_NOT_FOUND)
+        
+        except Exception as e:
+            return Response({
+                "status": status.HTTP_500_INTERNAL_SERVER_ERROR,
+                "message": str(e)
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+# API FOR STAFF dashboard**************
+    # def get(self, request, *args, **kwargs):
+    #     try:
+    #         # Get the staff user's account_id from query params
+    #         account_id = kwargs.get('id')
+    #         # print("idddddddddd",account_id)
+    #         # Fetch the staff user based on account_id
+    #         staff_user = Staff.objects.get(account_id=account_id)
+            
+    #         # Retrieve the organization associated with the staff user
+    #         organization = staff_user.organization_id
+            
+    #         # Filter news based on the organization
+    #         news_list = News.objects.filter(organization_id=organization)
+            
+    #         # Serialize data
+    #         serialized_data = NewsSerializer(news_list, many=True).data
+            
+    #         return Response({"status": status.HTTP_200_OK, "data": serialized_data})
+        
+    #     except Staff.DoesNotExist:
+    #         return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "Invalid account_id."})
+        
+    #     except News.DoesNotExist:
+    #         return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "No News records found."})
 
-        except News.DoesNotExist:
-            return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "No Record Exist."})
-
+    #  API for Staff and PArticipant Dashboard ***********************  
+    
+#******** fOR only pARTICIPANT dashboard
+# class NewsListViewParticipant(APIView):
+#     permission_classes = (AllowAny,)  
+#     def get(self, request, *args, **kwargs):
+#         try:
+#             # Get the staff user's account_id from query params
+#             account_id = kwargs.get('id')
+#             # print("idddddddddd",account_id)
+#             # Fetch the staff user based on account_id
+#             participant = Lab.objects.get(account_id=account_id)
+            
+#             # Retrieve the organization associated with the staff user
+#             organization = participant.organization_id
+            
+#             # Filter news based on the organization
+#             news_list = News.objects.filter(organization_id=organization)
+            
+#             # Serialize data
+#             serialized_data = NewsSerializer(news_list, many=True).data
+            
+#             return Response({"status": status.HTTP_200_OK, "data": serialized_data})
+        
+#         except Lab.DoesNotExist:
+#             return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "Invalid account_id."})
+        
+#         except News.DoesNotExist:
+#             return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "No News records found."})  
+        
+class NewsAddAPIView(APIView):
+    permission_classes = (AllowAny,)    
     def post(self, request, *args, **kwargs):
         serializer = NewsSerializer(data=request.data)
         if serializer.is_valid():
             try:
-                user_id = request.data.get('added_by')
-                user_account = UserAccount.objects.get(id=user_id)
+                # Fetch the staff user based on account_id
+                account_id1 = request.data.get('added_by')  # Use 'added_by' from request data
+                print("idddddddddddddddddddd",account_id1)
+                staff_user = Staff.objects.get(account_id=account_id1)
+            # Retrieve the organization associated with the staff user
+                organization = staff_user.organization_id
+                # print("orgID/Name", organization)
+                user_account = UserAccount.objects.get(id=account_id1)
+                date_of_addition = timezone.now()
+                # news = serializer.save(added_by=user_account)
+                news = serializer.save(
+                    added_by=user_account,
+                    organization_id=organization,
+                    date_of_addition=date_of_addition
+                )
+                # Serialize the organization object or get its specific attributes
+                # organization_data = {
+                #     'id': organization.id,
+                #     'name': organization.name,
+                #     # Add other fields as needed
+                # }
                 
-                news = serializer.save(added_by=user_account)
-
                 news_data = {
-                    'id': news.id,
+                    # 'organization_id': organization_data,
+                    # 'added_by':account_id1,
+                    # 'id': news.id,
                     'title': news.title,
-                    'date_of_addition': news.date_of_addition,
+                    'date_of_addition': date_of_addition,
                     'description': news.description,
                     'picture': news.picture.url if news.picture else None,
                     # Add other fields as needed
                 }
-
+                print("username",user_account)
+                print("org",organization)
                 return Response({"status": status.HTTP_201_CREATED, "data": news_data})
 
             except UserAccount.DoesNotExist:

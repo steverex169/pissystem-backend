@@ -154,8 +154,8 @@ class StaffProfileView(APIView):
     
 
             staff_detail.update(serializer_class.data)
-            staff_detail['completed_audits'] = completed_audits
-            staff_detail['inprocess_audits'] = inprocess_audits  
+            # staff_detail['completed_audits'] = completed_audits
+            # staff_detail['inprocess_audits'] = inprocess_audits  
             return Response({"status": status.HTTP_200_OK, "data": staff_detail})
         except Staff.DoesNotExist:
             return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "Sorry! record doesn't exist."})

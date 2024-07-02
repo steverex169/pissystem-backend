@@ -64,7 +64,10 @@ class RegisterView(CreateAPIView):
             if request.data['account_type'] == "labowner":
                 user.email = request.data['email']
                 user.save()
-                organization = Organization.objects.get(account_id = request.data['added_by'])
+                # organization = Organization.objects.get(account_id = request.data['added_by'])
+                staff = Staff.objects.get(account_id = request.data['added_by'])
+                # Retrieve the organization associated with the staff user
+                organization = staff.organization_id
                 # print("emaillllll", request.data['email'], request.data['added_by'], organization)
                 Lab.objects.create(
                     
@@ -74,7 +77,9 @@ class RegisterView(CreateAPIView):
                     city=request.data['city'],
                     name=request.data['name'],
                     department=request.data['department'],
+                    # organization_id = organization,
                     organization_id = organization,
+                    staff_id = staff,
                     country=request.data['country'],
                     # address=request.data['address'],
                     district=request.data['district'],

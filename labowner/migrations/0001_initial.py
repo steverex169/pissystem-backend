@@ -19,6 +19,28 @@ class Migration(migrations.Migration):
 
     operations = [
         migrations.CreateModel(
+            name='ActivityLog',
+            fields=[
+                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
+                ('field_name', models.CharField(max_length=255, null=True)),
+                ('old_value', models.TextField(null=True)),
+                ('new_value', models.TextField(null=True)),
+                ('old_discount_by_lab', models.TextField(null=True)),
+                ('new_discount_by_lab', models.TextField(null=True)),
+                ('start_date_by_lab', models.DateTimeField(blank=True, max_length=255, null=True)),
+                ('end_date_by_lab', models.DateTimeField(blank=True, default=datetime.datetime.now, max_length=255, null=True)),
+                ('old_discount_by_labhazir', models.TextField(null=True)),
+                ('new_discount_by_labhazir', models.TextField(null=True)),
+                ('start_date_by_labhazir', models.DateTimeField(blank=True, max_length=255, null=True)),
+                ('end_date_by_labhazir', models.DateTimeField(blank=True, default=datetime.datetime.now, max_length=255, null=True)),
+                ('actions', models.CharField(choices=[('Updated', 'Updated'), ('Added', 'Added'), ('Deleted', 'Deleted')], default='Updated', max_length=50, verbose_name='Which action is performed?')),
+                ('created_at', models.DateTimeField(auto_now_add=True)),
+            ],
+            options={
+                'verbose_name': 'Activity Log',
+            },
+        ),
+        migrations.CreateModel(
             name='Lab',
             fields=[
                 ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
@@ -56,9 +78,6 @@ class Migration(migrations.Migration):
                 ('district', models.CharField(blank=True, max_length=255, null=True)),
                 ('landline_registered_by', models.CharField(help_text='Please use the format: +922134552799', max_length=20, null=True)),
                 ('account_id', models.OneToOneField(null=True, on_delete=django.db.models.deletion.CASCADE, to=settings.AUTH_USER_MODEL)),
-                ('done_by', models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.CASCADE, to='staff.staff', verbose_name='Approved/Unapproved by')),
-                ('marketer_id', models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.CASCADE, to='staff.marketer', verbose_name='Marketer')),
-                ('organization_id', models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.CASCADE, to='organization.organization')),
             ],
             options={
                 'verbose_name': 'Lab',
@@ -181,29 +200,5 @@ class Migration(migrations.Migration):
                 ('allow_all', models.CharField(choices=[('Yes', 'Yes'), ('No', 'No')], default='No', max_length=50, null=True)),
                 ('lab_id', models.ForeignKey(null=True, on_delete=django.db.models.deletion.CASCADE, to='labowner.lab', verbose_name='Lab name')),
             ],
-        ),
-        migrations.CreateModel(
-            name='ActivityLog',
-            fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('field_name', models.CharField(max_length=255, null=True)),
-                ('old_value', models.TextField(null=True)),
-                ('new_value', models.TextField(null=True)),
-                ('old_discount_by_lab', models.TextField(null=True)),
-                ('new_discount_by_lab', models.TextField(null=True)),
-                ('start_date_by_lab', models.DateTimeField(blank=True, max_length=255, null=True)),
-                ('end_date_by_lab', models.DateTimeField(blank=True, default=datetime.datetime.now, max_length=255, null=True)),
-                ('old_discount_by_labhazir', models.TextField(null=True)),
-                ('new_discount_by_labhazir', models.TextField(null=True)),
-                ('start_date_by_labhazir', models.DateTimeField(blank=True, max_length=255, null=True)),
-                ('end_date_by_labhazir', models.DateTimeField(blank=True, default=datetime.datetime.now, max_length=255, null=True)),
-                ('actions', models.CharField(choices=[('Updated', 'Updated'), ('Added', 'Added'), ('Deleted', 'Deleted')], default='Updated', max_length=50, verbose_name='Which action is performed?')),
-                ('created_at', models.DateTimeField(auto_now_add=True)),
-                ('offered_test_id', models.ForeignKey(null=True, on_delete=django.db.models.deletion.CASCADE, to='labowner.offeredtest', verbose_name='Lab')),
-                ('user', models.ForeignKey(null=True, on_delete=django.db.models.deletion.CASCADE, to=settings.AUTH_USER_MODEL, verbose_name='Lab name')),
-            ],
-            options={
-                'verbose_name': 'Activity Log',
-            },
         ),
     ]
