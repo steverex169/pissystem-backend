@@ -1,7 +1,51 @@
 from django.urls import path
 from databaseadmin.views import NewsListView, InstrumentsAPIView, InstrumentsUpdateAPIView, InstrumentTypeView,AnalyteUpdateAPIView, AnalyteAPIView, MethodsAPIView, MethodsUpdateAPIView, SchemeAPIView, SchemeUpdateAPIView, SchemeDeleteAPIView, CycleAPIView, CyclePostAPIView, CycleUpdateAPIView, CycleDeleteAPIView, UpdateInstrumentTypeView, UnitsAPIView, UnitsListAPIView, UnitsUpdateAPIView, ActivityLogDatabaseadmin, ReagentsListAPIView, ReagentsPostAPIView, ReagentsPutAPIView ,ManufacturalListAPIView, ManufacturalPostAPIView, ManufacturalPutAPIView, SampleListView, SamplePostView, CycleAnalyteAPIView, CycleAddAnalyteAPIView, CycleUpdateAnalyteAPIView, AnalyteUpdateUnitsAPIView,AnalytesUnitsAPIView,AnalyteAddUnitsAPIView,AnalyteUpdateMethodsAPIView, AnalyteAddMethodsAPIView,AnalytesMethodsAPIView,AnalyteUpdateEquipmentsAPIView,AnalytesEquipmentsAPIView,AnalyteAddEquipmentsAPIView,AnalyteUpdateReagentsAPIView,AnalyteAddReagentsAPIView,AnalytesReagentsAPIView,AnalyteAddReagents,AnalytesListAPIView,MethodsPostAPIView, InstrumentsPostAPIView, InstrumentTypeCreateView,NewsListView,NewsAddAPIView
+from databaseadmin.views import AnalytesByUnitAPIView,ParticipantSectorUpdateAPIView,ParticipantSectorCreateAPIView,ParticipantSectorListAPIView,ParticipantTypeUpdateAPIView,ParticipantTypeCreateAPIView,ParticipantTypeListAPIView,DesignationListAPIView,DesignationCreateAPIView,DesignationUpdateAPIView,DepartmentListAPIView,DepartmentCreateAPIView,DepartmentUpdateAPIView,DistrictListAPIView,DistrictCreateAPIView,DistrictUpdateAPIView,CityListAPIView,CityCreateAPIView,CityUpdateAPIView,AnalyteUpdateUnitsAPIView,AnalytesUnitsAPIView,AnalyteAddUnitsAPIView,AnalyteUpdateMethodsAPIView, AnalyteAddMethodsAPIView,AnalytesMethodsAPIView,AnalyteUpdateEquipmentsAPIView,AnalytesEquipmentsAPIView,AnalyteAddEquipmentsAPIView,AnalyteUpdateReagentsAPIView,AnalyteAddReagentsAPIView,AnalytesReagentsAPIView,AnalyteAddReagents,AnalytesListAPIView,MethodsPostAPIView,InstrumentsPostAPIView,InstrumentTypeCreateView,UnitsListAPIView,NewsListView,InstrumentsAPIView, InstrumentsUpdateAPIView, InstrumentTypeView,AnalyteUpdateAPIView, AnalyteAPIView, MethodsAPIView, UpdateInstrumentTypeView,  MethodsUpdateAPIView, UnitsAPIView, UnitsUpdateAPIView, ActivityLogDatabaseadmin, ReagentsListAPIView, ReagentsPostAPIView, ReagentsPutAPIView ,ManufacturalListAPIView, ManufacturalPostAPIView, ManufacturalPutAPIView
 
 urlpatterns = [
+    #Participant 
+    path('participanttype_list/<id>',
+         ParticipantTypeListAPIView.as_view(), name='participanttype_list'),
+    path('participanttype_create',
+         ParticipantTypeCreateAPIView.as_view(), name='participanttype_create'),
+    path('participanttype_update/<id>',
+        ParticipantTypeUpdateAPIView.as_view(), name='participanttype_update'),
+
+    path('participantsector_list/<id>',
+         ParticipantSectorListAPIView.as_view(), name='participantsector_list'),
+    path('participantsector_create',
+         ParticipantSectorCreateAPIView.as_view(), name='participantsector_create'),
+    path('participantsector_update/<id>',
+        ParticipantSectorUpdateAPIView.as_view(), name='participantsector_update'),
+
+    path('city_list/<id>',
+         CityListAPIView.as_view(), name='city_list'),
+    path('city_create',
+         CityCreateAPIView.as_view(), name='city_create'),
+    path('city_update/<id>',
+        CityUpdateAPIView.as_view(), name='city_update'),
+
+    path('district_list/<id>',
+         DistrictListAPIView.as_view(), name='district_list'),
+    path('district_create',
+         DistrictCreateAPIView.as_view(), name='district_create'),
+    path('district_update/<id>',
+        DistrictUpdateAPIView.as_view(), name='district_update'),
+
+    path('department_list/<id>',
+         DepartmentListAPIView.as_view(), name='department_list'),
+    path('department_create',
+         DepartmentCreateAPIView.as_view(), name='department_create'),
+    path('department_update/<id>',
+        DepartmentUpdateAPIView.as_view(), name='department_update'),
+
+    path('designation_list/<id>',
+         DesignationListAPIView.as_view(), name='designation_list'),
+    path('designation_create',
+         DesignationCreateAPIView.as_view(), name='designation_create'),
+    path('designation_update/<id>',
+        DesignationUpdateAPIView.as_view(), name='designation_update'),
+    
     path('units_update/<id>', UnitsUpdateAPIView.as_view(), name='units_update'),
     path('units_create', UnitsAPIView.as_view(), name='units_create'),
     path('units_list/<id>', UnitsListAPIView.as_view(), name='units_list'),
@@ -100,4 +144,7 @@ urlpatterns = [
         CycleAddAnalyteAPIView.as_view(), name='cycle-add-analyte'),
     path('cycle-update-analyte/<id>',
          CycleUpdateAnalyteAPIView.as_view(), name='cycle-update-analyte'),
+     #Analytes assocaited with unit
+     path('analyte-units/<id>',
+         AnalytesByUnitAPIView.as_view(), name='analyte-units'),    
 ]
