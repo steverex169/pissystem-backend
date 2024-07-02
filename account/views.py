@@ -25,6 +25,8 @@ import datetime
 from django.contrib.auth.models import update_last_login
 from staff.models import Staff
 from organization.models import Organization
+from django.utils import timezone
+from labowner.models import Lab
 # Redirect to admin
 
 
@@ -54,10 +56,44 @@ class RegisterView(CreateAPIView):
 
             user_data = serializer.data
             user = UserAccount.objects.get(username=request.data['username'])
+            
 
             # Update password_foradmins
             UserAccount.objects.filter(username=request.data['username']).update(password_foradmins=request.data['password'])
+            # Participant registration
+            if request.data['account_type'] == "labowner":
+                user.email = request.data['email']
+                user.save()
+                organization = Organization.objects.get(account_id = request.data['added_by'])
+                # print("emaillllll", request.data['email'], request.data['added_by'], organization)
+                Lab.objects.create(
+                    
+                    account_id=user,
+                    # organization_id=request.data['added_by'],
+                    user_name=request.data['username'],
+                    city=request.data['city'],
+                    name=request.data['name'],
+                    department=request.data['department'],
+                    organization_id = organization,
+                    country=request.data['country'],
+                    # address=request.data['address'],
+                    district=request.data['district'],
+                    Select_schemes=request.data['Select_schemes'],
+                    organization = request.data['organization'],
+                    state = request.data['state'],
+                    billing_address = request.data['billing_address'],
+                    shipping_address = request.data['shipping_address'],
+                    email=request.data['email'],   
+                    email_participant=request.data['email_participant'],
+                    lab_staff_name=request.data['lab_staff_name'],
+                    lab_staff_designation=request.data['lab_staff_designation'],
+                    landline_registered_by=request.data['landline_registered_by'],
+                    website=request.data['website'],
+                   
+                )
             
+            
+           
             # Additional logic for creating Organization instance
             if request.data['account_type'] == "organization":
                 user.email = request.data['email']
@@ -67,7 +103,6 @@ class RegisterView(CreateAPIView):
                     account_id=user,
                     name=request.data['name'],
                     user_name=request.data['username'],
-                    email=request.data['email'],
                     website=request.data['website'],
                     country=request.data['country'],
                     registered_at=datetime.datetime.now()
@@ -159,78 +194,12 @@ class LoginView(APIView):
                         elif lab.status == "Pending":
                             return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "Your lab is pending for approval. Please contact admins for further details."})
                         elif lab.status == "Unapproved":
-                            return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "Your lab account is not approved by Lab Hazir. Please contact our customer care for further details."})
+                            return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "Your lab account is not approved by NHS NEQAS. Please contact our customer care for further details."})
                     except:
                         UserAccount.objects.get(id=user_account.id).delete()
                         return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "Sorry! Your registration was not completed properly. Please register again."})
 
-                # if user_account.account_type == "patient":
-                #     try:
-                #         patient = Patient.objects.get(account_id=user_account.id)
-                #         data['patient_name'] = patient.name
-                #         data['employee_id_card'] = patient.employee_id_card
-                #         data['is_associate_with_any_corporate'] = patient.is_assosiatewith_anycorporate
-                        
-                #         if data['employee_id_card']:
-                #                 employee_data = EmployeeData.objects.get(employee_code=patient.employee_id_card)
-                #                 print("employee data exists:", employee_data)
-                #                 if employee_data and employee_data.status == "Inactive":
-                #                     return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "Your account is inactive by the Corporation."})
-
-                #         if 'guest_id' in request.data and request.data['guest_id'] != "undefined":
-                #             try:
-                #                 cart = Cart.objects.filter(guest_id=request.data['guest_id']).update(patient_id=patient.id)
-                #             except Cart.DoesNotExist:
-                #                 return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "Sorry! No Cart against this guest id"})
-                #     except Patient.DoesNotExist:
-                #         return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "Patient data not found."})
-
-                # if user_account.account_type == "b2bclient":
-                #     b2b_client = B2BClient.objects.get(
-                #         account_id=user_account.id)
-                #     try:
-                #         b2b_client = B2BClient.objects.get(
-                #             account_id=user_account.id)
-
-                #         if b2b_client.is_blocked == "Yes":
-                #             return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "Your b2b account is blocked by the admins. Please contact them for further details."})
-                #         elif b2b_client.status == "Pending":
-                #             return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "Your b2b account is pending for approval. Please contact admins for further details."})
-                #         elif b2b_client.status == "Unapproved":
-                #             return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "Your b2b account is not approved by Lab Hazir. Please contact our customer care for further details."})
-                #     except:
-                #         UserAccount.objects.get(id=user_account.id).delete()
-                #         return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "Sorry! Your registration was not completed properly. Please register again."})
-
-                # Registration of Sample Collector
-                # if user_account.account_type == "samplecollector":
-                #     try:
-                #         sample_collector = SampleCollector.objects.get(
-                #             account_id=user_account.id)
-                #         data['sample_collector_name'] = sample_collector.name
-                #     except:
-                #         UserAccount.objects.get(id=user_account.id).delete()
-                #         return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "Sorry! Your registration was not completed properly. Please register again."})
-
-                # if user_account.account_type == "donor":
-                #     try:
-                #         donor = Donor.objects.get(
-                #             account_id=user_account.id)
-                #         if donor.is_blocked == "Yes":
-                #             return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "Your account is blocked by the admins. Please contact them for further details."})
-                #     except:
-                #         UserAccount.objects.get(id=user_account.id).delete()
-                #         return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "Sorry! Your registration was not completed properly. Please register again."})
-
-                # if user_account.account_type == "marketer-admin":
-                #     try:
-                #         marketeradmin = Advertisement.objects.get(
-                #             account_id=user_account.id)
-                #         if marketeradmin.is_blocked == "Yes":
-                #             return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "Your account is blocked by the admins. Please contact them for further details."})
-                #     except:
-                #         UserAccount.objects.get(id=user_account.id).delete()
-                #         return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "Sorry! Your registration was not completed properly. Please register again."})
+            
         except:
             return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "Sorry! No account found. Please provide correct Username or Register First."})
 

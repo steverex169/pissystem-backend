@@ -25,7 +25,6 @@ from django.utils import timezone
 # from weasyprint import HTML
 from helpers.mail import mail_send
 from django.utils import timezone
-import pytz
 
 class AccountStatementsPdfView(APIView):
     def get(self, request):

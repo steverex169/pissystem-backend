@@ -30,6 +30,7 @@ class Units(models.Model):
     organization_id = models.ForeignKey(
         Organization, on_delete=models.CASCADE, null=True, blank=True)
     name = models.CharField(max_length=255, blank=False, null=True)
+    formula = models.CharField(max_length=255, blank=False, null=True)
     date_of_addition = models.DateTimeField(blank=True, null=True)  # Changed to DateTimeField
 
     def __str__(self):
@@ -42,9 +43,9 @@ class Manufactural(models.Model):
     organization_id = models.ForeignKey(
         Organization, on_delete=models.CASCADE, null=True, blank=True)
     name = models.CharField(max_length=255, blank=False, null=True)
-    address = models.CharField(max_length=255, blank=False, null=True)
+    address = models.CharField(max_length=255, blank=True, null=True)
     country = models.CharField(max_length=255, blank=False, null=True)
-    telephone = models.CharField(max_length=255, blank=False, null=True)
+    telephone = models.CharField(max_length=255, blank=True, null=True)
     city =models.CharField(max_length=255, blank=False, null=True)
     date_of_addition = models.DateTimeField(blank=True, null=True) 
     def __str__(self):
@@ -67,23 +68,19 @@ class Method(models.Model):
     class Meta:       
         verbose_name = 'Method'
 
+# class Analyte(models.Model):
+#     organization_id = models.ForeignKey(
+#         Organization, on_delete=models.CASCADE, null=True, blank=True)
+#     name = models.CharField(max_length=255, blank=True, null=True)
+#     code = models.PositiveBigIntegerField(blank=True, null=True)
+#     date_of_addition = models.DateTimeField(blank=True, null=True) 
+#     status = models.CharField(
+#         max_length=50, choices=STATUS, default='Inactive', blank=True)
+#     def __str__(self):
+#         return self.name
 
-
-class Analyte(models.Model):
-    organization_id = models.ForeignKey(
-        Organization, on_delete=models.CASCADE, null=True, blank=True)
-    name = models.CharField(max_length=255, blank=True, null=True)
-    added_by= models.ForeignKey(
-        UserAccount, on_delete=models.CASCADE, null=True, blank=True) 
-    code = models.PositiveBigIntegerField(blank=True, null=True)
-    date_of_addition = models.DateTimeField(blank=True, null=True) 
-    status = models.CharField(
-        max_length=50, choices=STATUS, default='Inactive', blank=True)
-    def __str__(self):
-        return self.name
-
-    class Meta:       
-        verbose_name = 'Analyte'
+#     class Meta:       
+#         verbose_name = 'Analyte'
 
 class Reagents(models.Model):
     organization_id = models.ForeignKey(
@@ -130,6 +127,41 @@ class Instrument(models.Model):
 
     class Meta:
         verbose_name = 'Instrument'
+        
+class Analyte(models.Model):
+    organization_id = models.ForeignKey(
+        Organization, on_delete=models.CASCADE, null=True, blank=True)
+    name = models.CharField(max_length=255, blank=True, null=True)
+    code = models.PositiveBigIntegerField(blank=True, null=True)
+    date_of_addition = models.DateTimeField(blank=True, null=True)
+    methods = models.ManyToManyField(Method, blank=True)
+    instruments = models.ManyToManyField(Instrument, blank=True)
+    reagents = models.ManyToManyField(Reagents, blank=True)
+    units = models.ManyToManyField(Units, blank=True)
+    status = models.CharField(
+        max_length=50, choices=STATUS, default='Inactive', blank=True)
+    master_unit = models.ForeignKey(
+        Units, on_delete=models.SET_NULL, related_name="master_unit", null=True, blank=True)
+    
+    @property
+    def noofreagents(self):
+        return self.reagents.count()
+    
+    @property
+    def master_unit_name(self):
+        return self.master_unit.name if self.master_unit else None
+
+    def noofmethods(self):
+        return self.methods.count()
+
+    def noofinstruments(self):
+        return self.instruments.count()
+
+    def __str__(self):
+        return self.name
+
+    class Meta:
+        verbose_name = 'Analyte'
 
 class Scheme(models.Model):
     organization_id = models.ForeignKey(
@@ -167,7 +199,7 @@ class Cycle(models.Model):
         return self.analytes.count()
 
     def __str__(self):
-        return self.name
+        return self.status
 
     class Meta:       
         verbose_name = 'Cycle'

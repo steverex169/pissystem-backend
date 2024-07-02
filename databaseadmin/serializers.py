@@ -51,6 +51,11 @@ class CycleSerializer(serializers.ModelSerializer):
         return obj.noofanalytes  
 
 class AnalyteSerializer(serializers.ModelSerializer):
+    noofreagents = serializers.IntegerField(read_only=True) 
+    noofmethods = serializers.IntegerField(read_only=True) 
+    noofinstruments = serializers.IntegerField(read_only=True) 
+    master_unit_name = serializers.CharField(read_only=True)
+
     class Meta:
         model = Analyte
         fields = ('__all__') 

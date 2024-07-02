@@ -197,17 +197,21 @@ class Lab(models.Model):
     lab_experience = models.PositiveIntegerField(
         blank=True, null=True, verbose_name='Lab Experience (Years)')
     email = models.EmailField(max_length=70, blank=False,  null=True)
+    email_participant = models.EmailField(max_length=70, blank=False,  null=True)
     phone = models.CharField(max_length=255, blank=True, null=True,
                              verbose_name='Phone', help_text="Please use the format: +923123456789")
     landline = models.CharField(
-        max_length=13, blank=False, null=True, help_text="Please use the format: +922134552799")
+        max_length=20, blank=False, null=True, help_text="Please use the format: +922134552799")
     fax = models.CharField(
-        max_length=13, blank=False, null=True, help_text="Please use the format: + (Country Code) (City Code without the leading zero) (fax number)")
+        max_length=20, blank=False, null=True, help_text="Please use the format: + (Country Code) (City Code without the leading zero) (fax number)")
     address = models.CharField(max_length=255, blank=False, null=True, verbose_name='Address',
                                help_text='Please enter your address to automatically locate it on map.')
+    billing_address = models.CharField(max_length=255, blank=True, null=True)
+    shipping_address = models.CharField(max_length=255, blank=True, null=True)
     department = models.CharField(max_length=255, blank=True, null=True)
     city = models.CharField(max_length=255, blank=True, null=True)
     country = models.CharField(max_length=255, blank=True, null=True)
+    state = models.CharField(max_length=255, blank=True, null=True)
     registered_at = models.DateTimeField(null=True, blank=False)
     registered_by = models.CharField(
         max_length=50, choices=REGISTERED_BY, default='Lab')
@@ -225,8 +229,7 @@ class Lab(models.Model):
         max_length=255, blank=True, null=True, verbose_name="Approved/Unapproved at")
     postalcode = models.CharField(
         max_length=255, null=True, blank=True)
-    organization = models.CharField(
-        max_length=255, null=True, blank=True)
+    organization = models.CharField(max_length=255, null=True, blank=True, verbose_name="organization name")
    
     is_active = models.CharField(max_length=50, choices=OPTIONS, default='Yes',
                                  null=True, verbose_name='Is lab active for the services?')
@@ -238,6 +241,10 @@ class Lab(models.Model):
     is_approved = models.BooleanField(default=0, blank=False, null=True)
     Select_schemes = models.CharField(
         max_length=255, null=True, blank=True)
+    website = models.URLField(max_length=200, blank=True, null=True, verbose_name='Website')
+    district = models.CharField(max_length=255, blank=True, null=True)
+    landline_registered_by = models.CharField(
+        max_length=20, blank=False, null=True, help_text="Please use the format: +922134552799")
     def __str__(self):
         return self.name
 

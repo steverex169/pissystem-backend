@@ -27,9 +27,6 @@ STATUS = (
 
 # )
 
-
-
-
 class Round(models.Model):
     account_id = models.OneToOneField(
         UserAccount, on_delete=models.CASCADE, primary_key=False, null=True, blank=True)
