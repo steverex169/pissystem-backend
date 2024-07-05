@@ -77,7 +77,7 @@ class CycleSerializer(serializers.ModelSerializer):
         )
 
     def get_noofanalytes(self, obj):
-        return obj.noofanalytes  
+        return obj.noofanalytes   
 
 class AnalyteSerializer(serializers.ModelSerializer):
     noofreagents = serializers.IntegerField(read_only=True) 

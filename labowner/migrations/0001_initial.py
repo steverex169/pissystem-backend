@@ -81,23 +81,6 @@ class Migration(migrations.Migration):
             },
         ),
         migrations.CreateModel(
-            name='Result',
-            fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('result', models.CharField(blank=True, max_length=255, null=True)),
-                ('analyte', models.ForeignKey(null=True, on_delete=django.db.models.deletion.CASCADE, to='databaseadmin.analyte', verbose_name='Analyte')),
-                ('instrument', models.ForeignKey(null=True, on_delete=django.db.models.deletion.CASCADE, to='databaseadmin.instrument', verbose_name='Instrument')),
-                ('lab_id', models.ForeignKey(null=True, on_delete=django.db.models.deletion.CASCADE, to='labowner.lab', verbose_name='Lab')),
-                ('method', models.ForeignKey(null=True, on_delete=django.db.models.deletion.CASCADE, to='databaseadmin.method', verbose_name='Method')),
-                ('organization_id', models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.CASCADE, to='organization.organization')),
-                ('reagents', models.ForeignKey(null=True, on_delete=django.db.models.deletion.CASCADE, to='databaseadmin.reagents', verbose_name='Reagents')),
-                ('units', models.ForeignKey(null=True, on_delete=django.db.models.deletion.CASCADE, to='databaseadmin.units', verbose_name='Units')),
-            ],
-            options={
-                'verbose_name': 'Result',
-            },
-        ),
-        migrations.CreateModel(
             name='Pathologist',
             fields=[
                 ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),

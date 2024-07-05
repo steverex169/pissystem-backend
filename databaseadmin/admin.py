@@ -1,5 +1,5 @@
 from django.contrib import admin
-from databaseadmin.models import City,District,Department,Designation,ParticipantType,ParticipantSector,Cycle,News,Instrument, Method, Scheme, Sample, InstrumentType,ActivityLogUnits, Units, Reagents, Manufactural, Analyte
+from databaseadmin.models import City,District,Department,Designation,ParticipantType,ParticipantSector, Cycle, News,Instrument, Method, Scheme, Sample, InstrumentType,ActivityLogUnits, Units, Reagents, Manufactural, Analyte
 
 # Register your models here.
 

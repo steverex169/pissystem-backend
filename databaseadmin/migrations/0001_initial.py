@@ -217,24 +217,6 @@ class Migration(migrations.Migration):
             },
         ),
         migrations.CreateModel(
-            name='Cycle',
-            fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('cycle_no', models.CharField(blank=True, max_length=255, null=True)),
-                ('rounds', models.PositiveBigIntegerField(blank=True, null=True)),
-                ('cycle', models.CharField(blank=True, choices=[('Months', 'Months'), ('Year', 'Year')], default='Months', max_length=50)),
-                ('start_date', models.DateTimeField(blank=True, null=True)),
-                ('end_date', models.DateTimeField(blank=True, null=True)),
-                ('status', models.CharField(blank=True, choices=[('Active', 'Active'), ('Inactive', 'Inactive')], default='Inactive', max_length=50)),
-                ('analytes', models.ManyToManyField(blank=True, to='databaseadmin.Analyte')),
-                ('organization_id', models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.CASCADE, to='organization.organization')),
-                ('scheme_name', models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.CASCADE, to='databaseadmin.scheme')),
-            ],
-            options={
-                'verbose_name': 'Cycle',
-            },
-        ),
-        migrations.CreateModel(
             name='City',
             fields=[
                 ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
@@ -293,7 +275,6 @@ class Migration(migrations.Migration):
                 ('type', models.CharField(choices=[('Units', 'Units'), ('Instruments', 'Instruments'), ('Reagent', 'Reagent'), ('Method', 'Method'), ('Manufactural', 'Manufactural'), ('Analyte', 'Analyte'), ('Instrumentlist', 'Instrumentlist'), ('City', 'City'), ('District', 'District'), ('Department', 'Department'), ('Designation', 'Designation'), ('ParticipantType', 'ParticipantType'), ('ParticipantSector', 'ParticipantSector')], default='Units', max_length=50, verbose_name='Form type?')),
                 ('analyte_id', models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.CASCADE, to='databaseadmin.analyte')),
                 ('city_id', models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.CASCADE, to='databaseadmin.city')),
-                ('cycle_id', models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.CASCADE, to='databaseadmin.cycle')),
                 ('department_id', models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.CASCADE, to='databaseadmin.department')),
                 ('district_id', models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.CASCADE, to='databaseadmin.district')),
                 ('instrument_id', models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.CASCADE, to='databaseadmin.instrument')),

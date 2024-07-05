@@ -265,6 +265,15 @@ class Cycle(models.Model):
     def noofanalytes(self):
         return self.analytes.count()
 
+    def save(self, *args, **kwargs):
+        # Skip status update if the instance is not yet saved (no ID)
+        if self.pk is not None:
+            if self.noofanalytes > 0:
+                self.status = 'Active'
+            else:
+                self.status = 'Inactive'
+        super(Cycle, self).save(*args, **kwargs)
+
     def __str__(self):
         return self.status
 

@@ -94,7 +94,7 @@ urlpatterns = [
     path('update-cycle-list/<id>',
         CycleUpdateAPIView.as_view(), name='update-cycle-list/<id>'),  
     path('delete-cycle/<id>',
-        CycleDeleteAPIView.as_view(), name='delete-cycle/<id>'), 
+        CycleDeleteAPIView.as_view(), name='delete-cycle/<id>'),  
     path('sample-list/<id>',
          SampleListView.as_view(), name='sample-list'),
     path('post-sample',
