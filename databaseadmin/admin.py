@@ -1,5 +1,5 @@
 from django.contrib import admin
-from databaseadmin.models import City,District,Department,Designation,ParticipantType,ParticipantSector,News,Instrument, Method,InstrumentType,ActivityLogUnits, Units, Reagents, Manufactural, Analyte
+from databaseadmin.models import ParticipantProvince,ParticipantCountry,City,District,Department,Designation,ParticipantType,ParticipantSector,News,Instrument, Method,InstrumentType,ActivityLogUnits, Units, Reagents, Manufactural, Analyte
 
 # Register your models here.
 
@@ -63,6 +63,14 @@ class CityTypeAdmin(admin.ModelAdmin):
     list_display = ('id', 'name', 'date_of_addition', )
     search_fields = ('id', 'name','date_of_addition', )
 
+class CountryTypeAdmin(admin.ModelAdmin):
+    list_display = ('id', 'name', 'date_of_addition', )
+    search_fields = ('id', 'name','date_of_addition', )
+
+class ProvinceTypeAdmin(admin.ModelAdmin):
+    list_display = ('id', 'name', 'date_of_addition', )
+    search_fields = ('id', 'name','date_of_addition', )
+
 class DistrictTypeAdmin(admin.ModelAdmin):
     list_display = ('id', 'name', 'date_of_addition', )
     search_fields = ('id', 'name','date_of_addition', )
@@ -93,6 +101,8 @@ admin.site.register(ActivityLogUnits, ActivityLogUnitsAdmin)
 admin.site.register(Method, MethodAdmin)
 admin.site.register(Instrument, InstrumentAdmin)
 admin.site.register(City, CityTypeAdmin)
+admin.site.register(ParticipantCountry, CountryTypeAdmin)
+admin.site.register(ParticipantProvince, ProvinceTypeAdmin)
 admin.site.register(District, DistrictTypeAdmin)
 admin.site.register(Department, DepartmentTypeAdmin)
 admin.site.register(Designation, DesignationTypeAdmin)
