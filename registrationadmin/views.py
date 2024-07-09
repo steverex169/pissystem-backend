@@ -13,13 +13,12 @@ from registrationadmin.models import  ActivityLogUnits, Round
 from staff.models import Staff
 from labowner.models import Lab 
 from labowner.serializers import LabInformationSerializer
-
+from django.conf import settings
 from django.http import JsonResponse
 from django.db.models import Count
 from django.db.models import Q
 from account.models import UserAccount
 from organization.models import Organization
-import datetime
 from django.shortcuts import get_object_or_404
 from databaseadmin.models import Scheme 
 
@@ -104,6 +103,7 @@ class ApproveUnapproveLabView(APIView):
     parser_classes = (parsers.MultiPartParser, parsers.FormParser,)
 
     # Patch request to update data of the Lab for approval
+
     def put(self, request, *args, **kwargs):
         try:
             staff = Staff.objects.get(account_id=kwargs.get('id'))
@@ -123,49 +123,44 @@ class ApproveUnapproveLabView(APIView):
                 request.data['done_at'] = datetime.now()
                 request.data._mutable = False
 
-                serializer = LabInformationSerializer(
-                    lab, data=request.data, partial=True)
+                serializer = LabInformationSerializer(lab, data=request.data, partial=True)
 
                 if serializer.is_valid():
                     serializer.save()
 
-                    if request.data['is_approved'] == 'true':
-                        subject, from_email, to = 'Approval Notification', settings.EMAIL_HOST_USER, lab.email
+                    # if request.data['is_approved'] == 'true':
+                    #     subject, from_email, to = 'Approval Notification', settings.EMAIL_HOST_USER, lab.email
 
-                        data = {
-                            'lab_name': lab.name,
-                            'email': lab.email,
-                            'login_link': settings.LINK_OF_REACT_APP + "/login"
-                        }
+                    #     data = {
+                    #         'lab_name': lab.name,
+                    #         'email': lab.email,
+                    #         'login_link': settings.LINK_OF_REACT_APP + "/login"
+                    #     }
 
-                        send_mail(subject, "approval-mail.html",
-                                  from_email, to, data)
-                        audit_data = {}
-                        audit_data['lab_id'] = str(
-                            serializer.data['id'])
-                        audit_data['generated_at'] = str(
-                            serializer.data['done_at'])
-                    else:
-                        subject, from_email, to = 'Non-Approval Notification', settings.EMAIL_HOST_USER, lab.email
+                    #     send_mail(subject, "approval-mail.html", from_email, to, data)
+                    #     audit_data = {}
+                    #     audit_data['lab_id'] = str(serializer.data['id'])
+                    #     audit_data['generated_at'] = str(serializer.data['done_at'])
+                    # else:
+                    #     subject, from_email, to = 'Non-Approval Notification', settings.EMAIL_HOST_USER, lab.email
 
-                        data = {
-                            'lab_name': lab.name,
-                            'contact_email': "complaints@labhazir.com",
-                            'contact_number': "+923018540968"
-                        }
+                    #     data = {
+                    #         'lab_name': lab.name,
+                    #         'contact_email': "complaints@labhazir.com",
+                    #         'contact_number': "+923018540968"
+                    #     }
 
-                        send_mail(subject, "nonapproval-mail.html",
-                                  from_email, to, data)
+                    #     send_mail(subject, "nonapproval-mail.html", from_email, to, data)
 
                     return Response({"status": status.HTTP_200_OK, "data": serializer.data, "message": "Lab has been approved successfully."})
                 else:
                     return Response({"status": status.HTTP_400_BAD_REQUEST, "message": serializer._errors})
 
             except Lab.DoesNotExist:
-                return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "Sorry! No lab exist with this id."})
+                return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "Sorry! No lab exists with this id."})
 
         except Staff.DoesNotExist:
-            return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "Sorry! No staff exist with this id."})
+            return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "Sorry! No staff exists with this id."})
 
 
 # API for displaying list of approved labs

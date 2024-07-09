@@ -20,6 +20,82 @@ from account.models import UserAccount
 from organization.models import Organization
 from django.shortcuts import get_object_or_404
 import datetime
+import pandas as pd
+
+class InstrumentTypefileView(APIView):
+    permission_classes = (AllowAny,)
+
+    def post(self, request, *args, **kwargs):
+        account_id = kwargs.get('id')
+        
+        # Fetch the staff user based on account_id
+        try:
+            staff_user = Staff.objects.get(account_id=account_id)
+        except Staff.DoesNotExist:
+            return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "Staff user not found."})
+
+        # Retrieve the organization associated with the staff user
+        organization = staff_user.organization_id
+
+        if not organization:
+            return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "Organization not found for the staff user."})
+
+        # Case 1: Data provided in request
+        if request.FILES.get('excel_file'):  # Assuming the Excel file is uploaded with key 'excel_file'
+            excel_file = request.FILES['excel_file']
+            excel_data = self.extract_excel_data(excel_file)
+            if excel_data:
+                # Filter out duplicates based on employee_code
+                unique_data = self.remove_duplicate_name(excel_data)
+                if not unique_data:
+                    return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "No unique data found after filtering duplicates."})
+                
+                # Attempt to save each unique entry
+                saved_entries = []
+                for entry in unique_data:
+                    try:
+                        employee = InstrumentType.objects.get(name=entry['name'])
+                        # If employee with same name already exists, skip this entry
+                        continue
+                    except InstrumentType.DoesNotExist:
+                        entry['organization_id'] = organization.id  # Append the organization ID
+                        serializer = InstrumentTypeSerializer(data=entry)
+                        if serializer.is_valid():
+                            serializer.save()
+                            saved_entries.append(serializer.data)
+                        else:
+                            return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "Invalid data provided.", "errors": serializer.errors})
+                
+                return Response({"status": status.HTTP_200_OK, "message": "Data extracted and saved successfully.", "saved_entries": saved_entries})
+            else:
+                return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "Failed to extract data from Excel file."}) 
+        else:
+            return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "Excel file not provided."})
+
+    def extract_excel_data(self, excel_file):
+        try:
+            # Assuming the Excel file has headers 'name'
+            df = pd.read_excel(excel_file)
+            # Assuming all rows contain the data of interest
+            data = df[['name']]  # Extract relevant columns
+            # Convert data to a list of dictionaries
+            extracted_data = data.to_dict(orient='records')
+            return extracted_data
+        except Exception as e:
+            print("Error extracting Excel data:", e)
+            return None
+
+    def remove_duplicate_name(self, excel_data):
+        unique_instrumentType_name = set()
+        unique_data = []
+        for entry in excel_data:
+            name = entry.get('name')
+            if name not in unique_instrumentType_name:
+                unique_instrumentType_name.add(name)
+                unique_data.append(entry)
+        return unique_data
+
+
 
 class ParticipantSectorListAPIView(APIView):
 
@@ -1902,7 +1978,7 @@ class CycleUpdateAPIView(APIView):
 
             # Store old values before updating
             old_values = {field: getattr(cycle, field) for field in ["scheme_name", "cycle_no", "rounds", "cycle", "status", "start_date", "end_date" ]}
-            old_values = {field: getattr(scheme, field) for field in ["scheme_name", "cycle_no", "rounds", "cycle", "status"]}
+
             
             serializer = CycleSerializer(cycle, data=request.data, partial=True)
 
