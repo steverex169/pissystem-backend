@@ -16,8 +16,8 @@ class UnitsTypeAdmin(admin.ModelAdmin):
     search_fields = ('id', 'name', 'date_of_addition', )
 
 class ManufacturalAdmin(admin.ModelAdmin):
-    list_display = ('id', 'name', 'telephone', 'city', 'country', 'address', 'date_of_addition', )
-    search_fields = ('id', 'name','telephone', 'city', 'country', 'address',  'date_of_addition', )
+    list_display = ('id', 'name',  'website', 'country', 'date_of_addition' )
+    search_fields = ('id', 'name',  'website', 'country', 'date_of_addition')
 
 class MethodAdmin(admin.ModelAdmin):
     list_display = ('id', 'name', 'date_of_addition', 'code','status')
