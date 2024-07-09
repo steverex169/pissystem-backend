@@ -1,5 +1,6 @@
 from rest_framework import status
 from rest_framework.response import Response
+from django.core.exceptions import ObjectDoesNotExist
 from rest_framework.views import APIView
 
 from databaseadmin.models import ParticipantProvince,ParticipantCountry, ParticipantType,ParticipantSector,Department,Designation,District,City,News,Instrument, Units, ActivityLogUnits,Reagents , Manufactural, Method,InstrumentType, Analyte
@@ -1254,7 +1255,7 @@ class UnitsUpdateAPIView(APIView):
 
         except Exception as e:
             return Response({"status": status.HTTP_400_BAD_REQUEST, "message": str(e)})
-
+            
 class InstrumentsAPIView(APIView):
     permission_classes = (AllowAny,)
 
@@ -1275,30 +1276,41 @@ class InstrumentsAPIView(APIView):
             # Serialize data
             serialized_data = []
             for instrument in instruments_list:
-                analytes_count = instrument.analyte_set.count()  # Count analytes associated with the instrument
+                analytes = Analyte.objects.filter(instruments=instrument)
+                analytes_count = analytes.count()
+
+                # Retrieve the instrumenttype
+                instrument_type_name = None
+                if instrument.instrument_type:
+                    try:
+                        instrument_type = InstrumentType.objects.get(id=instrument.instrument_type.id)
+                        instrument_type_name = instrument_type.name  
+                    except InstrumentType.DoesNotExist:
+                        instrument_type_name = None
+
+                # Retrieve the manufacturer
+                manufactural_name = None
+                if instrument.manufactural:
+                    try:
+                        manufactural = Manufactural.objects.get(id=instrument.manufactural.id)
+                        manufactural_name = manufactural.name  
+                    except Manufactural.DoesNotExist:
+                        manufactural_name = None
+
+                # Retrieve the country
+                country_name = None
+                if instrument.country:
+                    try:
+                        country = ParticipantCountry.objects.get(id=instrument.country.id)
+                        country_name = country.name  # Assuming ParticipantCountry has a 'name' field
+                    except ParticipantCountry.DoesNotExist:
+                        country_name = None
+                
                 instrument_data = model_to_dict(instrument)
                 instrument_data['analytes_count'] = analytes_count
-
-                # Fetch name from InstrumentType table based on instrument_type
-                if instrument.instrument_type_id:  # Check if instrument_type_id is not None
-                    instrument_type = InstrumentType.objects.get(id=instrument.instrument_type_id)
-                    instrument_data['instrument_type'] = instrument_type.name
-                else:
-                    instrument_data['instrument_type'] = None
-
-                # Fetch name from Manufactural table based on manufactural_id
-                if instrument.manufactural_id:  # Check if manufactural_id is not None
-                    manufactural = Manufactural.objects.get(id=instrument.manufactural_id)
-                    instrument_data['manufactural'] = manufactural.name
-                else:
-                    instrument_data['manufactural'] = None
-
-                # Fetch name from country table based on manufactural_id
-                if instrument.country_id:  # Check if country_id is not None
-                    country = ParticipantCountry.objects.get(id=instrument.country_id)
-                    instrument_data['country'] = country.name
-                else:
-                    instrument_data['country'] = None
+                instrument_data['instrument_type'] = instrument_type_name
+                instrument_data['manufactural'] = manufactural_name
+                instrument_data['country'] = country_name
 
                 serialized_data.append(instrument_data)
 
@@ -1310,7 +1322,11 @@ class InstrumentsAPIView(APIView):
         except Instrument.DoesNotExist:
             return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "No Record Exist."})
 
-    # Post API for creating units
+        except Exception as e:
+            return Response({"status": status.HTTP_400_BAD_REQUEST, "message": str(e)})
+
+
+# Post API for creating units
 class InstrumentsPostAPIView(APIView):
     permission_classes = (AllowAny,)  # AllowAny temporarily for demonstration
 
@@ -1323,17 +1339,26 @@ class InstrumentsPostAPIView(APIView):
             # Retrieve the organization associated with the staff user
             organization = staff_user.organization_id
 
-            # Fetch the InstrumentType instance
-            instrument_type_id = request.data['instrument_type']
-            instrument_type = InstrumentType.objects.get(id=instrument_type_id, organization_id=organization)
+            # Fetch the instrument_type instance based on instrument_type name
+            instrument_type_name = request.data.get('instrument_type')
+            try:
+                instrument_type = InstrumentType.objects.get(name=instrument_type_name, organization_id=organization)
+            except InstrumentType.DoesNotExist:
+                return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "Invalid instrument_type name provided."})
 
-            # Fetch the manufactural instance
-            manufactural_id = request.data['manufactural']
-            manufactural = Manufactural.objects.get(id=manufactural_id, organization_id=organization)
+            # Fetch the manufactural instance based on manufacturer name
+            manufactural_name = request.data.get('manufactural')
+            try:
+                manufactural = Manufactural.objects.get(name=manufactural_name, organization_id=organization)
+            except Manufactural.DoesNotExist:
+                return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "Invalid manufactural name provided."})
 
-            # Fetch the country instance
-            country_id = request.data['country']
-            country = ParticipantCountry.objects.get(id=country_id, organization_id=organization)
+            # Fetch the country instance based on country name
+            country_name = request.data.get('country')
+            try:
+                country = ParticipantCountry.objects.get(name=country_name, organization_id=organization)
+            except ParticipantCountry.DoesNotExist:
+                return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "Invalid country name provided."})
 
             # Create a new instrument
             instrument = Instrument.objects.create(
@@ -1400,6 +1425,9 @@ class InstrumentsUpdateAPIView(APIView):
             # Retrieve the existing instrument object
             instrument = Instrument.objects.get(id=kwargs.get('id'), organization_id=organization)
 
+            # Create a mutable copy of request.data
+            data = request.data.copy()
+
             # Store old values before updating
             old_values = {
                 'name': instrument.name,
@@ -1410,8 +1438,36 @@ class InstrumentsUpdateAPIView(APIView):
                 'manufactural': instrument.manufactural.name if instrument.manufactural else None,
                 'country': instrument.country.name if instrument.country else None,
             }
-            
-            serializer = InstrumentSerializer(instrument, data=request.data, partial=True)
+
+            # Fetch the instrument_type instance based on instrument_type name
+            instrument_type_name = data.get('instrument_type')
+            if instrument_type_name:
+                try:
+                    instrument_type = InstrumentType.objects.get(name=instrument_type_name, organization_id=organization)
+                    data['instrument_type'] = instrument_type.id  # Replace the instrument_type name with its pk value
+                except InstrumentType.DoesNotExist:
+                    return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "Invalid instrument_type name provided."})
+
+            # Fetch the manufactural instance based on manufactural name
+            manufactural_name = data.get('manufactural')
+            if manufactural_name:
+                try:
+                    manufactural = Manufactural.objects.get(name=manufactural_name, organization_id=organization)
+                    data['manufactural'] = manufactural.id  # Replace the manufactural name with its pk value
+                except Manufactural.DoesNotExist:
+                    return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "Invalid manufactural name provided."})
+
+            # Fetch the country instance based on country name
+            country_name = data.get('country')
+            if country_name:
+                try:
+                    country = ParticipantCountry.objects.get(name=country_name, organization_id=organization)
+                    data['country'] = country.id  # Replace the country name with its pk value
+                except ParticipantCountry.DoesNotExist:
+                    return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "Invalid country name provided."})
+
+            # Pass the modified data dictionary to the serializer
+            serializer = InstrumentSerializer(instrument, data=data, partial=True)
 
             if serializer.is_valid():
                 updated_unit = serializer.save()
@@ -1462,6 +1518,7 @@ class InstrumentsUpdateAPIView(APIView):
             return Response({"status": status.HTTP_400_BAD_REQUEST, "message": str(e)})
 
             
+
 class ActivityLogDatabaseadmin(APIView):
     permission_classes = (AllowAny,)
 
@@ -1604,14 +1661,20 @@ class ReagentsPostAPIView(APIView):
             
             # Retrieve the organization associated with the staff user
             organization = staff_user.organization_id
-            
-            # Fetch the manufactural instance
-            manufactural_id = request.data['manufactural']
-            manufactural = Manufactural.objects.get(id=manufactural_id, organization_id=organization)
 
-            # Fetch the country instance
-            country_id = request.data['country']
-            country = ParticipantCountry.objects.get(id=country_id, organization_id=organization)
+            # Fetch the manufactural instance based on manufacturer name
+            manufactural_name = request.data.get('manufactural')
+            try:
+                manufactural = Manufactural.objects.get(name=manufactural_name, organization_id=organization)
+            except Manufactural.DoesNotExist:
+                return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "Invalid manufactural name provided."})
+
+            # Fetch the country instance based on country name
+            country_name = request.data.get('country')
+            try:
+                country = ParticipantCountry.objects.get(name=country_name, organization_id=organization)
+            except ParticipantCountry.DoesNotExist:
+                return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "Invalid country name provided."})
 
             # Create a new reagent
             reagent = Reagents.objects.create(
@@ -1674,6 +1737,9 @@ class ReagentsPutAPIView(APIView):
             
             # Retrieve the existing reagent object
             reagent = Reagents.objects.get(id=kwargs.get('id'), organization_id=organization)
+            
+            # Create a mutable copy of request.data
+            data = request.data.copy()
 
             # Store old values before updating
             old_values = {
@@ -1684,7 +1750,25 @@ class ReagentsPutAPIView(APIView):
                 'country': reagent.country.name if reagent.country else None,
             }
 
-            serializer = ReagentsSerializer(reagent, data=request.data, partial=True)
+            # Fetch the manufactural instance based on manufactural name
+            manufactural_name = data.get('manufactural')
+            if manufactural_name:
+                try:
+                    manufactural = Manufactural.objects.get(name=manufactural_name, organization_id=organization)
+                    data['manufactural'] = manufactural.id  # Replace the manufactural name with its pk value
+                except Manufactural.DoesNotExist:
+                    return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "Invalid manufactural name provided."})
+
+            # Fetch the country instance based on country name
+            country_name = data.get('country')
+            if country_name:
+                try:
+                    country = ParticipantCountry.objects.get(name=country_name, organization_id=organization)
+                    data['country'] = country.id  # Replace the country name with its pk value
+                except ParticipantCountry.DoesNotExist:
+                    return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "Invalid country name provided."})
+
+            serializer = ReagentsSerializer(reagent, data=data, partial=True)
 
             if serializer.is_valid():
                 updated_reagent = serializer.save()
@@ -1793,21 +1877,24 @@ class ManufacturalPostAPIView(APIView):
             # Retrieve the organization associated with the staff user
             organization = staff_user.organization_id
 
-            # Fetch the country instance
-            country_id = request.data['country']
-            country = ParticipantCountry.objects.get(id=country_id, organization_id=organization)
+            # Fetch the country instance based on country name
+            country_name = request.data.get('country')
+            try:
+                country = ParticipantCountry.objects.get(name=country_name, organization_id=organization)
+            except ParticipantCountry.DoesNotExist:
+                return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "Invalid country name provided."})
 
             # Create a new manufactural
             manufactural = Manufactural.objects.create(
                 organization_id=organization,
                 name=request.data['name'],
-                city=request.data['city'],
+                website=request.data['website'],
                 country=country,
                 date_of_addition=timezone.now(),
             )
 
-             # Concatenate all changes into a single string with names
-            changes_string = f"name: {request.data['name']}, city: {request.data['city']}, country: {country.name}"
+            # Concatenate all changes into a single string with names
+            changes_string = f"name: {request.data['name']}, website: {request.data['website']}, country: {country.name}"
 
             # Save data in activity log as a single field
             ActivityLogUnits.objects.create(
@@ -1834,13 +1921,16 @@ class ManufacturalPostAPIView(APIView):
         except Exception as e:
             return Response({"status": status.HTTP_400_BAD_REQUEST, "message": str(e)})
 
-class  ManufacturalPutAPIView(APIView):
-    permission_classes = (AllowAny,)      
+class ManufacturalPutAPIView(APIView):
+    permission_classes = (AllowAny,)
 
     def put(self, request, *args, **kwargs):
         try:
+            # Create a mutable copy of request.data
+            data = request.data.copy()
+            
             # Fetch the staff user based on account_id
-            account_id = request.data.get('added_by')
+            account_id = data.get('added_by')
             staff_user = Staff.objects.get(account_id=account_id)
             
             # Retrieve the organization associated with the staff user
@@ -1852,10 +1942,19 @@ class  ManufacturalPutAPIView(APIView):
             # Store old values before updating
             old_values = {
                 'name': manufactural.name,
-                'city': manufactural.city,
+                'website': manufactural.website,
                 'country': manufactural.country.name if manufactural.country else None,
             }
-                        
+
+            # Fetch the country instance based on country name
+            country_name = data.get('country')
+            if country_name:
+                try:
+                    country = ParticipantCountry.objects.get(name=country_name, organization_id=organization)
+                    data['country'] = country.id  # Replace the country name with its pk value
+                except ParticipantCountry.DoesNotExist:
+                    return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "Invalid country name provided."})
+
             serializer = ManufacturalSerializer(manufactural, data=data, partial=True)
 
             if serializer.is_valid():
@@ -1863,9 +1962,9 @@ class  ManufacturalPutAPIView(APIView):
 
                 # Retrieve new values after updating
                 new_values = {
-                    'name': updated_unit.name,
-                    'city': updated_unit.city,
-                    'country': updated_unit.country.name if updated_unit.country else None,
+                    'name': updated_manufactural.name,
+                    'website': updated_manufactural.website,
+                    'country': updated_manufactural.country.name if updated_manufactural.country else None,
                 }
 
                 # Find the fields that have changed
@@ -1879,7 +1978,7 @@ class  ManufacturalPutAPIView(APIView):
                     manufactural_id=manufactural,
                     date_of_addition=timezone.now(),
                     field_name="Changes",
-                    old_value= ", ".join([f"{field}: {old_values[field]}" for field in changed_fields]),
+                    old_value=", ".join([f"{field}: {old_values[field]}" for field in changed_fields]),
                     new_value=changes_string,
                     actions="Updated",
                     type="Manufactural"

@@ -149,11 +149,9 @@ class Manufactural(models.Model):
     organization_id = models.ForeignKey(
         Organization, on_delete=models.CASCADE, null=True, blank=True)
     name = models.CharField(max_length=255, blank=False, null=True)
-    address = models.CharField(max_length=255, blank=True, null=True)
     country = models.ForeignKey(
         ParticipantCountry, on_delete=models.SET_NULL, null=True, blank=True)
-    telephone = models.CharField(max_length=255, blank=True, null=True)
-    city =models.CharField(max_length=10000000, blank=False, null=True)
+    website =models.CharField(max_length=10000000, blank=False, null=True)
     date_of_addition = models.DateTimeField(blank=True, null=True) 
     def __str__(self):
         return self.name
