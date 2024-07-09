@@ -218,7 +218,7 @@ class Instrument(models.Model):
     name = models.CharField(max_length=255, blank=False,
                             null=True, verbose_name='Instrument')
     code = models.PositiveBigIntegerField(blank=False, null=True)
-    model = models.CharField(blank=False, null=True)
+    model = models.CharField(max_length=255, blank=False, null=True)
     
     date_of_addition = models.DateTimeField(null=True, blank=True)
     status = models.CharField(
