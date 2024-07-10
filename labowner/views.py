@@ -31,7 +31,6 @@ from organization.models import Organization
 
 # from medicaltest.models import Test, Unit
 from labowner.serializers import ResultSerializer, ActivityLogSerializer, LabCorporateSerializer, LabInformationSerializer, LabPaymentSerializer, PathologistSerializer, SampleCollectorSerializer, OfferedTestSerializer
-from django.contrib.gis.geos import Point
 from django.conf import settings
 
 from staff.models import Marketer, Staff
