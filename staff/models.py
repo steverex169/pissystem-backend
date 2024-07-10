@@ -25,6 +25,10 @@ TERRITORY_OFFICES = (
     ('North Office', 'North Office'),
     ('South Office', 'South Office'),
 )
+STATUS = (
+    ('Active', 'Active'),
+    ('Inactive', 'Inactive'),
+)
 
 class Staff(models.Model):
     organization_id = models.ForeignKey(
@@ -46,6 +50,8 @@ class Staff(models.Model):
     city = models.CharField(max_length=255, blank=False, null=True)
     registered_at = models.DateTimeField(
         max_length=255, null=True, blank=False)
+    status = models.CharField(
+        max_length=50, choices=STATUS, default='Active', blank=True)
 
     def __str__(self):
         return self.name

@@ -1,6 +1,46 @@
 from rest_framework import serializers
-from databaseadmin.models import News,Instrument, Units, Analyte, ActivityLogUnits, Reagents, Manufactural, Method, InstrumentType
+from databaseadmin.models import ParticipantProvince,ParticipantCountry, ParticipantSector,ParticipantType,Department,Designation,District,City,News,Instrument, Units, Analyte, ActivityLogUnits, Reagents, Manufactural, Method,Scheme, InstrumentType,News
 
+
+class CitySerializer(serializers.ModelSerializer):
+    class Meta:
+        model = City
+        fields = ('__all__')
+
+class CountrySerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ParticipantCountry
+        fields = ('__all__')
+
+class ProvinceSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ParticipantProvince
+        fields = ('__all__')
+
+
+class DistrictSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = District
+        fields = ('__all__')
+class DepartmentSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Department
+        fields = ('__all__')
+
+class DesignationSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Designation
+        fields = ('__all__')
+
+class ParticipantTypeSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ParticipantType
+        fields = ('__all__')
+
+class ParticipantSectorSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ParticipantSector
+        fields = ('__all__')
 
 class UnitsSerializer(serializers.ModelSerializer):
     class Meta:
@@ -30,15 +70,22 @@ class InstrumentTypeSerializer(serializers.ModelSerializer):
 class MethodSerializer(serializers.ModelSerializer):
     class Meta:
         model = Method
-        fields = ('__all__')              
+        fields = ('__all__')   
+
+class SchemeSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Scheme
+        fields = ('__all__')  
 
 class AnalyteSerializer(serializers.ModelSerializer):
+    noofreagents = serializers.IntegerField(read_only=True) 
+    noofmethods = serializers.IntegerField(read_only=True) 
+    noofinstruments = serializers.IntegerField(read_only=True) 
+    master_unit_name = serializers.CharField(read_only=True)
+
     class Meta:
         model = Analyte
-        fields = '__all__'
-        extra_kwargs = {
-            'reagents': {'required': False},
-        }
+        fields = ('__all__') 
 
 class InstrumentSerializer(serializers.ModelSerializer):
     class Meta:

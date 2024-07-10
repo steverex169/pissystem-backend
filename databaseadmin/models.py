@@ -22,8 +22,111 @@ TYPE= (
     ('Method', 'Method'),
     ('Manufactural', 'Manufactural'),
     ('Analyte', 'Analyte'),
-    ('Instrumentlist', 'Instrumentlist')
+    ('City', 'City'),
+    ('ParticipantCountry','ParticipantCountry'),
+    ('ParticipantProvince','ParticipantProvince'),
+    ('District', 'District'),
+    ('Department', 'Department'),
+    ('Designation', 'Designation'),
+    ('ParticipantType', 'ParticipantType'),
+    ('ParticipantSector', 'ParticipantSector'),
     )
+class City(models.Model):
+    organization_id = models.ForeignKey(
+        Organization, on_delete=models.CASCADE, null=True, blank=True)
+    name = models.CharField(max_length=255, blank=False, null=True)
+    date_of_addition = models.DateTimeField(blank=True, null=True)  # Changed to DateTimeField
+
+    def __str__(self):
+        return self.name
+
+    class Meta:
+        verbose_name = 'Participant City'
+
+class ParticipantCountry(models.Model):
+    organization_id = models.ForeignKey(
+        Organization, on_delete=models.CASCADE, null=True, blank=True)
+    name = models.CharField(max_length=255, blank=False, null=True)
+    date_of_addition = models.DateTimeField(blank=True, null=True)  # Changed to DateTimeField
+
+    def __str__(self):
+        return self.name
+
+    class Meta:
+        verbose_name = 'Participant Country'
+
+class ParticipantProvince(models.Model):
+    organization_id = models.ForeignKey(
+        Organization, on_delete=models.CASCADE, null=True, blank=True)
+    name = models.CharField(max_length=255, blank=False, null=True)
+    date_of_addition = models.DateTimeField(blank=True, null=True)  # Changed to DateTimeField
+
+    def __str__(self):
+        return self.name
+
+    class Meta:
+        verbose_name = 'Participant Province'
+
+class District(models.Model):
+    organization_id = models.ForeignKey(
+        Organization, on_delete=models.CASCADE, null=True, blank=True)
+    name = models.CharField(max_length=255, blank=False, null=True)
+    date_of_addition = models.DateTimeField(blank=True, null=True)  # Changed to DateTimeField
+
+    def __str__(self):
+        return self.name
+
+    class Meta:
+        verbose_name = 'Participant District'
+
+class Department(models.Model):
+    organization_id = models.ForeignKey(
+        Organization, on_delete=models.CASCADE, null=True, blank=True)
+    name = models.CharField(max_length=255, blank=False, null=True)
+    date_of_addition = models.DateTimeField(blank=True, null=True)  # Changed to DateTimeField
+
+    def __str__(self):
+        return self.name
+
+    class Meta:
+        verbose_name = 'Participant Department'
+
+class Designation(models.Model):
+    organization_id = models.ForeignKey(
+        Organization, on_delete=models.CASCADE, null=True, blank=True)
+    name = models.CharField(max_length=255, blank=False, null=True)
+    date_of_addition = models.DateTimeField(blank=True, null=True)  # Changed to DateTimeField
+
+    def __str__(self):
+        return self.name
+
+    class Meta:
+        verbose_name = 'Participant Designation'
+
+class ParticipantType(models.Model):
+    organization_id = models.ForeignKey(
+        Organization, on_delete=models.CASCADE, null=True, blank=True)
+    name = models.CharField(max_length=255, blank=False, null=True)
+    date_of_addition = models.DateTimeField(blank=True, null=True)  # Changed to DateTimeField
+
+    def __str__(self):
+        return self.name
+
+    class Meta:
+        verbose_name = 'Participant Type'
+
+class ParticipantSector(models.Model):
+    organization_id = models.ForeignKey(
+        Organization, on_delete=models.CASCADE, null=True, blank=True)
+    name = models.CharField(max_length=255, blank=False, null=True)
+    date_of_addition = models.DateTimeField(blank=True, null=True)  # Changed to DateTimeField
+
+    def __str__(self):
+        return self.name
+
+    class Meta:
+        verbose_name = 'Participant Sector'
+
 class Units(models.Model):
     organization_id = models.ForeignKey(
         Organization, on_delete=models.CASCADE, null=True, blank=True)
@@ -132,18 +235,28 @@ class Analyte(models.Model):
     name = models.CharField(max_length=255, blank=True, null=True)
     code = models.PositiveBigIntegerField(blank=True, null=True)
     date_of_addition = models.DateTimeField(blank=True, null=True)
-    method = models.ForeignKey(
-        Method, on_delete=models.SET_NULL, null=True, blank=True)
-    instrument = models.ForeignKey(
-        Instrument, on_delete=models.SET_NULL, null=True, blank=True)
-    reagents = models.ManyToManyField(Reagents, blank=True)  # Change to ManyToManyField
-    unit = models.ForeignKey(
-        Units, on_delete=models.SET_NULL, null=True, blank=True)
+    methods = models.ManyToManyField(Method, blank=True)
+    instruments = models.ManyToManyField(Instrument, blank=True)
+    reagents = models.ManyToManyField(Reagents, blank=True)
+    units = models.ManyToManyField(Units, blank=True)
     status = models.CharField(
         max_length=50, choices=STATUS, default='Inactive', blank=True)
-   
     master_unit = models.ForeignKey(
         Units, on_delete=models.SET_NULL, related_name="master_unit", null=True, blank=True)
+    
+    @property
+    def noofreagents(self):
+        return self.reagents.count()
+    
+    @property
+    def master_unit_name(self):
+        return self.master_unit.name if self.master_unit else None
+
+    def noofmethods(self):
+        return self.methods.count()
+
+    def noofinstruments(self):
+        return self.instruments.count()
 
     def __str__(self):
         return self.name
@@ -151,6 +264,21 @@ class Analyte(models.Model):
     class Meta:
         verbose_name = 'Analyte'
 
+class Scheme(models.Model):
+    organization_id = models.ForeignKey(
+        Organization, on_delete=models.CASCADE, null=True, blank=True)
+    name = models.CharField(max_length=255, blank=True, null=True)
+    # added_by= models.ForeignKey(
+    #     UserAccount, on_delete=models.CASCADE, null=True, blank=True) 
+    
+    date_of_addition = models.DateTimeField(blank=True, null=True) 
+    status = models.CharField(
+        max_length=50, choices=STATUS, default='Inactive', blank=True)
+    def __str__(self):
+        return self.name
+
+    class Meta:       
+        verbose_name = 'Scheme'
 
 class ActivityLogUnits(models.Model):
     organization_id = models.ForeignKey(
@@ -169,6 +297,8 @@ class ActivityLogUnits(models.Model):
         Instrument, on_delete=models.CASCADE, null=True, blank=True)
     method_id = models.ForeignKey(
         Method, on_delete=models.CASCADE, null=True, blank=True)
+    scheme_id = models.ForeignKey(
+        Scheme, on_delete=models.CASCADE, null=True, blank=True)
     old_value = models.TextField(null= True, blank=True)
     new_value = models.TextField(null= True, blank=True)
     date_of_addition = models.DateTimeField(blank=True, null=True)  
@@ -185,6 +315,8 @@ class ActivityLogUnits(models.Model):
 
     class Meta:
         verbose_name = 'History'
+
+
 
 class News(models.Model):
     organization_id = models.ForeignKey(

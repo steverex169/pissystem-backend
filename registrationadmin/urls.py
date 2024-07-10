@@ -1,6 +1,6 @@
 from django.urls import path
 
-from registrationadmin.views import  SharePercentageApprovedLabTestListView, LabListApprovedView, SharePercentageAllPendingLabTestView, SharePercentagePendingLabTestListView, UpdateReferrelLabTestListView, ApproveReferrelLabTestListView, ReferrelLabTestListView,  ApproveUnapproveLabView,  ApprovedLabsView, PendingLabsView,UnapprovedLabsView, LabListPendingView
+from registrationadmin.views import  SharePercentageApprovedLabTestListView, LabListApprovedView, SharePercentageAllPendingLabTestView, SharePercentagePendingLabTestListView, UpdateReferrelLabTestListView, ApproveReferrelLabTestListView, ReferrelLabTestListView,  ApproveUnapproveLabView,  ApprovedLabsView, PendingLabsView,UnapprovedLabsView, LabListPendingView,RoundAPIView, RoundPostAPIView, RoundUpdateAPIView, RoundDeleteAPIView,  ActivityLogRegistrationadmin,  RoundsLabsAPIView, RoundAddLabsAPIView
 
 urlpatterns = [
     # URLs for the labs
@@ -28,6 +28,24 @@ urlpatterns = [
      path('shared_percentage_Approved_tests/<id>',
           SharePercentageApprovedLabTestListView.as_view(), name='shared_percentage_pending_tests'),
      path('shared_percentage_all_pending_tests/<id>',
-          SharePercentageAllPendingLabTestView.as_view(), name='shared_percentage_all_pending_tests'),
+               SharePercentageAllPendingLabTestView.as_view(), name='shared_percentage_all_pending_tests'),
 
+     path('history_list/<id>', ActivityLogRegistrationadmin.as_view(), name='history_list'),
+     path('round-list/<id>',
+          RoundAPIView.as_view(), name='round-list/<id>'),
+     path('post-round',
+          RoundPostAPIView.as_view(), name='post-round'),
+     path('update-round-list/<id>',
+          RoundUpdateAPIView.as_view(), name='update-round-list/<id>+'), 
+     path('delete-round/<id>',
+     RoundDeleteAPIView.as_view(), name='delete-round/<id>'),       
+     # Rounds Adding Labs
+     path('round-labs-list/<id>',
+          RoundsLabsAPIView.as_view(), name='round-labs-list'),     
+     path('round-add-lab/<id>',
+          RoundAddLabsAPIView.as_view(), name='round-add-lab'),
+     # path('round-update-lab/<id>',
+     #      RoundUpdateLabsAPIView.as_view(), name='round-update-lab'),
+
+          
 ]
