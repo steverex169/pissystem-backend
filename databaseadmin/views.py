@@ -5,7 +5,7 @@ from rest_framework.views import APIView
 
 from databaseadmin.models import ParticipantProvince,ParticipantCountry, ParticipantType,ParticipantSector,Department,Designation,District,City,News,Instrument, Units, ActivityLogUnits,Reagents , Manufactural, Method,InstrumentType, Analyte
 
-from databaseadmin.serializers import NewsSerializer,InstrumentSerializer, MethodSerializer,AnalyteSerializer, InstrumentTypeSerializer, UnitsSerializer, ActivityLogUnitsSerializer, ReagentsSerializer, ManufacturalSerializer, Scheme, Cycle,Sample,ParticipantTypeSerializer, ParticipantSectorSerializer,DepartmentSerializer,DesignationSerializer,DistrictSerializer,CitySerializer,SchemeSerializer, CycleSerializer,  SampleSerializer, ProvinceSerializer
+from databaseadmin.serializers import CountrySerializer,NewsSerializer,InstrumentSerializer, MethodSerializer,AnalyteSerializer, InstrumentTypeSerializer, UnitsSerializer, ActivityLogUnitsSerializer, ReagentsSerializer, ManufacturalSerializer, Scheme, Cycle,Sample,ParticipantTypeSerializer, ParticipantSectorSerializer,DepartmentSerializer,DesignationSerializer,DistrictSerializer,CitySerializer,SchemeSerializer, CycleSerializer,  SampleSerializer, ProvinceSerializer
 
 from labowner.models import Lab
 from staff.models import Staff
@@ -1841,11 +1841,13 @@ class ManufacturalListAPIView(APIView):
                 instrument_count = instruments.count()
                 
                 # Retrieve the country
-                try:
-                    country = ParticipantCountry.objects.get(id=manufactural.country.id)
-                    country_name = country.name  # Assuming ParticipantCountry has a 'name' field
-                except ParticipantCountry.DoesNotExist:
-                    country_name = None
+                country_name = None
+                if manufactural.country is not None:
+                    try:
+                        country = ParticipantCountry.objects.get(id=manufactural.country.id)
+                        country_name = country.name  # Assuming ParticipantCountry has a 'name' field
+                    except ParticipantCountry.DoesNotExist:
+                        country_name = None
 
                 reagents = Reagents.objects.filter(manufactural=manufactural)
                 reagents_count = reagents.count()
@@ -1864,6 +1866,7 @@ class ManufacturalListAPIView(APIView):
         
         except Manufactural.DoesNotExist:
             return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "No Record Exist."})
+
         
 class ManufacturalPostAPIView(APIView):
     permission_classes = (AllowAny,)  # AllowAny temporarily for demonstration
