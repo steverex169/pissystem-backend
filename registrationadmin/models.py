@@ -3,6 +3,8 @@ from organization.models import Organization
 from django.utils import timezone
 from account.models import UserAccount
 from databaseadmin.models import Scheme
+from labowner.models import Lab
+
 ACTIONS= (
     ('Updated', 'Updated'),
     ('Added', 'Added'),
@@ -37,13 +39,30 @@ class Round(models.Model):
         Scheme, on_delete=models.CASCADE, null=True, blank=True)
     cycle_no = models.CharField(max_length=255, blank=True, null=True)
     sample = models.CharField(max_length=255, blank=True, null=True)
-    issue_date = models.DateTimeField(blank=True, null=True)
-    closing_date = models.DateTimeField(blank=True, null=True)
-    notes = models.CharField(max_length=255, blank=True, null=True)
+    participants = models.ManyToManyField(Lab, blank=True)
+    issue_date = models.DateField(blank=True, null=True)
+    closing_date = models.DateField(blank=True, null=True)
+    # notes = models.CharField(max_length=255, blank=True, null=True)
     status = models.CharField(
         max_length=50, choices=STATUS, blank=True)
+
+    @property
+    def nooflabs(self):
+        return self.participants.count()
+
     def __str__(self):
-        return self.name
+        return self.status
+
+    def save(self, *args, **kwargs):
+        if self.pk is None:
+            # New instance: Check if rounds, scheme, and cycle_no are set
+            if self.rounds is not None and self.scheme is not None and self.cycle_no:
+                self.status = 'Created'
+        else:
+            # Existing instance: Check if sample is added
+            if self.sample and self.status == 'Created':
+                self.status = 'Ready'
+        super().save(*args, **kwargs)
 
     class Meta:       
         verbose_name = 'Round'
@@ -56,8 +75,8 @@ class ActivityLogUnits(models.Model):
         Organization, on_delete=models.CASCADE, related_name='registrationadmin_activity_log_units', null=True, blank=True)
     round_id = models.ForeignKey(
         Round, on_delete=models.CASCADE, null=True, blank=True)
-    issue_date = models.DateTimeField(null=True, blank=True)
-    closing_date = models.DateTimeField(null=True, blank=True)
+    issue_date = models.DateField(null=True, blank=True)
+    closing_date = models.DateField(null=True, blank=True)
     old_value = models.TextField(null= True, blank=True)
     new_value = models.TextField(null= True, blank=True)
     date_of_addition = models.DateTimeField(blank=True, null=True)  

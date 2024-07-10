@@ -1,5 +1,5 @@
 from django.urls import path
-from databaseadmin.views import ProvinceUpdateAPIView,ProvinceCreateAPIView, ProvinceListAPIView,DeleteMAnufacturerView,ReagentsInManufacturerAPIView,InstrumentsInManufacturerAPIView,DeleteInstrumentView,AnalytesByInstrumentAPIView,DeleteReagentView,AnalytesByReagentAPIView,CountryUpdateAPIView,CountryCreateAPIView,CountryListAPIView,DeleteAnalyteView,DeleteMethodView,AnalytesByMethodAPIView,DeleteInstrumentTypeView,InstrumentAndInstrumentTypeAPIView, NewsAddAPIView,SampleListView, SamplePostView, CycleAnalyteAPIView, CycleAddAnalyteAPIView, CycleUpdateAnalyteAPIView,SchemeAPIView, SchemeUpdateAPIView, SchemeDeleteAPIView, CycleAPIView, CyclePostAPIView, CycleUpdateAPIView, CycleDeleteAPIView,AnalytesByUnitAPIView,ParticipantSectorUpdateAPIView,ParticipantSectorCreateAPIView,ParticipantSectorListAPIView,ParticipantTypeUpdateAPIView,ParticipantTypeCreateAPIView,ParticipantTypeListAPIView,DesignationListAPIView,DesignationCreateAPIView,DesignationUpdateAPIView,DepartmentListAPIView,DepartmentCreateAPIView,DepartmentUpdateAPIView,DistrictListAPIView,DistrictCreateAPIView,DistrictUpdateAPIView,CityListAPIView,CityCreateAPIView,CityUpdateAPIView,AnalyteUpdateUnitsAPIView,AnalytesUnitsAPIView,AnalyteAddUnitsAPIView,AnalyteUpdateMethodsAPIView, AnalyteAddMethodsAPIView,AnalytesMethodsAPIView,AnalyteUpdateEquipmentsAPIView,AnalytesEquipmentsAPIView,AnalyteAddEquipmentsAPIView,AnalyteUpdateReagentsAPIView,AnalyteAddReagentsAPIView,AnalytesReagentsAPIView,AnalyteAddReagents,AnalytesListAPIView,MethodsPostAPIView,InstrumentsPostAPIView,InstrumentTypeCreateView,UnitsListAPIView,NewsListView,InstrumentsAPIView, InstrumentsUpdateAPIView, InstrumentTypeView,AnalyteUpdateAPIView, AnalyteAPIView, MethodsAPIView, UpdateInstrumentTypeView,  MethodsUpdateAPIView, UnitsAPIView, UnitsUpdateAPIView, ActivityLogDatabaseadmin, ReagentsListAPIView, ReagentsPostAPIView, ReagentsPutAPIView ,ManufacturalListAPIView, ManufacturalPostAPIView, ManufacturalPutAPIView
+from databaseadmin.views import ProvinceUpdateAPIView,ProvinceCreateAPIView, ProvinceListAPIView,DeleteMAnufacturerView,ReagentsInManufacturerAPIView,InstrumentsInManufacturerAPIView,DeleteInstrumentView,AnalytesByInstrumentAPIView,DeleteReagentView,AnalytesByReagentAPIView,CountryUpdateAPIView,CountryCreateAPIView,CountryListAPIView,DeleteAnalyteView,DeleteMethodView,AnalytesByMethodAPIView,DeleteInstrumentTypeView,InstrumentAndInstrumentTypeAPIView, NewsAddAPIView,SampleListView, SamplePostView, SchemeAPIView, SchemeUpdateAPIView, SchemeDeleteAPIView, CycleAPIView, CyclePostAPIView, CycleUpdateAPIView, CycleDeleteAPIView,AnalytesByUnitAPIView,ParticipantSectorUpdateAPIView,ParticipantSectorCreateAPIView,ParticipantSectorListAPIView,ParticipantTypeUpdateAPIView,ParticipantTypeCreateAPIView,ParticipantTypeListAPIView,DesignationListAPIView,DesignationCreateAPIView,DesignationUpdateAPIView,DepartmentListAPIView,DepartmentCreateAPIView,DepartmentUpdateAPIView,DistrictListAPIView,DistrictCreateAPIView,DistrictUpdateAPIView,CityListAPIView,CityCreateAPIView,CityUpdateAPIView,AnalyteUpdateUnitsAPIView,AnalytesUnitsAPIView,AnalyteAddUnitsAPIView,AnalyteUpdateMethodsAPIView, AnalyteAddMethodsAPIView,AnalytesMethodsAPIView,AnalyteUpdateEquipmentsAPIView,AnalytesEquipmentsAPIView,AnalyteAddEquipmentsAPIView,AnalyteUpdateReagentsAPIView,AnalyteAddReagentsAPIView,AnalytesReagentsAPIView,AnalyteAddReagents,AnalytesListAPIView,MethodsPostAPIView,InstrumentsPostAPIView,InstrumentTypeCreateView,UnitsListAPIView,NewsListView,InstrumentsAPIView, InstrumentsUpdateAPIView, InstrumentTypeView,AnalyteUpdateAPIView, AnalyteAPIView, MethodsAPIView, UpdateInstrumentTypeView,  MethodsUpdateAPIView, UnitsAPIView, UnitsUpdateAPIView, ActivityLogDatabaseadmin, ReagentsListAPIView, ReagentsPostAPIView, ReagentsPutAPIView ,ManufacturalListAPIView, ManufacturalPostAPIView, ManufacturalPutAPIView, SchemePostAPIView, SchemeAnalyteAPIView, SchemeAddAnalyteAPIView, SchemeUpdateAnalyteAPIView
 
 urlpatterns = [
     #Participant 
@@ -108,14 +108,15 @@ urlpatterns = [
     
      path('delete-instrument/<id>',
          DeleteInstrumentView.as_view(), name='delete-instrument'),
-    path('news-list',
-         NewsListView.as_view(), name='news-list'),
-    path('scheme-list',
+
+    path('scheme-list/<id>',
         SchemeAPIView.as_view(), name='scheme-list'),
+    path('scheme-list',
+        SchemePostAPIView.as_view(), name='scheme-list'),
     path('update-scheme/<id>',
-        SchemeUpdateAPIView.as_view(), name='update-scheme/<id>'),   
+        SchemeUpdateAPIView.as_view(), name='update-scheme'),   
     path('delete-scheme/<id>',
-        SchemeDeleteAPIView.as_view(), name='delete-scheme/<id>'),
+        SchemeDeleteAPIView.as_view(), name='delete-scheme'),
     path('cycle-list/<id>',
          CycleAPIView.as_view(), name='cycle-list/<id>'),
     path('post-cycle',
@@ -128,10 +129,6 @@ urlpatterns = [
          SampleListView.as_view(), name='sample-list'),
     path('post-sample',
          SamplePostView.as_view(), name='post-sample'),
-    # path('news-list-participant/<id>',
-    #      NewsListViewParticipant.as_view(), name='news-list-participantt'),
-    path('news-add',
-         NewsAddAPIView.as_view(), name='news-add'),
 
     #analyte adding reagents
     path('analyte-reagents-list/<id>',
@@ -165,40 +162,17 @@ urlpatterns = [
     path('analyte-update-units/<id>',
          AnalyteUpdateUnitsAPIView.as_view(), name='analyte-update-units'),
          
-    # Cycle Analytes
-    path('cycle-analyte-list/<id>',
-         CycleAnalyteAPIView.as_view(), name='cycle-analyte-list'),     
-    path('cycle-add-analyte/<id>',
-        CycleAddAnalyteAPIView.as_view(), name='cycle-add-analyte'),
-    path('cycle-update-analyte/<id>',
-         CycleUpdateAnalyteAPIView.as_view(), name='cycle-update-analyte'),
-     #Analytes assocaited with unit
-     path('analyte-units/<id>',
-         AnalytesByUnitAPIView.as_view(), name='analyte-units'),  
+    # Scheme Analytes
+    path('scheme-analyte-list/<id>',
+         SchemeAnalyteAPIView.as_view(), name='scheme-analyte-list'),     
+    path('scheme-add-analyte/<id>',
+        SchemeAddAnalyteAPIView.as_view(), name='scheme-add-analyte'),
+    path('scheme-update-analyte/<id>',
+         SchemeUpdateAnalyteAPIView.as_view(), name='scheme-update-analyte'),
 
-     #Analytes assocaited with reagent
-     path('analyte-reagents/<id>',
-         AnalytesByReagentAPIView.as_view(), name='analyte-reagents'),  
-
-     #Analytes assocaited with method
-     path('analyte-methods/<id>',
-         AnalytesByMethodAPIView.as_view(), name='analyte-methods'),   
-
-     #Analytes assocaited with instrument
-     path('analyte-instruments/<id>',
-         AnalytesByInstrumentAPIView.as_view(), name='analyte-instruments'),    
-
-     path('instrument-instrumenttype/<id>',
-         InstrumentAndInstrumentTypeAPIView.as_view(), name='instrument-instrumenttype'),  
-         
-     path('instrument-manufacturer/<id>',
-         InstrumentsInManufacturerAPIView.as_view(), name='instrument-manufacturer'),  
-         
-     path('reagent-manufacturer/<id>',
-         ReagentsInManufacturerAPIView.as_view(), name='reagent-manufacturer'),  
-            path('news-list/<id>',
+   #news      
+    path('news-list/<id>',
          NewsListView.as_view(), name='news-list'),
     path('news-add',
          NewsAddAPIView.as_view(), name='news-add'),  
-     
 ]
