@@ -354,8 +354,6 @@ class ActivityLogUnits(models.Model):
         Cycle, on_delete=models.CASCADE, null=True, blank=True)
     sample_id = models.ForeignKey(
         Sample, on_delete=models.CASCADE, null=True, blank=True)
-    start_date = models.DateTimeField(null=True, blank=True)
-    end_date = models.DateTimeField(null=True, blank=True)
     city_id = models.ForeignKey(
         City, on_delete=models.CASCADE, null=True, blank=True)
     country_id = models.ForeignKey(
@@ -381,8 +379,6 @@ class ActivityLogUnits(models.Model):
         max_length=50, choices= ACTIONS, default= 'Added', verbose_name='Which action is performed?')
     status = models.CharField(
         max_length=50, choices=STATUS, default='Inactive', blank=True)
-    cycle = models.CharField(
-        max_length=50, choices=CYCLE, default='Months', blank=True)
     type = models.CharField(
         max_length=50, choices= TYPE, default= 'Units', verbose_name='Form type?')
     def __str__(self):
