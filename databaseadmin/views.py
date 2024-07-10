@@ -2152,54 +2152,136 @@ class SchemeAPIView(APIView):
 
     def get(self, request, *args, **kwargs):
         try:
-            analyte_list = Scheme.objects.all()
-            serialized_data = []
-            for analyte in analyte_list:
-                analyte_data = model_to_dict(analyte)
-                if analyte.added_by_id:  # Check if added_by_id is not None
-                    user_account = UserAccount.objects.get(id=analyte.added_by_id)
-                    analyte_data['added_by'] = user_account.username
-                else:
-                    analyte_data['added_by'] = None
-                serialized_data.append(analyte_data)
-            return Response({"status": status.HTTP_200_OK, "data": serialized_data})
-        except Scheme.DoesNotExist:
-            return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "No Record Exist."})
+            user_id = kwargs.get('id')
+            if not user_id:
+                return Response({
+                    "status": status.HTTP_400_BAD_REQUEST,
+                    "message": "User ID not provided."
+                }, status=status.HTTP_400_BAD_REQUEST)
+            
+            # Fetch user_type based on user_id
+            user_type = UserAccount.objects.get(id=user_id)
+            
+            if user_type.account_type == 'labowner':
+                try:
+                    participant = Lab.objects.get(account_id=user_id)
+                    organization = participant.organization_id
+                    schemelist = Scheme.objects.filter(organization_id=organization.id)
+                except Lab.DoesNotExist:
+                    return Response({
+                        "status": status.HTTP_404_NOT_FOUND,
+                        "message": "Lab not found."
+                    }, status=status.HTTP_404_NOT_FOUND)
+            else:
+                try:
+                    staff_member = Staff.objects.get(account_id=user_id)
+                    organization = staff_member.organization_id
+                    schemelist = Scheme.objects.filter(organization_id=organization.id)
+                except Staff.DoesNotExist:
+                    return Response({
+                        "status": status.HTTP_404_NOT_FOUND,
+                        "message": "Staff member not found."
+                    }, status=status.HTTP_404_NOT_FOUND)
 
-    # Post API for creating units
+            serialized_data = []
+            for scheme in schemelist:
+                # Ensure the scheme is saved to get an ID before accessing the analytes field
+                if scheme.pk is None:
+                    scheme.save()
+
+                analytes_count = scheme.analytes.count()
+                
+                # Serialize scheme data
+                scheme_data = model_to_dict(scheme, exclude=['analytes'])  # Exclude non-serializable fields
+                
+                # Convert analytes to a list of dictionaries
+                analytes = list(scheme.analytes.values('id', 'name', 'code', 'status'))  
+                scheme_data['analytes'] = analytes
+                scheme_data['noofanalytes'] = analytes_count
+
+                # Update status based on number of analytes
+                if analytes_count > 0 and scheme.status != 'Active':
+                    scheme.status = 'Active'
+                    scheme.save()
+                elif analytes_count == 0 and scheme.status != 'Inactive':
+                    scheme.status = 'Inactive'
+                    scheme.save()
+
+                if scheme.added_by_id:  # Check if added_by_id is not None
+                    user_account = UserAccount.objects.get(id=scheme.added_by_id)
+                    scheme_data['added_by'] = user_account.username
+                else:
+                    scheme_data['added_by'] = None
+                
+                serialized_data.append(scheme_data)
+            
+            return Response({
+                "status": status.HTTP_200_OK,
+                "data": serialized_data
+            }, status=status.HTTP_200_OK)
+        
+        except Organization.DoesNotExist:
+            return Response({
+                "status": status.HTTP_404_NOT_FOUND,
+                "message": "Organization not found."
+            }, status=status.HTTP_404_NOT_FOUND)
+        
+        except Exception as e:
+            return Response({
+                "status": status.HTTP_500_INTERNAL_SERVER_ERROR,
+                "message": str(e)
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+class SchemePostAPIView(APIView):
+    permission_classes = (AllowAny,)  # AllowAny temporarily for demonstration
+
     def post(self, request, *args, **kwargs):
         try:
-            user_id = request.data['added_by']
-            user_account = UserAccount.objects.get(id=user_id)
+            # Fetch the staff user based on account_id
+            account_id = request.data.get('added_by')  # Use 'added_by' from request data
+            staff_user = Staff.objects.get(account_id=account_id)
 
-            # Create a new Analyte
-            analyte = Scheme.objects.create(
+            # Retrieve the organization associated with the staff user
+            organization = staff_user.organization_id
+
+            # Fetch the UserAccount object for the added_by field
+            user_account = UserAccount.objects.get(id=account_id)
+            user_name = user_account.username
+
+            # Create a new Scheme
+            scheme = Scheme.objects.create(
+                organization_id=organization,
                 name=request.data['name'],
+                price=request.data['price'],
                 date_of_addition=timezone.now(),
-                added_by=user_account,
+                added_by=user_account,  # Use the UserAccount object
                 status=request.data['status'],
             )
 
             # Concatenate all changes into a single string
-            changes_string = ", ".join([f"{field}: {request.data[field]}" for field in ["name", "status"]])
+            changes_string = ", ".join([f"{field}: {request.data[field]}" for field in ["name", "price", "status"]])
 
             # Save data in activity log as a single field
             ActivityLogUnits.objects.create(
-                analyte_id=analyte,
+                scheme=scheme,
                 date_of_addition=timezone.now(),
                 field_name="Changes",
                 old_value=None,  # No old value during creation
                 new_value=changes_string,
-                added_by=user_account,
+                added_by=user_account,  # Use the UserAccount object
                 actions='Added',
-                type="Analyte"
+                type="Scheme"
             )
 
-            scheme_serializer = SchemeSerializer(analyte)
+            scheme_serializer = SchemeSerializer(scheme)
 
             return Response({"status": status.HTTP_201_CREATED, "unit_data": scheme_serializer.data,
                              "message": "Scheme added successfully."})
 
+        except Staff.DoesNotExist:
+            return Response({"status": status.HTTP_404_NOT_FOUND, "message": "Staff user not found."})
+        except UserAccount.DoesNotExist:
+            return Response({"status": status.HTTP_404_NOT_FOUND, "message": "User account not found."})
         except Exception as e:
             return Response({"status": status.HTTP_400_BAD_REQUEST, "message": str(e)})
 
@@ -2211,7 +2293,7 @@ class SchemeUpdateAPIView(APIView):
             scheme = Scheme.objects.get(id=kwargs.get('id'))
 
             # Store old values before updating
-            old_values = {field: getattr(scheme, field) for field in ["name", "status"]}
+            old_values = {field: getattr(scheme, field) for field in ["name", "price", "status"]}
             
             serializer = SchemeSerializer(scheme, data=request.data, partial=True)
 
@@ -2219,7 +2301,7 @@ class SchemeUpdateAPIView(APIView):
                 updated_analyte = serializer.save()
                 
                 # Retrieve new values after updating
-                new_values = {field: getattr(updated_analyte, field) for field in ["name", "status"]}
+                new_values = {field: getattr(updated_analyte, field) for field in ["name", "price", "status"]}
 
                 # Find the fields that have changed
                 changed_fields = {field: new_values[field] for field in new_values if new_values[field] != old_values[field]}
@@ -2259,7 +2341,7 @@ class SchemeDeleteAPIView(APIView):
             return Response({"status": status.HTTP_200_OK, "message": "Deleted successfully"})
 
         except Scheme.DoesNotExist:
-            return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "Sorry! No such record to delete."})
+            return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "Sorry! No such record to delete."})     
 
 class CycleAPIView(APIView):
     permission_classes = (AllowAny,)  # AllowAny temporarily for demonstration
@@ -2280,26 +2362,22 @@ class CycleAPIView(APIView):
 
             serialized_data = []
             for cycle in cycle_list:
-                # Ensure the cycle is saved to get an ID before accessing the analytes field
-                if cycle.pk is None:
-                    cycle.save()
-
-                # Update status based on number of analytes
-                if cycle.noofanalytes > 0 and cycle.status != 'Active':
-                    cycle.status = 'Active'
-                    cycle.save()
-                elif cycle.noofanalytes == 0 and cycle.status != 'Inactive':
-                    cycle.status = 'Inactive'
-                    cycle.save()
-
-                # Serialize cycle data
+                # Initialize cycle_data dictionary
                 cycle_data = model_to_dict(cycle)
-                # Add analyte count to the serialized data
-                cycle_data['analytes'] = cycle.noofanalytes
 
-                # Get the scheme name
+                # Retrieve the scheme associated with the cycle
                 scheme = cycle.scheme_name
                 if scheme:
+                    analytes_count = scheme.analytes.count()
+                    
+                    # Serialize scheme data excluding analytes
+                    scheme_data = model_to_dict(scheme, exclude=['analytes'])  
+                    
+                    # Convert analytes to a list of dictionaries
+                    analytes = list(scheme.analytes.values('id', 'name', 'code', 'status'))  
+                    scheme_data['analytes'] = analytes
+                    scheme_data['noofanalytes'] = analytes_count
+
                     cycle_data['scheme_name'] = scheme.name
                     cycle_data['scheme_id'] = scheme.id
                 else:
@@ -2308,7 +2386,6 @@ class CycleAPIView(APIView):
 
                 serialized_data.append(cycle_data)
 
-
             return Response({"status": status.HTTP_200_OK, "data": serialized_data})
         
         except Staff.DoesNotExist:
@@ -2316,7 +2393,10 @@ class CycleAPIView(APIView):
         
         except Cycle.DoesNotExist:
             return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "No cycle records found."})
-
+        
+        except Exception as e:
+            return Response({"status": status.HTTP_500_INTERNAL_SERVER_ERROR, "message": str(e)})
+            
 class CyclePostAPIView(APIView):
     permission_classes = (AllowAny,)  # Temporary permission setting for demonstration
 
@@ -2331,6 +2411,8 @@ class CyclePostAPIView(APIView):
             organization = staff_user.organization_id
             scheme_id = request.data.get('scheme_name')  # Assuming 'scheme' is sent in the request data
             scheme = get_object_or_404(Scheme, pk=scheme_id)
+            scheme_id = request.data.get('scheme_name')  # Assuming 'scheme' is sent in the request data
+            scheme = get_object_or_404(Scheme, pk=scheme_id)
 
             # Create a new Analyte
             cycle = Cycle.objects.create(
@@ -2342,10 +2424,12 @@ class CyclePostAPIView(APIView):
                 end_date=request.data['end_date'],
                 rounds=request.data['rounds'],
                 # status=request.data['status'],
+                # status=request.data['status'],
                 # added_by=user_account,
             )
 
             # Concatenate all changes into a single string
+            changes_string = ", ".join([f"{field}: {request.data[field]}" for field in ["scheme_name", "cycle_no", "rounds", "cycle"]])
             changes_string = ", ".join([f"{field}: {request.data[field]}" for field in ["scheme_name", "cycle_no", "rounds", "cycle"]])
 
             # Save data in activity log as a single field
@@ -2378,7 +2462,7 @@ class CycleUpdateAPIView(APIView):
 
             # Store old values before updating
             old_values = {field: getattr(cycle, field) for field in ["scheme_name", "cycle_no", "rounds", "cycle", "status", "start_date", "end_date" ]}
-            old_values = {field: getattr(scheme, field) for field in ["scheme_name", "cycle_no", "rounds", "cycle", "status"]}
+            old_values = {field: getattr(cycle, field) for field in ["scheme_name", "cycle_no", "rounds", "cycle", "status", "start_date", "end_date"]}
             
             serializer = CycleSerializer(cycle, data=request.data, partial=True)
 
@@ -2729,33 +2813,6 @@ class AnalyteUpdateReagentsAPIView(APIView):
 #analytes
         
 class AnalytesListAPIView(APIView):
-    #   *******************API for geeting Ananlytes on Stafff Dashboard*******************
-    # def get(self, request, *args, **kwargs):
-    #     try:
-    #         # Get the staff user's account_id
-    #         account_id = kwargs.get('id')
-            
-    #         # Fetch the staff user based on account_id
-    #         staff_user = Staff.objects.get(account_id=account_id)
-            
-    #         # Retrieve the organization associated with the staff user
-    #         organization = staff_user.organization_id
-            
-    #         # Filter analytes based on the organization
-    #         analyte_list = Analyte.objects.filter(organization_id=organization)
-            
-    #         # Serialize data
-    #         serialized_data = AnalyteSerializer(analyte_list, many=True).data
-            
-    #         return Response({"status": status.HTTP_200_OK, "data": serialized_data})
-        
-        # except Staff.DoesNotExist:
-        #     return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "Invalid account_id."})
-        
-        # except Analyte.DoesNotExist:
-        #     return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "No Analyte records found."})
-
-#  *****************API for getting Ananlytes on Stafff + Participant Dashboard********************
       def get(self, request, *args, **kwargs):
         try:
             user_id = kwargs.get('id')
@@ -2905,67 +2962,96 @@ class AnalyteUpdateAPIView(APIView):
             return Response({"status": status.HTTP_400_BAD_REQUEST, "message": str(e)})
 
 
-# Cycle add Analytes
-class CycleAnalyteAPIView(APIView):
+# Scheme add Analytes
+class SchemeAnalyteAPIView(APIView):
     permission_classes = (AllowAny,)  # Adjust permission classes as needed
 
     def get(self, request, id, *args, **kwargs):
         try:
-            analyte = Cycle.objects.get(id=id)
-            analytes = analyte.analytes.all()  # Fetch all reagents associated with the analyte
-            reagent_ids = [analytes.id for analytes in analytes]
+            scheme = Scheme.objects.get(id=id)
+            analytes = scheme.analytes.all()  # Fetch all reagents associated with the analyte
+            analyte_ids = [analyte.id for analyte in analytes]
             
             # Serialize data
             serialized_data = {
-                #"analyte": AnalyteSerializer(analyte).data,
-                "analytes": reagent_ids  # Send list of reagent IDs
+                #"scheme": SchemeSerializer(scheme).data,
+                "analytes": analyte_ids  # Send list of reagent IDs
             }
             
             return Response({"status": status.HTTP_200_OK, "data": serialized_data})
         
-        except Cycle.DoesNotExist:
-            return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "Analyte not found."})
+        except Scheme.DoesNotExist:
+            return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "Scheme not found."})
         
         except Exception as e:
             return Response({"status": status.HTTP_400_BAD_REQUEST, "message": str(e)})
 
-class CycleAddAnalyteAPIView(APIView):
+class SchemeAddAnalyteAPIView(APIView):
     permission_classes = (AllowAny,)
-
     def post(self, request, id, *args, **kwargs):
+        print("sdhs id", id, kwargs.get('id'))
+
         try:
-            analyte = Analyte.objects.get(id=id)
+            analyte = Scheme.objects.get(id=id)
+            print("amnalut", analyte) 
+            # Ensure 'instruments' is parsed as a list of integers
+            analytes = request.data.get('analytes', [])
+            print("analytes2", analytes)
+            if isinstance(analytes, str):
+                analytes = list(map(int, analytes.split(',')))
             
-            # Ensure 'reagents' is parsed as a list of integers
-            reagents = request.data.get('reagents', [])
-            if isinstance(reagents, str):
-                reagents = list(map(int, reagents.split(',')))
-            
-            analyte.reagents.set(reagents)  # Assuming reagents are passed as a list of IDs
+            analyte.analytes.set(analytes)  # Assuming instruments are passed as a list of IDs
             analyte.save()
 
-            return Response({"status": status.HTTP_200_OK, "message": "Reagents added to analyte successfully."})
-        except Cycle.DoesNotExist:
+            return Response({"status": status.HTTP_200_OK, "message": "Equipments added to analyte successfully."})
+        except Scheme.DoesNotExist:
             return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "Analyte not found."})
         except Exception as e:
             return Response({"status": status.HTTP_400_BAD_REQUEST, "message": str(e)})
 
-class CycleUpdateAnalyteAPIView(APIView):
+    # def post(self, request, id, *args, **kwargs):
+       
+    #     try:
+    #         scheme = Scheme.objects.get(id=id)
+    #         print("id", scheme)
+    #         # Ensure 'analytes' is parsed as a list of integers
+    #         analytes = request.data.get('analytes', [])
+    #         if isinstance(analytes, str):
+    #             analytes = analytes.split(',')
+    #         if not isinstance(analytes, list):
+    #             raise ValueError("analytes must be a list of integers.")
+
+    #         # Convert all elements to integers and handle possible conversion errors
+    #         analytes = [int(r) for r in analytes if r.strip().isdigit()]
+
+    #         scheme.analytes.set(analytes)  # Assuming analytes are passed as a list of IDs
+    #         scheme.save()
+
+    #         return Response({"status": status.HTTP_200_OK, "message": "analytes added to scheme successfully."})
+    #     except Scheme.DoesNotExist:
+    #         return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "Scheme not found."})
+    #     except ValueError as ve:
+    #         return Response({"status": status.HTTP_400_BAD_REQUEST, "message": str(ve)})
+    #     except Exception as e:
+    #         return Response({"status": status.HTTP_400_BAD_REQUEST, "message": str(e)})
+
+class SchemeUpdateAnalyteAPIView(APIView):
     permission_classes = (AllowAny,)
 
     def put(self, request, id, *args, **kwargs):
+       
         try:
-            analyte = Cycle.objects.get(id=id)
-            analytes = request.data.get('reagents', [])
+            scheme = Scheme.objects.get(id=id)
+            analytes = request.data.get('analytes', [])
             if isinstance(analytes, str):
                 analytes = list(map(int, analytes.split(',')))
             
-            analyte.analytes.set(analytes)  # Assuming reagents are passed as a list of IDs
-            analyte.save()
-            serialized_data = AnalyteSerializer(analyte).data
+            scheme.analytes.set(analytes)  # Assuming reagents are passed as a list of IDs
+            scheme.save()
+            serialized_data = SchemeSerializer(scheme).data
             return Response({"status": status.HTTP_200_OK, "analyte_data": serialized_data, "message": "Reagents updated for Analyte successfully."})
-        except Cycle.DoesNotExist:
-            return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "Analyte does not exist."})
+        except Scheme.DoesNotExist:
+            return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "Scheme does not exist."})
         except Exception as e:
             return Response({"status": status.HTTP_400_BAD_REQUEST, "message": str(e)})
         

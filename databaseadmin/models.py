@@ -267,12 +267,28 @@ class Scheme(models.Model):
     organization_id = models.ForeignKey(
         Organization, on_delete=models.CASCADE, null=True, blank=True)
     name = models.CharField(max_length=255, blank=True, null=True)
+    price = models.CharField(max_length=255, blank=True, null=True)
     added_by= models.ForeignKey(
         UserAccount, on_delete=models.CASCADE, null=True, blank=True) 
-    
     date_of_addition = models.DateTimeField(blank=True, null=True) 
+    analytes = models.ManyToManyField(Analyte, blank=True)
     status = models.CharField(
         max_length=50, choices=STATUS, default='Inactive', blank=True)
+
+
+    @property
+    def noofanalytes(self):
+        return self.analytes.count()
+
+    def save(self, *args, **kwargs):
+        # Skip status update if the instance is not yet saved (no ID)
+        if self.pk is not None:
+            if self.noofanalytes > 0:
+                self.status = 'Active'
+            else:
+                self.status = 'Inactive'
+        super(Scheme, self).save(*args, **kwargs)
+
     def __str__(self):
         return self.name
 
@@ -288,30 +304,27 @@ class Cycle(models.Model):
     rounds = models.PositiveBigIntegerField(blank=True, null=True)
     cycle = models.CharField(
         max_length=50, choices=CYCLE, default='Months', blank=True)  
-    start_date = models.DateTimeField(blank=True, null=True)
-    end_date = models.DateTimeField(blank=True, null=True)
-    analytes = models.ManyToManyField(Analyte, blank=True)
+    start_date = models.DateField(blank=True, null=True)
+    end_date = models.DateField(blank=True, null=True)
     status = models.CharField(
         max_length=50, choices=STATUS, default='Inactive', blank=True)
     
-    @property
-    def noofanalytes(self):
-        return self.analytes.count()
 
-    def save(self, *args, **kwargs):
-        # Skip status update if the instance is not yet saved (no ID)
-        if self.pk is not None:
-            if self.noofanalytes > 0:
-                self.status = 'Active'
-            else:
-                self.status = 'Inactive'
-        super(Cycle, self).save(*args, **kwargs)
+    # def save(self, *args, **kwargs):
+    #     # Skip status update if the instance is not yet saved (no ID)
+    #     if self.pk is not None:
+    #         if self.noofanalytes > 0:
+    #             self.status = 'Active'
+    #         else:
+    #             self.status = 'Inactive'
+    #     super(Cycle, self).save(*args, **kwargs)
 
     def __str__(self):
         return self.status
 
     class Meta:       
         verbose_name = 'Cycle'
+
 
 class Sample(models.Model):
     organization_id = models.ForeignKey(
@@ -356,8 +369,8 @@ class ActivityLogUnits(models.Model):
         Cycle, on_delete=models.CASCADE, null=True, blank=True)
     sample_id = models.ForeignKey(
         Sample, on_delete=models.CASCADE, null=True, blank=True)
-    start_date = models.DateTimeField(null=True, blank=True)
-    end_date = models.DateTimeField(null=True, blank=True)
+    start_date = models.DateField(null=True, blank=True)
+    end_date = models.DateField(null=True, blank=True)
     city_id = models.ForeignKey(
         City, on_delete=models.CASCADE, null=True, blank=True)
     country_id = models.ForeignKey(
