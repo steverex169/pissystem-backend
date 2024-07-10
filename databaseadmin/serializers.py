@@ -1,10 +1,20 @@
 from rest_framework import serializers
-from databaseadmin.models import ParticipantSector,ParticipantType,Department,Designation,District,City,News,Instrument, Units, Analyte, ActivityLogUnits, Reagents, Manufactural, Method, Scheme, Cycle, Sample, InstrumentType
+from databaseadmin.models import ParticipantProvince,ParticipantCountry, ParticipantSector,ParticipantType,Department,Designation,District,City,News,Instrument, Units, Analyte, ActivityLogUnits, Reagents, Manufactural, Method, Scheme, Cycle, Sample, InstrumentType
 
 
 class CitySerializer(serializers.ModelSerializer):
     class Meta:
         model = City
+        fields = ('__all__')
+
+class CountrySerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ParticipantCountry
+        fields = ('__all__')
+
+class ProvinceSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ParticipantProvince
         fields = ('__all__')
 
 class DistrictSerializer(serializers.ModelSerializer):
@@ -77,7 +87,7 @@ class CycleSerializer(serializers.ModelSerializer):
         )
 
     def get_noofanalytes(self, obj):
-        return obj.noofanalytes  
+        return obj.noofanalytes   
 
 class AnalyteSerializer(serializers.ModelSerializer):
     noofreagents = serializers.IntegerField(read_only=True) 

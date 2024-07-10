@@ -28,6 +28,8 @@ TYPE= (
     ('Analyte', 'Analyte'),
     ('Instrumentlist', 'Instrumentlist'),
     ('City', 'City'),
+    ('ParticipantCountry','ParticipantCountry'),
+    ('ParticipantProvince','ParticipantProvince'),
     ('District', 'District'),
     ('Department', 'Department'),
     ('Designation', 'Designation'),
@@ -46,6 +48,30 @@ class City(models.Model):
 
     class Meta:
         verbose_name = 'Participant City'
+
+class ParticipantCountry(models.Model):
+    organization_id = models.ForeignKey(
+        Organization, on_delete=models.CASCADE, null=True, blank=True)
+    name = models.CharField(max_length=255, blank=False, null=True)
+    date_of_addition = models.DateTimeField(blank=True, null=True)  # Changed to DateTimeField
+
+    def __str__(self):
+        return self.name
+
+    class Meta:
+        verbose_name = 'Participant Country'
+
+class ParticipantProvince(models.Model):
+    organization_id = models.ForeignKey(
+        Organization, on_delete=models.CASCADE, null=True, blank=True)
+    name = models.CharField(max_length=255, blank=False, null=True)
+    date_of_addition = models.DateTimeField(blank=True, null=True)  # Changed to DateTimeField
+
+    def __str__(self):
+        return self.name
+
+    class Meta:
+        verbose_name = 'Participant Province'
 
 class District(models.Model):
     organization_id = models.ForeignKey(
@@ -123,10 +149,9 @@ class Manufactural(models.Model):
     organization_id = models.ForeignKey(
         Organization, on_delete=models.CASCADE, null=True, blank=True)
     name = models.CharField(max_length=255, blank=False, null=True)
-    address = models.CharField(max_length=255, blank=True, null=True)
-    country = models.CharField(max_length=255, blank=False, null=True)
-    telephone = models.CharField(max_length=255, blank=True, null=True)
-    city =models.CharField(max_length=255, blank=False, null=True)
+    country = models.ForeignKey(
+        ParticipantCountry, on_delete=models.SET_NULL, null=True, blank=True)
+    website =models.CharField(max_length=10000000, blank=False, null=True)
     date_of_addition = models.DateTimeField(blank=True, null=True) 
     def __str__(self):
         return self.name
@@ -155,6 +180,10 @@ class Reagents(models.Model):
     name = models.CharField(max_length=255, blank=False, null=True)
     code = models.PositiveBigIntegerField(blank=False, null=True)
     date_of_addition = models.DateTimeField(blank=True, null=True) 
+    manufactural = models.ForeignKey(
+        Manufactural, on_delete=models.SET_NULL, null=True, blank=True)
+    country = models.ForeignKey(
+        ParticipantCountry, on_delete=models.SET_NULL, null=True, blank=True)
     status = models.CharField(
         max_length=50, choices=STATUS, default='Inactive', blank=True)
     def __str__(self):
@@ -182,9 +211,13 @@ class Instrument(models.Model):
         InstrumentType, on_delete=models.SET_NULL, null=True, blank=True)
     manufactural = models.ForeignKey(
         Manufactural, on_delete=models.SET_NULL, null=True, blank=True)
+    country = models.ForeignKey(
+        ParticipantCountry, on_delete=models.SET_NULL, null=True, blank=True)
     name = models.CharField(max_length=255, blank=False,
                             null=True, verbose_name='Instrument')
     code = models.PositiveBigIntegerField(blank=False, null=True)
+    model = models.CharField(max_length=255, blank=False, null=True)
+    
     date_of_addition = models.DateTimeField(null=True, blank=True)
     status = models.CharField(
         max_length=50, choices=STATUS, default='Inactive', blank=True)
@@ -265,6 +298,15 @@ class Cycle(models.Model):
     def noofanalytes(self):
         return self.analytes.count()
 
+    def save(self, *args, **kwargs):
+        # Skip status update if the instance is not yet saved (no ID)
+        if self.pk is not None:
+            if self.noofanalytes > 0:
+                self.status = 'Active'
+            else:
+                self.status = 'Inactive'
+        super(Cycle, self).save(*args, **kwargs)
+
     def __str__(self):
         return self.status
 
@@ -318,6 +360,10 @@ class ActivityLogUnits(models.Model):
     end_date = models.DateTimeField(null=True, blank=True)
     city_id = models.ForeignKey(
         City, on_delete=models.CASCADE, null=True, blank=True)
+    country_id = models.ForeignKey(
+        ParticipantCountry, on_delete=models.CASCADE, null=True, blank=True)
+    province_id = models.ForeignKey(
+        ParticipantProvince, on_delete=models.CASCADE, null=True, blank=True)
     district_id = models.ForeignKey(
         District, on_delete=models.CASCADE, null=True, blank=True)
     department_id = models.ForeignKey(
