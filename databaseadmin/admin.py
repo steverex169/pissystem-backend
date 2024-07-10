@@ -1,5 +1,5 @@
 from django.contrib import admin
-from databaseadmin.models import City,District,Department,Designation,ParticipantType,ParticipantSector,Cycle,News,Instrument, Method, Scheme, Sample, InstrumentType,ActivityLogUnits, Units, Reagents, Manufactural, Analyte
+from databaseadmin.models import ParticipantProvince,ParticipantCountry,City,District,Department,Designation,ParticipantType,ParticipantSector, Cycle, News,Instrument, Method, Scheme, Sample, InstrumentType,ActivityLogUnits, Units, Reagents, Manufactural, Analyte
 
 # Register your models here.
 
@@ -17,8 +17,8 @@ class UnitsTypeAdmin(admin.ModelAdmin):
     search_fields = ('id', 'name', 'date_of_addition', )
 
 class ManufacturalAdmin(admin.ModelAdmin):
-    list_display = ('id', 'name', 'telephone', 'city', 'country', 'address', 'date_of_addition', )
-    search_fields = ('id', 'name','telephone', 'city', 'country', 'address',  'date_of_addition', )
+    list_display = ('id', 'name',  'website', 'country', 'date_of_addition' )
+    search_fields = ('id', 'name',  'website', 'country', 'date_of_addition')
 
 class MethodAdmin(admin.ModelAdmin):
     list_display = ('id', 'name', 'date_of_addition','code','status')
@@ -79,6 +79,14 @@ class CityTypeAdmin(admin.ModelAdmin):
     list_display = ('id', 'name', 'date_of_addition', )
     search_fields = ('id', 'name','date_of_addition', )
 
+class CountryTypeAdmin(admin.ModelAdmin):
+    list_display = ('id', 'name', 'date_of_addition', )
+    search_fields = ('id', 'name','date_of_addition', )
+
+class ProvinceTypeAdmin(admin.ModelAdmin):
+    list_display = ('id', 'name', 'date_of_addition', )
+    search_fields = ('id', 'name','date_of_addition', )
+
 class DistrictTypeAdmin(admin.ModelAdmin):
     list_display = ('id', 'name', 'date_of_addition', )
     search_fields = ('id', 'name','date_of_addition', )
@@ -112,6 +120,8 @@ admin.site.register(Instrument, InstrumentAdmin)
 admin.site.register(Sample, SampleAdmin)
 admin.site.register(Cycle, CycleAdmin)
 admin.site.register(City, CityTypeAdmin)
+admin.site.register(ParticipantCountry, CountryTypeAdmin)
+admin.site.register(ParticipantProvince, ProvinceTypeAdmin)
 admin.site.register(District, DistrictTypeAdmin)
 admin.site.register(Department, DepartmentTypeAdmin)
 admin.site.register(Designation, DesignationTypeAdmin)

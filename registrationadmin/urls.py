@@ -1,6 +1,7 @@
 from django.urls import path
 from registrationadmin.views import AllLabsView, RoundAPIView,ApproveUnapproveLabView,  RoundPostAPIView, RoundUpdateAPIView, RoundDeleteAPIView,  ActivityLogRegistrationadmin, PendingLabsView, ApprovedLabsView, UnapprovedLabsView
 
+
 urlpatterns = [
     path('pending-labs/<id>',
          PendingLabsView.as_view(), name='pending-labs/<id>'),

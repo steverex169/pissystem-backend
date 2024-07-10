@@ -212,6 +212,7 @@ class Lab(models.Model):
     shipping_address = models.CharField(max_length=255, blank=True, null=True)
     department = models.CharField(max_length=255, blank=True, null=True)
     city = models.CharField(max_length=255, blank=True, null=True)
+    province = models.CharField(max_length=255, blank=True, null=True)
     country = models.CharField(max_length=255, blank=True, null=True)
     state = models.CharField(max_length=255, blank=True, null=True)
     registered_at = models.DateTimeField(null=True, blank=False)
