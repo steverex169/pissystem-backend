@@ -2375,7 +2375,7 @@ class CycleUpdateAPIView(APIView):
 
             # Store old values before updating
             old_values = {field: getattr(cycle, field) for field in ["scheme_name", "cycle_no", "rounds", "cycle", "status", "start_date", "end_date" ]}
-            old_values = {field: getattr(scheme, field) for field in ["scheme_name", "cycle_no", "rounds", "cycle", "status"]}
+            old_values = {field: getattr(cycle, field) for field in ["scheme_name", "cycle_no", "rounds", "cycle", "status"]}
             
             serializer = CycleSerializer(cycle, data=request.data, partial=True)
 
