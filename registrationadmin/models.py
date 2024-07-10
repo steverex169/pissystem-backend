@@ -3,8 +3,6 @@ from organization.models import Organization
 from django.utils import timezone
 from account.models import UserAccount
 from databaseadmin.models import Scheme
-from labowner.models import Lab
-
 ACTIONS= (
     ('Updated', 'Updated'),
     ('Added', 'Added'),
@@ -39,19 +37,13 @@ class Round(models.Model):
         Scheme, on_delete=models.CASCADE, null=True, blank=True)
     cycle_no = models.CharField(max_length=255, blank=True, null=True)
     sample = models.CharField(max_length=255, blank=True, null=True)
-    participants = models.ManyToManyField(Lab, blank=True)
     issue_date = models.DateTimeField(blank=True, null=True)
     closing_date = models.DateTimeField(blank=True, null=True)
-    # notes = models.CharField(max_length=255, blank=True, null=True)
+    notes = models.CharField(max_length=255, blank=True, null=True)
     status = models.CharField(
         max_length=50, choices=STATUS, blank=True)
-
-    @property
-    def nooflabs(self):
-        return self.participants.count()
-
     def __str__(self):
-        return self.status
+        return self.name
 
     class Meta:       
         verbose_name = 'Round'

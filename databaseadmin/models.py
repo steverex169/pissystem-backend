@@ -3,8 +3,8 @@ from account.models import UserAccount
 from django.db import models
 from organization.models import Organization
 from django.utils import timezone
+from account.models import UserAccount
 
-from staff.models import Staff
 # table of units
 ACTIONS= (
     ('Updated', 'Updated'),
@@ -15,6 +15,10 @@ STATUS = (
     ('Active', 'Active'),
     ('Inactive', 'Inactive'),
 )
+CYCLE = (
+    ('Months', 'Months'),
+    ('Year', 'Year'),
+)
 TYPE= (
     ('Units', 'Units'),
     ('Instruments', 'Instruments'),
@@ -22,6 +26,7 @@ TYPE= (
     ('Method', 'Method'),
     ('Manufactural', 'Manufactural'),
     ('Analyte', 'Analyte'),
+    ('Instrumentlist', 'Instrumentlist'),
     ('City', 'City'),
     ('ParticipantCountry','ParticipantCountry'),
     ('ParticipantProvince','ParticipantProvince'),
@@ -131,7 +136,6 @@ class Units(models.Model):
     organization_id = models.ForeignKey(
         Organization, on_delete=models.CASCADE, null=True, blank=True)
     name = models.CharField(max_length=255, blank=False, null=True)
-    formula = models.CharField(max_length=255, blank=False, null=True)
     date_of_addition = models.DateTimeField(blank=True, null=True)  # Changed to DateTimeField
 
     def __str__(self):
@@ -144,10 +148,9 @@ class Manufactural(models.Model):
     organization_id = models.ForeignKey(
         Organization, on_delete=models.CASCADE, null=True, blank=True)
     name = models.CharField(max_length=255, blank=False, null=True)
-    address = models.CharField(max_length=255, blank=True, null=True)
-    country = models.CharField(max_length=255, blank=False, null=True)
-    telephone = models.CharField(max_length=255, blank=True, null=True)
-    city =models.CharField(max_length=255, blank=False, null=True)
+    country = models.ForeignKey(
+        ParticipantCountry, on_delete=models.SET_NULL, null=True, blank=True)
+    website =models.CharField(max_length=10000000, blank=False, null=True)
     date_of_addition = models.DateTimeField(blank=True, null=True) 
     def __str__(self):
         return self.name
@@ -169,19 +172,6 @@ class Method(models.Model):
     class Meta:       
         verbose_name = 'Method'
 
-# class Analyte(models.Model):
-#     organization_id = models.ForeignKey(
-#         Organization, on_delete=models.CASCADE, null=True, blank=True)
-#     name = models.CharField(max_length=255, blank=True, null=True)
-#     code = models.PositiveBigIntegerField(blank=True, null=True)
-#     date_of_addition = models.DateTimeField(blank=True, null=True) 
-#     status = models.CharField(
-#         max_length=50, choices=STATUS, default='Inactive', blank=True)
-#     def __str__(self):
-#         return self.name
-
-#     class Meta:       
-#         verbose_name = 'Analyte'
 
 class Reagents(models.Model):
     organization_id = models.ForeignKey(
@@ -189,6 +179,10 @@ class Reagents(models.Model):
     name = models.CharField(max_length=255, blank=False, null=True)
     code = models.PositiveBigIntegerField(blank=False, null=True)
     date_of_addition = models.DateTimeField(blank=True, null=True) 
+    manufactural = models.ForeignKey(
+        Manufactural, on_delete=models.SET_NULL, null=True, blank=True)
+    country = models.ForeignKey(
+        ParticipantCountry, on_delete=models.SET_NULL, null=True, blank=True)
     status = models.CharField(
         max_length=50, choices=STATUS, default='Inactive', blank=True)
     def __str__(self):
@@ -216,9 +210,13 @@ class Instrument(models.Model):
         InstrumentType, on_delete=models.SET_NULL, null=True, blank=True)
     manufactural = models.ForeignKey(
         Manufactural, on_delete=models.SET_NULL, null=True, blank=True)
+    country = models.ForeignKey(
+        ParticipantCountry, on_delete=models.SET_NULL, null=True, blank=True)
     name = models.CharField(max_length=255, blank=False,
                             null=True, verbose_name='Instrument')
     code = models.PositiveBigIntegerField(blank=False, null=True)
+    model = models.CharField(max_length=255, blank=False, null=True)
+    
     date_of_addition = models.DateTimeField(null=True, blank=True)
     status = models.CharField(
         max_length=50, choices=STATUS, default='Inactive', blank=True)
@@ -268,8 +266,8 @@ class Scheme(models.Model):
     organization_id = models.ForeignKey(
         Organization, on_delete=models.CASCADE, null=True, blank=True)
     name = models.CharField(max_length=255, blank=True, null=True)
-    # added_by= models.ForeignKey(
-    #     UserAccount, on_delete=models.CASCADE, null=True, blank=True) 
+    added_by= models.ForeignKey(
+        UserAccount, on_delete=models.CASCADE, null=True, blank=True) 
     
     date_of_addition = models.DateTimeField(blank=True, null=True) 
     status = models.CharField(
@@ -280,9 +278,61 @@ class Scheme(models.Model):
     class Meta:       
         verbose_name = 'Scheme'
 
-class ActivityLogUnits(models.Model):
+class Cycle(models.Model):
     organization_id = models.ForeignKey(
         Organization, on_delete=models.CASCADE, null=True, blank=True)
+    scheme_name = models.ForeignKey(
+        Scheme, on_delete=models.CASCADE, null=True, blank=True)
+    cycle_no = models.CharField(max_length=255, blank=True, null=True)
+    rounds = models.PositiveBigIntegerField(blank=True, null=True)
+    cycle = models.CharField(
+        max_length=50, choices=CYCLE, default='Months', blank=True)  
+    start_date = models.DateTimeField(blank=True, null=True)
+    end_date = models.DateTimeField(blank=True, null=True)
+    analytes = models.ManyToManyField(Analyte, blank=True)
+    status = models.CharField(
+        max_length=50, choices=STATUS, default='Inactive', blank=True)
+    
+    @property
+    def noofanalytes(self):
+        return self.analytes.count()
+
+    def save(self, *args, **kwargs):
+        # Skip status update if the instance is not yet saved (no ID)
+        if self.pk is not None:
+            if self.noofanalytes > 0:
+                self.status = 'Active'
+            else:
+                self.status = 'Inactive'
+        super(Cycle, self).save(*args, **kwargs)
+
+    def __str__(self):
+        return self.status
+
+    class Meta:       
+        verbose_name = 'Cycle'
+
+class Sample(models.Model):
+    organization_id = models.ForeignKey(
+         Organization, on_delete=models.CASCADE, null=True, blank=True)
+    account_id = models.OneToOneField(
+        UserAccount, on_delete=models.CASCADE, primary_key=False, null=True, blank=True)
+    sampleno = models.CharField(max_length=255, blank=False, null=True)
+    details = models.TextField()
+    notes = models.TextField(max_length=255, blank=False, null=True)
+    scheme = models.TextField(blank=True, null=True) 
+    # added_by = models.ForeignKey(
+    #     UserAccount, on_delete=models.CASCADE, null=True, blank=True)
+        
+    def __str__(self):
+        return self.sampleno
+
+    class Meta:
+        verbose_name = 'Sample'
+
+class ActivityLogUnits(models.Model):
+    organization_id = models.ForeignKey(
+        Organization, on_delete=models.CASCADE, related_name='databaseadmin_activity_log_units', null=True, blank=True)
     analyte_id = models.ForeignKey(
          Analyte, on_delete=models.CASCADE, null=True, blank=True)
     manufactural_id = models.ForeignKey(
@@ -299,6 +349,28 @@ class ActivityLogUnits(models.Model):
         Method, on_delete=models.CASCADE, null=True, blank=True)
     scheme_id = models.ForeignKey(
         Scheme, on_delete=models.CASCADE, null=True, blank=True)
+    cycle_id = models.ForeignKey(
+        Cycle, on_delete=models.CASCADE, null=True, blank=True)
+    sample_id = models.ForeignKey(
+        Sample, on_delete=models.CASCADE, null=True, blank=True)
+    start_date = models.DateTimeField(null=True, blank=True)
+    end_date = models.DateTimeField(null=True, blank=True)
+    city_id = models.ForeignKey(
+        City, on_delete=models.CASCADE, null=True, blank=True)
+    country_id = models.ForeignKey(
+        ParticipantCountry, on_delete=models.CASCADE, null=True, blank=True)
+    province_id = models.ForeignKey(
+        ParticipantProvince, on_delete=models.CASCADE, null=True, blank=True)
+    district_id = models.ForeignKey(
+        District, on_delete=models.CASCADE, null=True, blank=True)
+    department_id = models.ForeignKey(
+        Department, on_delete=models.CASCADE, null=True, blank=True)
+    designation_id = models.ForeignKey(
+        Designation, on_delete=models.CASCADE, null=True, blank=True)
+    type_id = models.ForeignKey(
+        ParticipantType, on_delete=models.CASCADE, null=True, blank=True)
+    sector_id = models.ForeignKey(
+        ParticipantSector, on_delete=models.CASCADE, null=True, blank=True)
     old_value = models.TextField(null= True, blank=True)
     new_value = models.TextField(null= True, blank=True)
     date_of_addition = models.DateTimeField(blank=True, null=True)  
@@ -308,6 +380,8 @@ class ActivityLogUnits(models.Model):
         max_length=50, choices= ACTIONS, default= 'Added', verbose_name='Which action is performed?')
     status = models.CharField(
         max_length=50, choices=STATUS, default='Inactive', blank=True)
+    cycle = models.CharField(
+        max_length=50, choices=CYCLE, default='Months', blank=True)
     type = models.CharField(
         max_length=50, choices= TYPE, default= 'Units', verbose_name='Form type?')
     def __str__(self):

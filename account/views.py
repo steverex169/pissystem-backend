@@ -25,8 +25,8 @@ import datetime
 from django.contrib.auth.models import update_last_login
 from staff.models import Staff
 from organization.models import Organization
-from labowner.models import Lab
 from django.utils import timezone
+from labowner.models import Lab
 # Redirect to admin
 
 
@@ -71,7 +71,7 @@ class RegisterView(CreateAPIView):
                 # print("emaillllll", request.data['email'], request.data['added_by'], organization)
                 Lab.objects.create(
                     
-                    account_id=user,
+                   account_id=user,
                     # organization_id=request.data['added_by'],
                     user_name=request.data['username'],
                     city=request.data['city'],
@@ -199,7 +199,7 @@ class LoginView(APIView):
                         elif lab.status == "Pending":
                             return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "Your lab is pending for approval. Please contact admins for further details."})
                         elif lab.status == "Unapproved":
-                            return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "Your lab account is not approved by Lab Hazir. Please contact our customer care for further details."})
+                            return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "Your lab account is not approved by NHS NEQAS. Please contact our customer care for further details."})
                     except:
                         UserAccount.objects.get(id=user_account.id).delete()
                         return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "Sorry! Your registration was not completed properly. Please register again."})

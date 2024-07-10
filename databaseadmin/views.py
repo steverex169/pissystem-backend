@@ -1,13 +1,15 @@
 from rest_framework import status
 from rest_framework.response import Response
+from django.core.exceptions import ObjectDoesNotExist
 from rest_framework.views import APIView
 
-from databaseadmin.models import News,ParticipantProvince,ParticipantCountry,ParticipantType,ParticipantSector,Department,Designation,District,City,News,Instrument, Units, ActivityLogUnits,Reagents , Manufactural, Method,InstrumentType, Analyte,Scheme
+from databaseadmin.models import ParticipantProvince,ParticipantCountry, ParticipantType,ParticipantSector,Department,Designation,District,City,News,Instrument, Units, ActivityLogUnits,Reagents , Manufactural, Method,InstrumentType, Analyte
 
-from databaseadmin.serializers import ProvinceSerializer,CountrySerializer, ParticipantTypeSerializer, ParticipantSectorSerializer,DepartmentSerializer,DesignationSerializer,DistrictSerializer,CitySerializer,NewsSerializer,InstrumentSerializer, MethodSerializer,AnalyteSerializer, InstrumentTypeSerializer, UnitsSerializer, ActivityLogUnitsSerializer, ReagentsSerializer, ManufacturalSerializer,SchemeSerializer
+from databaseadmin.serializers import CountrySerializer,NewsSerializer,InstrumentSerializer, MethodSerializer,AnalyteSerializer, InstrumentTypeSerializer, UnitsSerializer, ActivityLogUnitsSerializer, ReagentsSerializer, ManufacturalSerializer, Scheme, Cycle,Sample,ParticipantTypeSerializer, ParticipantSectorSerializer,DepartmentSerializer,DesignationSerializer,DistrictSerializer,CitySerializer,SchemeSerializer, CycleSerializer,  SampleSerializer, ProvinceSerializer
 
 from labowner.models import Lab
 from staff.models import Staff
+
 from django.forms.models import model_to_dict
 from django.http import HttpResponseRedirect
 from rest_framework.permissions import IsAuthenticated, AllowAny
@@ -17,6 +19,7 @@ from rest_framework.authtoken.serializers import AuthTokenSerializer
 from django.utils import timezone
 from account.models import UserAccount
 from organization.models import Organization
+from django.shortcuts import get_object_or_404
 import datetime
 
 class ParticipantSectorListAPIView(APIView):
@@ -320,7 +323,6 @@ class CityListAPIView(APIView):
         except City.DoesNotExist:
             return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "No City records found."})
 
-
 class CityCreateAPIView(APIView):
     permission_classes = (AllowAny,)  # Temporary permission setting for demonstration
 
@@ -430,6 +432,7 @@ class CityUpdateAPIView(APIView):
 
         except Exception as e:
             return Response({"status": status.HTTP_400_BAD_REQUEST, "message": str(e)})
+
 class ProvinceListAPIView(APIView):
 
     def get(self, request, *args, **kwargs):
@@ -703,7 +706,7 @@ class CountryUpdateAPIView(APIView):
 
         except Exception as e:
             return Response({"status": status.HTTP_400_BAD_REQUEST, "message": str(e)})
-        
+
 class DistrictListAPIView(APIView):
 
     def get(self, request, *args, **kwargs):
@@ -1142,6 +1145,7 @@ class UnitsListAPIView(APIView):
         except Units.DoesNotExist:
             return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "No Units records found."})
 
+        
 class UnitsAPIView(APIView):
     permission_classes = (AllowAny,)  # Temporary permission setting for demonstration
 
@@ -1251,7 +1255,7 @@ class UnitsUpdateAPIView(APIView):
 
         except Exception as e:
             return Response({"status": status.HTTP_400_BAD_REQUEST, "message": str(e)})
-
+            
 class InstrumentsAPIView(APIView):
     permission_classes = (AllowAny,)
 
@@ -1272,26 +1276,41 @@ class InstrumentsAPIView(APIView):
             # Serialize data
             serialized_data = []
             for instrument in instruments_list:
-                instrument_data = {
-                    'id': instrument.id,
-                    'name': instrument.name,
-                    'code': instrument.code,
-                    'status': instrument.status,
-                }
+                analytes = Analyte.objects.filter(instruments=instrument)
+                analytes_count = analytes.count()
 
-                # Fetch name from InstrumentType table based on instrument_type
-                if instrument.instrument_type_id:  # Check if instrument_type_id is not None
-                    instrument_type = InstrumentType.objects.get(id=instrument.instrument_type_id)
-                    instrument_data['instrument_type'] = instrument_type.name
-                else:
-                    instrument_data['instrument_type'] = None
+                # Retrieve the instrumenttype
+                instrument_type_name = None
+                if instrument.instrument_type:
+                    try:
+                        instrument_type = InstrumentType.objects.get(id=instrument.instrument_type.id)
+                        instrument_type_name = instrument_type.name  
+                    except InstrumentType.DoesNotExist:
+                        instrument_type_name = None
 
-                # Fetch name from Manufactural table based on manufactural_id
-                if instrument.manufactural_id:  # Check if manufactural_id is not None
-                    manufactural = Manufactural.objects.get(id=instrument.manufactural_id)
-                    instrument_data['manufactural'] = manufactural.name
-                else:
-                    instrument_data['manufactural'] = None
+                # Retrieve the manufacturer
+                manufactural_name = None
+                if instrument.manufactural:
+                    try:
+                        manufactural = Manufactural.objects.get(id=instrument.manufactural.id)
+                        manufactural_name = manufactural.name  
+                    except Manufactural.DoesNotExist:
+                        manufactural_name = None
+
+                # Retrieve the country
+                country_name = None
+                if instrument.country:
+                    try:
+                        country = ParticipantCountry.objects.get(id=instrument.country.id)
+                        country_name = country.name  # Assuming ParticipantCountry has a 'name' field
+                    except ParticipantCountry.DoesNotExist:
+                        country_name = None
+                
+                instrument_data = model_to_dict(instrument)
+                instrument_data['analytes_count'] = analytes_count
+                instrument_data['instrument_type'] = instrument_type_name
+                instrument_data['manufactural'] = manufactural_name
+                instrument_data['country'] = country_name
 
                 serialized_data.append(instrument_data)
 
@@ -1303,7 +1322,11 @@ class InstrumentsAPIView(APIView):
         except Instrument.DoesNotExist:
             return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "No Record Exist."})
 
-    # Post API for creating units
+        except Exception as e:
+            return Response({"status": status.HTTP_400_BAD_REQUEST, "message": str(e)})
+
+
+# Post API for creating units
 class InstrumentsPostAPIView(APIView):
     permission_classes = (AllowAny,)  # AllowAny temporarily for demonstration
 
@@ -1316,13 +1339,26 @@ class InstrumentsPostAPIView(APIView):
             # Retrieve the organization associated with the staff user
             organization = staff_user.organization_id
 
-            # Fetch the InstrumentType instance
-            instrument_type_id = request.data['instrument_type']
-            instrument_type = InstrumentType.objects.get(id=instrument_type_id, organization_id=organization)
+            # Fetch the instrument_type instance based on instrument_type name
+            instrument_type_name = request.data.get('instrument_type')
+            try:
+                instrument_type = InstrumentType.objects.get(name=instrument_type_name, organization_id=organization)
+            except InstrumentType.DoesNotExist:
+                return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "Invalid instrument_type name provided."})
 
-            # Fetch the manufactural instance
-            manufactural_id = request.data['manufactural']
-            manufactural = Manufactural.objects.get(id=manufactural_id, organization_id=organization)
+            # Fetch the manufactural instance based on manufacturer name
+            manufactural_name = request.data.get('manufactural')
+            try:
+                manufactural = Manufactural.objects.get(name=manufactural_name, organization_id=organization)
+            except Manufactural.DoesNotExist:
+                return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "Invalid manufactural name provided."})
+
+            # Fetch the country instance based on country name
+            country_name = request.data.get('country')
+            try:
+                country = ParticipantCountry.objects.get(name=country_name, organization_id=organization)
+            except ParticipantCountry.DoesNotExist:
+                return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "Invalid country name provided."})
 
             # Create a new instrument
             instrument = Instrument.objects.create(
@@ -1330,13 +1366,15 @@ class InstrumentsPostAPIView(APIView):
                 name=request.data['name'],
                 date_of_addition=timezone.now(),
                 code=request.data['code'],
+                model=request.data['model'],
                 status=request.data['status'],
                 instrument_type=instrument_type,
                 manufactural=manufactural,
+                country=country,
             )
 
             # Concatenate all changes into a single string with names
-            changes_string = f"name: {request.data['name']}, code: {request.data['code']}, status: {request.data['status']}, instrument_type: {instrument_type.name}, manufactural: {manufactural.name}"
+            changes_string = f"name: {request.data['name']}, code: {request.data['code']}, status: {request.data['status']}, instrument_type: {instrument_type.name}, manufactural: {manufactural.name},country: {country.name}"
 
             # Save data in activity log as a single field
             ActivityLogUnits.objects.create(
@@ -1366,6 +1404,9 @@ class InstrumentsPostAPIView(APIView):
         except Manufactural.DoesNotExist:
             return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "Invalid manufactural."})
 
+        except ParticipantCountry.DoesNotExist:
+            return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "Invalid manufactural."})
+
         except Exception as e:
             return Response({"status": status.HTTP_400_BAD_REQUEST, "message": str(e)})
 
@@ -1384,16 +1425,49 @@ class InstrumentsUpdateAPIView(APIView):
             # Retrieve the existing instrument object
             instrument = Instrument.objects.get(id=kwargs.get('id'), organization_id=organization)
 
+            # Create a mutable copy of request.data
+            data = request.data.copy()
+
             # Store old values before updating
             old_values = {
                 'name': instrument.name,
                 'code': instrument.code,
+                'model': instrument.model,
                 'status': instrument.status,
                 'instrument_type': instrument.instrument_type.name if instrument.instrument_type else None,
                 'manufactural': instrument.manufactural.name if instrument.manufactural else None,
+                'country': instrument.country.name if instrument.country else None,
             }
-            
-            serializer = InstrumentSerializer(instrument, data=request.data, partial=True)
+
+            # Fetch the instrument_type instance based on instrument_type name
+            instrument_type_name = data.get('instrument_type')
+            if instrument_type_name:
+                try:
+                    instrument_type = InstrumentType.objects.get(name=instrument_type_name, organization_id=organization)
+                    data['instrument_type'] = instrument_type.id  # Replace the instrument_type name with its pk value
+                except InstrumentType.DoesNotExist:
+                    return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "Invalid instrument_type name provided."})
+
+            # Fetch the manufactural instance based on manufactural name
+            manufactural_name = data.get('manufactural')
+            if manufactural_name:
+                try:
+                    manufactural = Manufactural.objects.get(name=manufactural_name, organization_id=organization)
+                    data['manufactural'] = manufactural.id  # Replace the manufactural name with its pk value
+                except Manufactural.DoesNotExist:
+                    return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "Invalid manufactural name provided."})
+
+            # Fetch the country instance based on country name
+            country_name = data.get('country')
+            if country_name:
+                try:
+                    country = ParticipantCountry.objects.get(name=country_name, organization_id=organization)
+                    data['country'] = country.id  # Replace the country name with its pk value
+                except ParticipantCountry.DoesNotExist:
+                    return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "Invalid country name provided."})
+
+            # Pass the modified data dictionary to the serializer
+            serializer = InstrumentSerializer(instrument, data=data, partial=True)
 
             if serializer.is_valid():
                 updated_unit = serializer.save()
@@ -1402,9 +1476,11 @@ class InstrumentsUpdateAPIView(APIView):
                 new_values = {
                     'name': updated_unit.name,
                     'code': updated_unit.code,
+                    'model': updated_unit.model,
                     'status': updated_unit.status,
                     'instrument_type': updated_unit.instrument_type.name if updated_unit.instrument_type else None,
                     'manufactural': updated_unit.manufactural.name if updated_unit.manufactural else None,
+                    'country': updated_unit.country.name if updated_unit.country else None,
                 }
 
                 # Find the fields that have changed
@@ -1441,6 +1517,8 @@ class InstrumentsUpdateAPIView(APIView):
         except Exception as e:
             return Response({"status": status.HTTP_400_BAD_REQUEST, "message": str(e)})
 
+            
+
 class ActivityLogDatabaseadmin(APIView):
     permission_classes = (AllowAny,)
 
@@ -1473,16 +1551,23 @@ class ActivityLogDatabaseadmin(APIView):
                                 activity_log = ActivityLogUnits.objects.filter(method_id=method.id)
                             except Method.DoesNotExist:
                                 try:
-                                    manufactural = Manufactural.objects.get(id=id_value)
-                                    activity_log = ActivityLogUnits.objects.filter(manufactural_id=manufactural.id)
-                                except Manufactural.DoesNotExist:
+                                    scheme = Scheme.objects.get(id=id_value)
+                                    activity_log = ActivityLogUnits.objects.filter(scheme_id=scheme.id)
+                                except Scheme.DoesNotExist:
                                     try:
-                                        instrument = Instrument.objects.get(id=id_value)
-                                        activity_log = ActivityLogUnits.objects.filter(instrument_id=instrument.id)
-                                    except Instrument.DoesNotExist:
-                                        return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "No record exists."})
-                                   
-          
+                                        manufactural = Manufactural.objects.get(id=id_value)
+                                        activity_log = ActivityLogUnits.objects.filter(manufactural_id=manufactural.id)
+                                    except Manufactural.DoesNotExist:
+                                        try:
+                                            sample = Sample.objects.get(id=id_value)
+                                            activity_log = ActivityLogUnits.objects.filter(sample_id=sample.id)
+                                        except Sample.DoesNotExist:
+                                            try:
+                                                instrument = Instrument.objects.get(id=id_value)
+                                                activity_log = ActivityLogUnits.objects.filter(instrument_id=instrument.id)
+                                            except Instrument.DoesNotExist:
+                                                return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "No record exists."}) 
+            
 
             serializer = ActivityLogUnitsSerializer(activity_log, many=True)
             if activity_log.exists():
@@ -1520,6 +1605,7 @@ class AnalyteAddReagents(APIView):
         except Exception as e:
             return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
+
 # Reagents get API 
 class ReagentsListAPIView(APIView):
     
@@ -1540,13 +1626,24 @@ class ReagentsListAPIView(APIView):
             # Serialize data
             serialized_data = []
             for reagent in reagents_list:
-                reagent_data = {
-                    'id': reagent.id,
-                    'code': reagent.code,
-                    'name': reagent.name,
-                    'status': reagent.status,
-                    # Add other fields as needed
-                }
+                analytes_count = reagent.analyte_set.count()  # Count analytes associated with the reagent
+                reagent_data = model_to_dict(reagent)
+                reagent_data['analytes_count'] = analytes_count
+
+                # Fetch name from Manufactural table based on manufactural_id
+                if reagent.manufactural_id:  # Check if manufactural_id is not None
+                    manufactural = Manufactural.objects.get(id=reagent.manufactural_id)
+                    reagent_data['manufactural'] = manufactural.name
+                else:
+                    reagent_data['manufactural'] = None
+
+                # Fetch name from country table based on manufactural_id
+                if reagent.country_id:  # Check if country_id is not None
+                    country = ParticipantCountry.objects.get(id=reagent.country_id)
+                    reagent_data['country'] = country.name
+                else:
+                    reagent_data['country'] = None
+
                 serialized_data.append(reagent_data)
             return Response({"status": status.HTTP_200_OK, "data": serialized_data})
         
@@ -1568,7 +1665,21 @@ class ReagentsPostAPIView(APIView):
             
             # Retrieve the organization associated with the staff user
             organization = staff_user.organization_id
-            
+
+            # Fetch the manufactural instance based on manufacturer name
+            manufactural_name = request.data.get('manufactural')
+            try:
+                manufactural = Manufactural.objects.get(name=manufactural_name, organization_id=organization)
+            except Manufactural.DoesNotExist:
+                return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "Invalid manufactural name provided."})
+
+            # Fetch the country instance based on country name
+            country_name = request.data.get('country')
+            try:
+                country = ParticipantCountry.objects.get(name=country_name, organization_id=organization)
+            except ParticipantCountry.DoesNotExist:
+                return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "Invalid country name provided."})
+
             # Create a new reagent
             reagent = Reagents.objects.create(
                 organization_id=organization,
@@ -1576,10 +1687,12 @@ class ReagentsPostAPIView(APIView):
                 name=request.data['name'],
                 status=request.data['status'],
                 date_of_addition=timezone.now(),
+                manufactural=manufactural,
+                country=country,
             )
 
-            # Concatenate all changes into a single string
-            changes_string = ", ".join([f"{field}: {request.data[field]}" for field in ["name", "code", "status"]])
+            # Concatenate all changes into a single string with names
+            changes_string = f"name: {request.data['name']}, code: {request.data['code']}, status: {request.data['status']},  manufactural: {manufactural.name},country: {country.name}"
 
             # Save data in activity log as a single field
             ActivityLogUnits.objects.create(
@@ -1603,8 +1716,16 @@ class ReagentsPostAPIView(APIView):
         except Staff.DoesNotExist:
             return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "Invalid account_id."})
 
+        except Manufactural.DoesNotExist:
+            return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "Invalid manufactural."})
+
+        except ParticipantCountry.DoesNotExist:
+            return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "Invalid Country."})
+
         except Exception as e:
             return Response({"status": status.HTTP_400_BAD_REQUEST, "message": str(e)})
+
+
 
 class ReagentsPutAPIView(APIView):
     permission_classes = (AllowAny,)
@@ -1620,17 +1741,50 @@ class ReagentsPutAPIView(APIView):
             
             # Retrieve the existing reagent object
             reagent = Reagents.objects.get(id=kwargs.get('id'), organization_id=organization)
+            
+            # Create a mutable copy of request.data
+            data = request.data.copy()
 
             # Store old values before updating
-            old_values = {field: getattr(reagent, field) for field in ["name", "code", "status"]}
+            old_values = {
+                'name': reagent.name,
+                'code': reagent.code,
+                'status': reagent.status,
+                'manufactural': reagent.manufactural.name if reagent.manufactural else None,
+                'country': reagent.country.name if reagent.country else None,
+            }
 
-            serializer = ReagentsSerializer(reagent, data=request.data, partial=True)
+            # Fetch the manufactural instance based on manufactural name
+            manufactural_name = data.get('manufactural')
+            if manufactural_name:
+                try:
+                    manufactural = Manufactural.objects.get(name=manufactural_name, organization_id=organization)
+                    data['manufactural'] = manufactural.id  # Replace the manufactural name with its pk value
+                except Manufactural.DoesNotExist:
+                    return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "Invalid manufactural name provided."})
+
+            # Fetch the country instance based on country name
+            country_name = data.get('country')
+            if country_name:
+                try:
+                    country = ParticipantCountry.objects.get(name=country_name, organization_id=organization)
+                    data['country'] = country.id  # Replace the country name with its pk value
+                except ParticipantCountry.DoesNotExist:
+                    return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "Invalid country name provided."})
+
+            serializer = ReagentsSerializer(reagent, data=data, partial=True)
 
             if serializer.is_valid():
                 updated_reagent = serializer.save()
 
                 # Retrieve new values after updating
-                new_values = {field: getattr(updated_reagent, field) for field in ["name", "code", "status"]}
+                new_values = {
+                    'name': updated_reagent.name,
+                    'code': updated_reagent.code,
+                    'status': updated_reagent.status,
+                    'manufactural': updated_reagent.manufactural.name if updated_reagent.manufactural else None,
+                    'country': updated_reagent.country.name if updated_reagent.country else None,
+                }
 
                 # Find the fields that have changed
                 changed_fields = {field: new_values[field] for field in new_values if new_values[field] != old_values[field]}
@@ -1666,6 +1820,7 @@ class ReagentsPutAPIView(APIView):
         except Exception as e:
             return Response({"status": status.HTTP_400_BAD_REQUEST, "message": str(e)})
 
+
 class ManufacturalListAPIView(APIView):
     
     def get(self, request, *args, **kwargs):
@@ -1685,14 +1840,26 @@ class ManufacturalListAPIView(APIView):
             # Serialize data
             serialized_data = []
             for manufactural in manufactural_list:
-                manufactural_data = {
-                    'id': manufactural.id,
-                    'name': manufactural.name,
-                    'city': manufactural.city,
-                    'country': manufactural.country,
-                    'telephone': manufactural.telephone,
-                    'address': manufactural.address,
-                }
+                instruments = Instrument.objects.filter(manufactural=manufactural)
+                instrument_count = instruments.count()
+                
+                # Retrieve the country
+                country_name = None
+                if manufactural.country is not None:
+                    try:
+                        country = ParticipantCountry.objects.get(id=manufactural.country.id)
+                        country_name = country.name  # Assuming ParticipantCountry has a 'name' field
+                    except ParticipantCountry.DoesNotExist:
+                        country_name = None
+
+                reagents = Reagents.objects.filter(manufactural=manufactural)
+                reagents_count = reagents.count()
+
+                manufactural_data = model_to_dict(manufactural)
+                manufactural_data['instrument_count'] = instrument_count
+                manufactural_data['reagents_count'] = reagents_count
+                manufactural_data['country'] = country_name
+                
                 serialized_data.append(manufactural_data)
 
             return Response({"status": status.HTTP_200_OK, "data": serialized_data})
@@ -1702,6 +1869,7 @@ class ManufacturalListAPIView(APIView):
         
         except Manufactural.DoesNotExist:
             return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "No Record Exist."})
+
         
 class ManufacturalPostAPIView(APIView):
     permission_classes = (AllowAny,)  # AllowAny temporarily for demonstration
@@ -1715,19 +1883,24 @@ class ManufacturalPostAPIView(APIView):
             # Retrieve the organization associated with the staff user
             organization = staff_user.organization_id
 
+            # Fetch the country instance based on country name
+            country_name = request.data.get('country')
+            try:
+                country = ParticipantCountry.objects.get(name=country_name, organization_id=organization)
+            except ParticipantCountry.DoesNotExist:
+                return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "Invalid country name provided."})
+
             # Create a new manufactural
             manufactural = Manufactural.objects.create(
                 organization_id=organization,
                 name=request.data['name'],
-                city=request.data['city'],
-                country=request.data['country'],
-                # telephone=request.data['telephone'],
-                # address=request.data['address'],
+                website=request.data['website'],
+                country=country,
                 date_of_addition=timezone.now(),
             )
 
-            # Concatenate all changes into a single string
-            changes_string = ", ".join([f"{field}: {request.data[field]}" for field in ["name", "city", "country", "telephone", "address"]])
+            # Concatenate all changes into a single string with names
+            changes_string = f"name: {request.data['name']}, website: {request.data['website']}, country: {country.name}"
 
             # Save data in activity log as a single field
             ActivityLogUnits.objects.create(
@@ -1755,12 +1928,15 @@ class ManufacturalPostAPIView(APIView):
             return Response({"status": status.HTTP_400_BAD_REQUEST, "message": str(e)})
 
 class ManufacturalPutAPIView(APIView):
-    permission_classes = (AllowAny,)      
+    permission_classes = (AllowAny,)
 
     def put(self, request, *args, **kwargs):
         try:
+            # Create a mutable copy of request.data
+            data = request.data.copy()
+            
             # Fetch the staff user based on account_id
-            account_id = request.data.get('added_by')
+            account_id = data.get('added_by')
             staff_user = Staff.objects.get(account_id=account_id)
             
             # Retrieve the organization associated with the staff user
@@ -1770,18 +1946,32 @@ class ManufacturalPutAPIView(APIView):
             manufactural = Manufactural.objects.get(id=kwargs.get('id'), organization_id=organization)
 
             # Store old values before updating
-            old_values = {field: getattr(manufactural, field) for field in ["name", "city", "country"]}
-            
-            # Convert 'undefined' values to None before passing to serializer
-            data = {key: value if value != 'undefined' else None for key, value in request.data.items()}
-            
+            old_values = {
+                'name': manufactural.name,
+                'website': manufactural.website,
+                'country': manufactural.country.name if manufactural.country else None,
+            }
+
+            # Fetch the country instance based on country name
+            country_name = data.get('country')
+            if country_name:
+                try:
+                    country = ParticipantCountry.objects.get(name=country_name, organization_id=organization)
+                    data['country'] = country.id  # Replace the country name with its pk value
+                except ParticipantCountry.DoesNotExist:
+                    return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "Invalid country name provided."})
+
             serializer = ManufacturalSerializer(manufactural, data=data, partial=True)
 
             if serializer.is_valid():
                 updated_manufactural = serializer.save()
-                
+
                 # Retrieve new values after updating
-                new_values = {field: getattr(updated_manufactural, field) for field in ["name", "city", "country"]}
+                new_values = {
+                    'name': updated_manufactural.name,
+                    'website': updated_manufactural.website,
+                    'country': updated_manufactural.country.name if updated_manufactural.country else None,
+                }
 
                 # Find the fields that have changed
                 changed_fields = {field: new_values[field] for field in new_values if new_values[field] != old_values[field]}
@@ -1794,7 +1984,7 @@ class ManufacturalPutAPIView(APIView):
                     manufactural_id=manufactural,
                     date_of_addition=timezone.now(),
                     field_name="Changes",
-                    old_value= ", ".join([f"{field}: {old_values[field]}" for field in changed_fields]),
+                    old_value=", ".join([f"{field}: {old_values[field]}" for field in changed_fields]),
                     new_value=changes_string,
                     actions="Updated",
                     type="Manufactural"
@@ -1837,7 +2027,9 @@ class MethodsAPIView(APIView):
             # Serialize data
             serialized_data = []
             for method in methods_list:
+                analytes_count = method.analyte_set.count()  # Count analytes associated with the method
                 method_data = model_to_dict(method)
+                method_data['analytes_count'] = analytes_count
                 serialized_data.append(method_data)
 
             return Response({"status": status.HTTP_200_OK, "data": serialized_data})
@@ -1951,12 +2143,297 @@ class MethodsUpdateAPIView(APIView):
 
         except Exception as e:
             return Response({"status": status.HTTP_400_BAD_REQUEST, "message": str(e)})
+
+class SchemeAPIView(APIView):
+    permission_classes = (AllowAny,)  # AllowAny temporarily for demonstration
+
+    def get(self, request, *args, **kwargs):
+        try:
+            analyte_list = Scheme.objects.all()
+            serialized_data = []
+            for analyte in analyte_list:
+                analyte_data = model_to_dict(analyte)
+                if analyte.added_by_id:  # Check if added_by_id is not None
+                    user_account = UserAccount.objects.get(id=analyte.added_by_id)
+                    analyte_data['added_by'] = user_account.username
+                else:
+                    analyte_data['added_by'] = None
+                serialized_data.append(analyte_data)
+            return Response({"status": status.HTTP_200_OK, "data": serialized_data})
+        except Scheme.DoesNotExist:
+            return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "No Record Exist."})
+
+    # Post API for creating units
+    def post(self, request, *args, **kwargs):
+        try:
+            user_id = request.data['added_by']
+            user_account = UserAccount.objects.get(id=user_id)
+
+            # Create a new Analyte
+            analyte = Scheme.objects.create(
+                name=request.data['name'],
+                date_of_addition=timezone.now(),
+                added_by=user_account,
+                status=request.data['status'],
+            )
+
+            # Concatenate all changes into a single string
+            changes_string = ", ".join([f"{field}: {request.data[field]}" for field in ["name", "status"]])
+
+            # Save data in activity log as a single field
+            ActivityLogUnits.objects.create(
+                analyte_id=analyte,
+                date_of_addition=timezone.now(),
+                field_name="Changes",
+                old_value=None,  # No old value during creation
+                new_value=changes_string,
+                added_by=user_account,
+                actions='Added',
+                type="Analyte"
+            )
+
+            scheme_serializer = SchemeSerializer(analyte)
+
+            return Response({"status": status.HTTP_201_CREATED, "unit_data": scheme_serializer.data,
+                             "message": "Scheme added successfully."})
+
+        except Exception as e:
+            return Response({"status": status.HTTP_400_BAD_REQUEST, "message": str(e)})
+
+class SchemeUpdateAPIView(APIView):
+    permission_classes = (AllowAny,)
+
+    def put(self, request, *args, **kwargs):
+        try:
+            scheme = Scheme.objects.get(id=kwargs.get('id'))
+
+            # Store old values before updating
+            old_values = {field: getattr(scheme, field) for field in ["name", "status"]}
+            
+            serializer = SchemeSerializer(scheme, data=request.data, partial=True)
+
+            if serializer.is_valid():
+                updated_analyte = serializer.save()
+                
+                # Retrieve new values after updating
+                new_values = {field: getattr(updated_analyte, field) for field in ["name", "status"]}
+
+                # Find the fields that have changed
+                changed_fields = {field: new_values[field] for field in new_values if new_values[field] != old_values[field]}
+
+                # Concatenate all changes into a single string
+                changes_string = ", ".join([f"{field}: {changed_fields[field]}" for field in changed_fields])
+
+                # Save data in activity log as a single field
+                ActivityLogUnits.objects.create(
+                    scheme_id=scheme,
+                    date_of_addition=timezone.now(),
+                    field_name="Changes",
+                    old_value= ", ".join([f"{field}: {old_values[field]}" for field in changed_fields]),
+                    new_value=changes_string,
+                    # added_by=request.user,
+                    actions="Updated",
+                    type="Scheme"
+                )
+
+                return Response({
+                    "status": status.HTTP_200_OK,
+                    "data": serializer.data,
+                    "message": "Scheme Information updated successfully."
+                })
+            else:
+                return Response({"status": status.HTTP_400_BAD_REQUEST, "message": serializer.errors})
+
+        except Scheme.DoesNotExist:
+            return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "No such record exists."})
+
+class SchemeDeleteAPIView(APIView):
+   
+
+    def delete(self, request, *args, **kwargs):
+        try:
+            Scheme.objects.get(id=kwargs.get('id')).delete()
+            return Response({"status": status.HTTP_200_OK, "message": "Deleted successfully"})
+
+        except Scheme.DoesNotExist:
+            return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "Sorry! No such record to delete."})
+
+class CycleAPIView(APIView):
+    permission_classes = (AllowAny,)  # AllowAny temporarily for demonstration
+
+    def get(self, request, *args, **kwargs):
+        try:
+            # Get the staff user's account_id
+            account_id = kwargs.get('id')
+
+            # Fetch the staff user based on account_id
+            staff_user = Staff.objects.get(account_id=account_id)
+            
+            # Retrieve the organization associated with the staff user
+            organization = staff_user.organization_id
+
+            # Filter cycles based on the organization
+            cycle_list = Cycle.objects.filter(organization_id=organization)
+
+            serialized_data = []
+            for cycle in cycle_list:
+                # Ensure the cycle is saved to get an ID before accessing the analytes field
+                if cycle.pk is None:
+                    cycle.save()
+
+                # Update status based on number of analytes
+                if cycle.noofanalytes > 0 and cycle.status != 'Active':
+                    cycle.status = 'Active'
+                    cycle.save()
+                elif cycle.noofanalytes == 0 and cycle.status != 'Inactive':
+                    cycle.status = 'Inactive'
+                    cycle.save()
+
+                # Serialize cycle data
+                cycle_data = model_to_dict(cycle)
+                # Add analyte count to the serialized data
+                cycle_data['analytes'] = cycle.noofanalytes
+
+                # Get the scheme name
+                scheme = cycle.scheme_name
+                if scheme:
+                    cycle_data['scheme_name'] = scheme.name
+                    cycle_data['scheme_id'] = scheme.id
+                else:
+                    cycle_data['scheme_name'] = None
+                    cycle_data['scheme_id'] = None  # Handle case where scheme is None
+
+                serialized_data.append(cycle_data)
+
+
+            return Response({"status": status.HTTP_200_OK, "data": serialized_data})
+        
+        except Staff.DoesNotExist:
+            return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "Invalid account_id."})
+        
+        except Cycle.DoesNotExist:
+            return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "No cycle records found."})
+
+class CyclePostAPIView(APIView):
+    permission_classes = (AllowAny,)  # Temporary permission setting for demonstration
+
+    def post(self, request, *args, **kwargs):
+        try:
+            account_id = request.data['added_by']
+ 
+            staff_user = Staff.objects.get(account_id=account_id)
+
+            
+            # Retrieve the organization associated with the staff user
+            organization = staff_user.organization_id
+            scheme_id = request.data.get('scheme_name')  # Assuming 'scheme' is sent in the request data
+            scheme = get_object_or_404(Scheme, pk=scheme_id)
+
+            # Create a new Analyte
+            cycle = Cycle.objects.create(
+                organization_id= organization,
+                scheme_name=scheme,
+                cycle_no=request.data['cycle_no'],
+                cycle=request.data['cycle'],
+                start_date=request.data['start_date'],
+                end_date=request.data['end_date'],
+                rounds=request.data['rounds'],
+                # status=request.data['status'],
+                # added_by=user_account,
+            )
+
+            # Concatenate all changes into a single string
+            changes_string = ", ".join([f"{field}: {request.data[field]}" for field in ["scheme_name", "cycle_no", "rounds", "cycle"]])
+
+            # Save data in activity log as a single field
+            ActivityLogUnits.objects.create(
+                cycle_id=cycle,
+                start_date=request.data['start_date'],
+                end_date=request.data['end_date'],
+                field_name="Changes",
+                old_value=None,  # No old value during creation
+                new_value=changes_string,
+                # added_by=user_account,
+                actions='Added',
+                type="Cycle"
+            )
+
+            cycle_serializer = CycleSerializer(cycle)
+
+            return Response({"status": status.HTTP_201_CREATED, "unit_data": cycle_serializer.data,
+                             "message": "Cycle added successfully."})
+
+        except Exception as e:
+            return Response({"status": status.HTTP_400_BAD_REQUEST, "message": str(e)})
+
+class CycleUpdateAPIView(APIView):
+    permission_classes = (AllowAny,)
+
+    def put(self, request, *args, **kwargs):
+        try:
+            cycle = Cycle.objects.get(id=kwargs.get('id'))
+
+            # Store old values before updating
+            old_values = {field: getattr(cycle, field) for field in ["scheme_name", "cycle_no", "rounds", "cycle", "status", "start_date", "end_date" ]}
+            old_values = {field: getattr(scheme, field) for field in ["scheme_name", "cycle_no", "rounds", "cycle", "status"]}
+            
+            serializer = CycleSerializer(cycle, data=request.data, partial=True)
+
+            if serializer.is_valid():
+                updated_cycle = serializer.save()
+                
+                # Retrieve new values after updating
+                new_values = {field: getattr(updated_cycle, field) for field in ["scheme_name", "cycle_no", "rounds", "cycle", "status", "start_date", "end_date"]}
+
+                # Find the fields that have changed
+                changed_fields = {field: new_values[field] for field in new_values if new_values[field] != old_values[field]}
+
+                # Concatenate all changes into a single string
+                changes_string = ", ".join([f"{field}: {changed_fields[field]}" for field in changed_fields])
+
+                # Save data in activity log as a single field
+                ActivityLogUnits.objects.create(
+                    cycle_id=cycle,
+                    start_date=request.data['start_date'],
+                    end_date=request.data['end_date'],
+                    field_name="Changes",
+                    old_value= ", ".join([f"{field}: {old_values[field]}" for field in changed_fields]),
+                    new_value=changes_string,
+                    # added_by=request.user,
+                    actions="Updated",
+                    type="Cycle"
+                )
+
+                return Response({
+                    "status": status.HTTP_200_OK,
+                    "data": serializer.data,
+                    "message": "Cycle Information updated successfully."
+                })
+            else:
+                return Response({"status": status.HTTP_400_BAD_REQUEST, "message": serializer.errors})
+
+        except Cycle.DoesNotExist:
+            return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "No such record exists."})
+
+
+        except Exception as e:
+            return Response({"status": status.HTTP_400_BAD_REQUEST, "message": str(e)})
+
+class CycleDeleteAPIView(APIView):
+   def delete(self, request, *args, **kwargs):
+        try:
+            Cycle.objects.get(id=kwargs.get('id')).delete()
+            return Response({"status": status.HTTP_200_OK, "message": "Deleted successfully"})
+
+        except Cycle.DoesNotExist:
+            return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "Sorry! No such record to delete."})
+
 class InstrumentTypeView(APIView):
     permission_classes = (AllowAny,)
 
     def get(self, request, *args, **kwargs):
         try:
-            # Get the staff user's account_id
+            # Get the account_id from kwargs
             account_id = kwargs.get('id')
             
             # Fetch the staff user based on account_id
@@ -1968,16 +2445,23 @@ class InstrumentTypeView(APIView):
             # Filter instrument types based on the organization
             instrument_type_list = InstrumentType.objects.filter(organization_id=organization)
             
-            # Serialize data
-            serialized_data = [model_to_dict(instrument_type) for instrument_type in instrument_type_list]
+            # Serialize data and include instrument counts
+            serialized_data = []
+            for instrument_type in instrument_type_list:
+                instruments = Instrument.objects.filter(instrument_type=instrument_type)
+                instrument_count = instruments.count()
+                instrument_type_data = model_to_dict(instrument_type)
+                instrument_type_data['instrument_count'] = instrument_count
+                serialized_data.append(instrument_type_data)
 
             return Response({"status": status.HTTP_200_OK, "data": serialized_data})
 
         except Staff.DoesNotExist:
             return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "Invalid account_id."})
         
-        except InstrumentType.DoesNotExist:
-            return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "No Record Exist."})
+        except Exception as e:
+            return Response({"status": status.HTTP_400_BAD_REQUEST, "message": str(e)})
+
 
 class InstrumentTypeCreateView(APIView):
     permission_classes = (AllowAny,)
@@ -2076,8 +2560,6 @@ class UpdateInstrumentTypeView(APIView):
         except InstrumentType.DoesNotExist:
             return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "No such record exists."})
 
-        except Exception as e:
-            return Response({"status": status.HTTP_400_BAD_REQUEST, "message": str(e)})
 #Analyte adding reagents
 class AnalytesReagentsAPIView(APIView):
     permission_classes = (AllowAny,)  # Adjust permission classes as needed
@@ -2101,6 +2583,94 @@ class AnalytesReagentsAPIView(APIView):
         
         except Exception as e:
             return Response({"status": status.HTTP_400_BAD_REQUEST, "message": str(e)})
+
+#Equipments in manufacturer
+class InstrumentsInManufacturerAPIView(APIView):
+    permission_classes = (AllowAny,)  # Adjust permission classes as needed
+
+    def get(self, request, id, *args, **kwargs):
+        try:
+            manufactural = Manufactural.objects.get(id=id)
+            instruments = Instrument.objects.filter(manufactural=manufactural)
+            
+            # Serialize data including instrument count
+            serialized_data = InstrumentSerializer(instruments, many=True).data
+            
+            # Calculate instrument count
+            instrument_count = instruments.count()
+            
+            # Prepare response data
+            response_data = {
+                "status": status.HTTP_200_OK,
+                "data": serialized_data,
+            }
+            
+            return Response(response_data)
+        
+        except Manufactural.DoesNotExist:
+            return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "Manufacturer not found."})
+        
+        except Exception as e:
+            return Response({"status": status.HTTP_400_BAD_REQUEST, "message": str(e)})
+
+#reagents in manufacturer
+class ReagentsInManufacturerAPIView(APIView):
+    permission_classes = (AllowAny,)  # Adjust permission classes as needed
+
+    def get(self, request, id, *args, **kwargs):
+        try:
+            manufactural = Manufactural.objects.get(id=id)
+            reagents = Reagents.objects.filter(manufactural=manufactural)
+            
+            # Serialize data including instrument count
+            serialized_data = InstrumentSerializer(reagents, many=True).data
+            
+            # Calculate instrument count
+            reagents_count = reagents.count()
+            
+            # Prepare response data
+            response_data = {
+                "status": status.HTTP_200_OK,
+                "data": serialized_data,
+            }
+            
+            return Response(response_data)
+        
+        except Manufactural.DoesNotExist:
+            return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "Manufacturer not found."})
+        
+        except Exception as e:
+            return Response({"status": status.HTTP_400_BAD_REQUEST, "message": str(e)})
+
+#Equipments in Type
+class InstrumentAndInstrumentTypeAPIView(APIView):
+    permission_classes = (AllowAny,)  # Adjust permission classes as needed
+
+    def get(self, request, id, *args, **kwargs):
+        try:
+            instrument_type = InstrumentType.objects.get(id=id)
+            instruments = Instrument.objects.filter(instrument_type=instrument_type)
+            
+            # Serialize data including instrument count
+            serialized_data = InstrumentSerializer(instruments, many=True).data
+            
+            # Calculate instrument count
+            instrument_count = instruments.count()
+            
+            # Prepare response data
+            response_data = {
+                "status": status.HTTP_200_OK,
+                "data": serialized_data,
+            }
+            
+            return Response(response_data)
+        
+        except InstrumentType.DoesNotExist:
+            return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "InstrumentType not found."})
+        
+        except Exception as e:
+            return Response({"status": status.HTTP_400_BAD_REQUEST, "message": str(e)})
+
 
 class AnalyteAddReagentsAPIView(APIView):
     permission_classes = (AllowAny,)
@@ -2208,6 +2778,7 @@ class AnalytesListAPIView(APIView):
         
         except Analyte.DoesNotExist:
             return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "No Analyte records found."})
+
 
 class AnalyteAPIView(APIView):
     permission_classes = (AllowAny,)  # Temporary permission setting for demonstration
@@ -2319,403 +2890,211 @@ class AnalyteUpdateAPIView(APIView):
 
         except Exception as e:
             return Response({"status": status.HTTP_400_BAD_REQUEST, "message": str(e)})
-   
 
-#Analyte adding equipments
-class AnalytesEquipmentsAPIView(APIView):
+
+# Cycle add Analytes
+class CycleAnalyteAPIView(APIView):
     permission_classes = (AllowAny,)  # Adjust permission classes as needed
 
     def get(self, request, id, *args, **kwargs):
         try:
-            analyte = Analyte.objects.get(id=id)
-            instruments = analyte.instruments.all()  # Fetch all instruments associated with the analyte
-            instrument_ids = [instrument.id for instrument in instruments]
+            analyte = Cycle.objects.get(id=id)
+            analytes = analyte.analytes.all()  # Fetch all reagents associated with the analyte
+            reagent_ids = [analytes.id for analytes in analytes]
             
             # Serialize data
             serialized_data = {
                 #"analyte": AnalyteSerializer(analyte).data,
-                "equipments": instrument_ids  # Send list of instrument IDs
+                "analytes": reagent_ids  # Send list of reagent IDs
             }
             
             return Response({"status": status.HTTP_200_OK, "data": serialized_data})
         
-        except Analyte.DoesNotExist:
+        except Cycle.DoesNotExist:
             return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "Analyte not found."})
         
         except Exception as e:
             return Response({"status": status.HTTP_400_BAD_REQUEST, "message": str(e)})
 
-
-class AnalyteAddEquipmentsAPIView(APIView):
+class CycleAddAnalyteAPIView(APIView):
     permission_classes = (AllowAny,)
 
     def post(self, request, id, *args, **kwargs):
         try:
             analyte = Analyte.objects.get(id=id)
             
-            # Ensure 'instruments' is parsed as a list of integers
-            instruments = request.data.get('equipments', [])
-            if isinstance(instruments, str):
-                instruments = list(map(int, instruments.split(',')))
+            # Ensure 'reagents' is parsed as a list of integers
+            reagents = request.data.get('reagents', [])
+            if isinstance(reagents, str):
+                reagents = list(map(int, reagents.split(',')))
             
-            analyte.instruments.set(instruments)  # Assuming instruments are passed as a list of IDs
+            analyte.reagents.set(reagents)  # Assuming reagents are passed as a list of IDs
             analyte.save()
 
-            return Response({"status": status.HTTP_200_OK, "message": "Equipments added to analyte successfully."})
-        except Analyte.DoesNotExist:
+            return Response({"status": status.HTTP_200_OK, "message": "Reagents added to analyte successfully."})
+        except Cycle.DoesNotExist:
             return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "Analyte not found."})
         except Exception as e:
             return Response({"status": status.HTTP_400_BAD_REQUEST, "message": str(e)})
 
-class AnalyteUpdateEquipmentsAPIView(APIView):
+class CycleUpdateAnalyteAPIView(APIView):
     permission_classes = (AllowAny,)
 
     def put(self, request, id, *args, **kwargs):
         try:
-            analyte = Analyte.objects.get(id=id)
-            instruments = request.data.get('equipments', [])
-            if isinstance(instruments, str):
-                instruments = list(map(int, instruments.split(',')))
+            analyte = Cycle.objects.get(id=id)
+            analytes = request.data.get('reagents', [])
+            if isinstance(analytes, str):
+                analytes = list(map(int, analytes.split(',')))
             
-            analyte.instruments.set(instruments)  # Assuming instruments are passed as a list of IDs
+            analyte.analytes.set(analytes)  # Assuming reagents are passed as a list of IDs
             analyte.save()
             serialized_data = AnalyteSerializer(analyte).data
-            return Response({"status": status.HTTP_200_OK, "analyte_data": serialized_data, "message": "Equipments updated for Analyte successfully."})
-        except Analyte.DoesNotExist:
+            return Response({"status": status.HTTP_200_OK, "analyte_data": serialized_data, "message": "Reagents updated for Analyte successfully."})
+        except Cycle.DoesNotExist:
             return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "Analyte does not exist."})
         except Exception as e:
             return Response({"status": status.HTTP_400_BAD_REQUEST, "message": str(e)})
-
-#Analyte adding methods
-class AnalytesMethodsAPIView(APIView):
-    permission_classes = (AllowAny,)  # Adjust permission classes as needed
-
-    def get(self, request, id, *args, **kwargs):
-        try:
-            analyte = Analyte.objects.get(id=id)
-            methods = analyte.methods.all()  # Fetch all methods associated with the analyte
-            method_ids = [method.id for method in methods]
-            
-            # Serialize data
-            serialized_data = {
-                #"analyte": AnalyteSerializer(analyte).data,
-                "methods": method_ids  # Send list of methods IDs
-            }
-            
-            return Response({"status": status.HTTP_200_OK, "data": serialized_data})
         
-        except Analyte.DoesNotExist:
-            return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "Analyte not found."})
-        
-        except Exception as e:
-            return Response({"status": status.HTTP_400_BAD_REQUEST, "message": str(e)})
-
-
-class AnalyteAddMethodsAPIView(APIView):
-    permission_classes = (AllowAny,)
-
-    def post(self, request, id, *args, **kwargs):
-        try:
-            analyte = Analyte.objects.get(id=id)
-            
-            # Ensure 'methods' is parsed as a list of integers
-            methods = request.data.get('methods', [])
-            if isinstance(methods, str):
-                methods = list(map(int, methods.split(',')))
-            
-            analyte.methods.set(methods)  # Assuming methods are passed as a list of IDs
-            analyte.save()
-
-            return Response({"status": status.HTTP_200_OK, "message": "Methods added to analyte successfully."})
-        except Analyte.DoesNotExist:
-            return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "Analyte not found."})
-        except Exception as e:
-            return Response({"status": status.HTTP_400_BAD_REQUEST, "message": str(e)})
-
-class AnalyteUpdateMethodsAPIView(APIView):
-    permission_classes = (AllowAny,)
-
-    def put(self, request, id, *args, **kwargs):
-        try:
-            analyte = Analyte.objects.get(id=id)
-            methods = request.data.get('methods', [])
-            if isinstance(methods, str):
-                methods = list(map(int, methods.split(',')))
-            
-            analyte.methods.set(methods)  # Assuming methods are passed as a list of IDs
-            analyte.save()
-            serialized_data = AnalyteSerializer(analyte).data
-            return Response({"status": status.HTTP_200_OK, "analyte_data": serialized_data, "message": "Methods updated for Analyte successfully."})
-        except Analyte.DoesNotExist:
-            return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "Analyte does not exist."})
-        except Exception as e:
-            return Response({"status": status.HTTP_400_BAD_REQUEST, "message": str(e)})
-
-#Analytes assocaited with unit~
-class AnalytesByUnitAPIView(APIView):
-    permission_classes = (AllowAny,)  # Adjust permissions as needed
-
-    def get(self, request, id, *args, **kwargs):
-        try:
-            # Retrieve the Units object based on id
-            unit = Units.objects.get(id=id)
-            
-            # Retrieve all analytes associated with the unit
-            analytes = Analyte.objects.filter(units=unit)
-            
-            # Serialize the queryset of analytes
-            serializer = AnalyteSerializer(analytes, many=True)
-            
-            return Response({"status": status.HTTP_200_OK, "data": serializer.data})
-        
-        except Units.DoesNotExist:
-            return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "Units object does not exist."})
-        
-        except Exception as e:
-            return Response({"status": status.HTTP_500_INTERNAL_SERVER_ERROR, "message": str(e)})
-
-#Analyte adding units
-class AnalytesUnitsAPIView(APIView):
-    permission_classes = (AllowAny,)  # Adjust permission classes as needed
-
-    def get(self, request, id, *args, **kwargs):
-        try:
-            analyte = Analyte.objects.get(id=id)
-            units = analyte.units.all()  # Fetch all units associated with the analyte
-            unit_ids = [unit.id for unit in units]
-            
-            # Serialize data
-            serialized_data = {
-                #"analyte": AnalyteSerializer(analyte).data,
-                "units": unit_ids,  # Send list of units IDs
-                "master_unit": analyte.master_unit.id if analyte.master_unit else None
-            }
-            
-            return Response({"status": status.HTTP_200_OK, "data": serialized_data})
-        
-        except Analyte.DoesNotExist:
-            return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "Analyte not found."})
-        
-        except Exception as e:
-            return Response({"status": status.HTTP_400_BAD_REQUEST, "message": str(e)})
-
-
-class AnalyteAddUnitsAPIView(APIView):
-    permission_classes = (AllowAny,)
-
-    def post(self, request, id, *args, **kwargs):
-        try:
-            analyte = Analyte.objects.get(id=id)
-            
-            # Ensure 'units' and 'masterUnit' are parsed correctly
-            units = request.data.get('units', [])
-            if isinstance(units, str):
-                units = list(map(int, units.split(',')))
-
-            master_unit_id = request.data.get('masterUnit', None)
-
-            if master_unit_id:
-                master_unit = Units.objects.get(id=master_unit_id)
-                analyte.master_unit = master_unit
-
-            analyte.units.set(units)  # Assuming units are passed as a list of IDs
-            analyte.save()
-
-            return Response({"status": status.HTTP_200_OK, "message": "Units added to analyte successfully."})
-        except Analyte.DoesNotExist:
-            return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "Analyte not found."})
-        except Units.DoesNotExist:
-            return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "Master unit not found."})
-        except Exception as e:
-            return Response({"status": status.HTTP_400_BAD_REQUEST, "message": str(e)})
-
-class AnalyteUpdateUnitsAPIView(APIView):
-    permission_classes = (AllowAny,)
-
-    def put(self, request, id, *args, **kwargs):
-        try:
-            analyte = Analyte.objects.get(id=id)
-            units = request.data.get('units', [])
-            if isinstance(units, str):
-                units = list(map(int, units.split(',')))
-
-            master_unit_id = request.data.get('masterUnit', None)
-
-            if master_unit_id:
-                master_unit = Units.objects.get(id=master_unit_id)
-                analyte.master_unit = master_unit
-
-            analyte.units.set(units)  # Assuming units are passed as a list of IDs
-            analyte.save()
-
-            serialized_data = AnalyteSerializer(analyte).data
-            return Response({"status": status.HTTP_200_OK, "analyte_data": serialized_data, "message": "Units updated for Analyte successfully."})
-        except Analyte.DoesNotExist:
-            return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "Analyte does not exist."})
-        except Units.DoesNotExist:
-            return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "Master unit not found."})
-        except Exception as e:
-            return Response({"status": status.HTTP_400_BAD_REQUEST, "message": str(e)})
-
-# Scheme
-class SchemeAPIView(APIView):
+class AnalyteAPIView(APIView):
     permission_classes = (AllowAny,)  # AllowAny temporarily for demonstration
 
     def get(self, request, *args, **kwargs):
         try:
-            user_id = kwargs.get('id')
-            if not user_id:
-                return Response({
-                    "status": status.HTTP_400_BAD_REQUEST,
-                    "message": "User ID not provided."
-                }, status=status.HTTP_400_BAD_REQUEST)
+            # Get the staff user's account_id
+            account_id = kwargs.get('id')
             
-            # Fetch user_type based on user_id
-            user_type = UserAccount.objects.get(id=user_id)
+            # Fetch the staff user based on account_id
+            staff_user = Staff.objects.get(account_id=account_id)
             
-            if user_type.account_type == 'labowner':
-                try:
-                    participant = Lab.objects.get(account_id=user_id)
-                    organization = participant.organization_id
-                    schemelist = Scheme.objects.filter(organization_id=organization.id)
-                except Lab.DoesNotExist:
-                    return Response({
-                        "status": status.HTTP_404_NOT_FOUND,
-                        "message": "Lab not found."
-                    }, status=status.HTTP_404_NOT_FOUND)
-            else:
-                try:
-                    staff_member = Staff.objects.get(account_id=user_id)
-                    organization = staff_member.organization_id
-                    schemelist = Scheme.objects.filter(organization_id=organization.id)
-                    
-                except Staff.DoesNotExist:
-                    return Response({
-                        "status": status.HTTP_404_NOT_FOUND,
-                        "message": "Staff member not found."
-                    }, status=status.HTTP_404_NOT_FOUND)
-                
-            serializer = SchemeSerializer(schemelist, many=True)
-            return Response({
-                "status": status.HTTP_200_OK,
-                "data": serializer.data
-            }, status=status.HTTP_200_OK)
+            # Retrieve the organization associated with the staff user
+            organization = staff_user.organization_id
+            
+            # Filter analytes based on the organization
+            analyte_list = Analyte.objects.filter(organization_id=organization)
+            
+            # Serialize data
+            serialized_data = AnalyteSerializer(analyte_list, many=True).data
+            
+            return Response({"status": status.HTTP_200_OK, "data": serialized_data})
         
-        except Organization.DoesNotExist:
-            return Response({
-                "status": status.HTTP_404_NOT_FOUND,
-                "message": "Organization not found."
-            }, status=status.HTTP_404_NOT_FOUND)
+        except Staff.DoesNotExist:
+            return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "Invalid account_id."})
         
-        except Exception as e:
-            return Response({
-                "status": status.HTTP_500_INTERNAL_SERVER_ERROR,
-                "message": str(e)
-            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
- 
- # Post API for creating units
+        except Analyte.DoesNotExist:
+            return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "No Analyte records found."})
 
-class SchemePostAPIView(APIView):
-    permission_classes = (AllowAny,)  # AllowAny temporarily for demonstration
+class AnalyteAPIView(APIView):
+    permission_classes = (AllowAny,)  # Temporary permission setting for demonstration
 
     def post(self, request, *args, **kwargs):
         try:
             # Fetch the staff user based on account_id
             account_id = request.data.get('added_by')  # Use 'added_by' from request data
             staff_user = Staff.objects.get(account_id=account_id)
-            # print("user", staff_user)
             
             # Retrieve the organization associated with the staff user
             organization = staff_user.organization_id
+            
             # Create a new Analyte
-            analyte = Scheme.objects.create(
+            analyte = Analyte.objects.create(
                 organization_id=organization,
                 name=request.data['name'],
-                date_of_addition=timezone.now(),
-                # added_by=request.data['added_by'],
+                code=request.data['code'],
                 status=request.data['status'],
+                date_of_addition=timezone.now(),
             )
 
             # Concatenate all changes into a single string
-            changes_string = ", ".join([f"{field}: {request.data[field]}" for field in ["name", "status"]])
+            changes_string = ", ".join([f"{field}: {request.data[field]}" for field in ["name", "code", "status"]])
 
-            # Save data in activity log as a single field
-            ActivityLogUnits.objects.create(
+            # Save data in activity log
+            activity_log = ActivityLogUnits.objects.create(
                 analyte_id=analyte,
-                date_of_addition=timezone.now(),
-                field_name="Changes",
-                old_value=None,  # No old value during creation
+                old_value=None,
                 new_value=changes_string,
-                # added_by=request.data['added_by'],
-                actions='Added',
-                type="Analyte"
+                date_of_addition=timezone.now(),
+                actions='Added'
             )
 
-            scheme_serializer = SchemeSerializer(analyte)
+            # Serialize the created analyte and activity log
+            analyte_serializer = AnalyteSerializer(analyte)
+            activity_log_serializer = ActivityLogUnitsSerializer(activity_log)
 
-            return Response({"status": status.HTTP_201_CREATED, "unit_data": scheme_serializer.data,
-                             "message": "Scheme added successfully."})
+            return Response({
+                "status": status.HTTP_201_CREATED,
+                "analyte_data": analyte_serializer.data,
+                "activity_log_data": activity_log_serializer.data,
+                "message": "Analyte added successfully."
+            })
+
+        except Staff.DoesNotExist:
+            return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "Invalid account_id."})
 
         except Exception as e:
             return Response({"status": status.HTTP_400_BAD_REQUEST, "message": str(e)})
 
-class SchemeUpdateAPIView(APIView):
-    permission_classes = (AllowAny,)
 
-    def put(self, request,*args, **kwargs):
+class AnalyteUpdateAPIView(APIView):
+    permission_classes = (AllowAny,)  # Adjust permission classes as needed
+
+    def put(self, request, *args, **kwargs):
         try:
-            scheme = Scheme.objects.get(id=kwargs.get('id'))
+            analyte_id = kwargs.get('id')
+            if not analyte_id:
+                return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "Analyte ID is required."})
 
-            # Store old values before updating
-            old_values = {field: getattr(scheme, field) for field in ["name", "status"]}
-            
-            serializer = SchemeSerializer(scheme, data=request.data, partial=True)
+            account_id = request.data.get('added_by')
+            if not account_id:
+                return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "Added by field is required."})
+
+            staff_user = Staff.objects.get(account_id=account_id)
+            analyte = Analyte.objects.get(id=analyte_id)
+
+            old_values = {
+                'name': analyte.name,
+                'code': analyte.code,
+                'status': analyte.status,
+            }
+
+            serializer = AnalyteSerializer(analyte, data=request.data, partial=True)
 
             if serializer.is_valid():
                 updated_analyte = serializer.save()
-                
-                # Retrieve new values after updating
-                new_values = {field: getattr(updated_analyte, field) for field in ["name", "status"]}
 
-                # Find the fields that have changed
+                new_values = {
+                    'name': updated_analyte.name,
+                    'code': updated_analyte.code,
+                    'status': updated_analyte.status,
+                }
+
                 changed_fields = {field: new_values[field] for field in new_values if new_values[field] != old_values[field]}
-
-                # Concatenate all changes into a single string
                 changes_string = ", ".join([f"{field}: {changed_fields[field]}" for field in changed_fields])
 
-                # Save data in activity log as a single field
-                ActivityLogUnits.objects.create(
-                    scheme_id=scheme,
-                    date_of_addition=timezone.now(),
-                    field_name="Changes",
-                    old_value= ", ".join([f"{field}: {old_values[field]}" for field in changed_fields]),
+                activity_log = ActivityLogUnits.objects.create(
+                    analyte_id=analyte,
+                    old_value=", ".join([f"{field}: {old_values[field]}" for field in changed_fields]),
                     new_value=changes_string,
-                    # added_by=request.user,
-                    actions="Updated",
-                    type="Scheme"
+                    date_of_addition=timezone.now(),
+                    actions='Updated'
                 )
 
                 return Response({
                     "status": status.HTTP_200_OK,
                     "data": serializer.data,
-                    "message": "Scheme Information updated successfully."
+                    "message": "Analyte information updated successfully."
                 })
             else:
                 return Response({"status": status.HTTP_400_BAD_REQUEST, "message": serializer.errors})
 
-        except Scheme.DoesNotExist:
+        except Staff.DoesNotExist:
+            return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "Invalid account_id."})
+
+        except Analyte.DoesNotExist:
             return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "No such record exists."})
-
-class SchemeDeleteAPIView(APIView):
-   
-
-    def delete(self, request, *args, **kwargs):
-        try:
-            Scheme.objects.get(id=kwargs.get('id')).delete()
-            return Response({"status": status.HTTP_200_OK, "message": "Deleted successfully"})
-
-        except Scheme.DoesNotExist:
-            return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "Sorry! No such record to delete."})      
+        except Exception as e:
+            return Response({"status": status.HTTP_400_BAD_REQUEST, "message": str(e)})
+        
 
 class NewsListView(APIView):
     permission_classes = (AllowAny,)
@@ -2893,3 +3272,437 @@ class NewsAddAPIView(APIView):
                 return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "User does not exist."})
 
         return Response({"status": status.HTTP_400_BAD_REQUEST, "errors": serializer.errors})
+
+class SampleListView(APIView):
+
+    permission_classes = (AllowAny,)
+
+    def get(self, request, *args, **kwargs):
+        try:
+            sample = Staff.objects.get(account_id=kwargs.get('id'))
+
+            organization = sample.organization_id
+            sample_list = Sample.objects.filter(organization_id=organization)
+            serialized_data = [model_to_dict(sample) for sample in sample_list]
+            
+            return Response({"status": status.HTTP_200_OK, "data": serialized_data})
+
+        except Staff.DoesNotExist:
+            return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "Staff record not found."})
+
+        except Sample.DoesNotExist:
+            return Response({"status": status.HTTP_404_NOT_FOUND, "message": "No Sample found with that ID."})
+
+class SamplePostView(APIView):
+    permission_classes = (AllowAny,)
+    
+    def post(self, request, *args, **kwargs):
+        try:
+            # Fetch the staff user based on account_id
+            account_id = request.data.get('added_by')
+            staff_user = Staff.objects.get(account_id=account_id)
+            organization = staff_user.organization_id
+
+            # Assuming Sample model has account_id field as ForeignKey to UserAccount
+            # Fetch the UserAccount instance based on account_id
+           
+
+            sample = Sample.objects.create(
+                organization_id=organization,
+           
+                sampleno=request.data['sampleno'],
+                details=request.data['details'],
+                notes=request.data['notes'],
+                scheme=request.data['scheme'],
+            )
+
+            sample_serializer = SampleSerializer(sample)
+            return Response({
+                "status": status.HTTP_201_CREATED,
+                "data": sample_serializer.data
+            })
+        
+        except Staff.DoesNotExist:
+            return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "Staff user does not exist."})
+        
+        except UserAccount.DoesNotExist:
+            return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "User account does not exist."})
+        
+        except Exception as e:
+            return Response({"status": status.HTTP_400_BAD_REQUEST, "message": str(e)})
+#Analyte adding equipments
+class AnalytesEquipmentsAPIView(APIView):
+    permission_classes = (AllowAny,)  # Adjust permission classes as needed
+
+    def get(self, request, id, *args, **kwargs):
+        try:
+            analyte = Analyte.objects.get(id=id)
+            instruments = analyte.instruments.all()  # Fetch all instruments associated with the analyte
+            instrument_ids = [instrument.id for instrument in instruments]
+            
+            # Serialize data
+            serialized_data = {
+                #"analyte": AnalyteSerializer(analyte).data,
+                "equipments": instrument_ids  # Send list of instrument IDs
+            }
+            
+            return Response({"status": status.HTTP_200_OK, "data": serialized_data})
+        
+        except Analyte.DoesNotExist:
+            return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "Analyte not found."})
+        
+        except Exception as e:
+            return Response({"status": status.HTTP_400_BAD_REQUEST, "message": str(e)})
+
+
+class AnalyteAddEquipmentsAPIView(APIView):
+    permission_classes = (AllowAny,)
+
+    def post(self, request, id, *args, **kwargs):
+        try:
+            analyte = Analyte.objects.get(id=id)
+            
+            # Ensure 'instruments' is parsed as a list of integers
+            instruments = request.data.get('equipments', [])
+            if isinstance(instruments, str):
+                instruments = list(map(int, instruments.split(',')))
+            
+            analyte.instruments.set(instruments)  # Assuming instruments are passed as a list of IDs
+            analyte.save()
+
+            return Response({"status": status.HTTP_200_OK, "message": "Equipments added to analyte successfully."})
+        except Analyte.DoesNotExist:
+            return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "Analyte not found."})
+        except Exception as e:
+            return Response({"status": status.HTTP_400_BAD_REQUEST, "message": str(e)})
+
+class AnalyteUpdateEquipmentsAPIView(APIView):
+    permission_classes = (AllowAny,)
+
+    def put(self, request, id, *args, **kwargs):
+        try:
+            analyte = Analyte.objects.get(id=id)
+            instruments = request.data.get('equipments', [])
+            if isinstance(instruments, str):
+                instruments = list(map(int, instruments.split(',')))
+            
+            analyte.instruments.set(instruments)  # Assuming instruments are passed as a list of IDs
+            analyte.save()
+            serialized_data = AnalyteSerializer(analyte).data
+            return Response({"status": status.HTTP_200_OK, "analyte_data": serialized_data, "message": "Equipments updated for Analyte successfully."})
+        except Analyte.DoesNotExist:
+            return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "Analyte does not exist."})
+        except Exception as e:
+            return Response({"status": status.HTTP_400_BAD_REQUEST, "message": str(e)})
+
+#Analyte adding methods
+class AnalytesMethodsAPIView(APIView):
+    permission_classes = (AllowAny,)  # Adjust permission classes as needed
+
+    def get(self, request, id, *args, **kwargs):
+        try:
+            analyte = Analyte.objects.get(id=id)
+            methods = analyte.methods.all()  # Fetch all methods associated with the analyte
+            method_ids = [method.id for method in methods]
+            
+            # Serialize data
+            serialized_data = {
+                #"analyte": AnalyteSerializer(analyte).data,
+                "methods": method_ids  # Send list of methods IDs
+            }
+            
+            return Response({"status": status.HTTP_200_OK, "data": serialized_data})
+        
+        except Analyte.DoesNotExist:
+            return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "Analyte not found."})
+        
+        except Exception as e:
+            return Response({"status": status.HTTP_400_BAD_REQUEST, "message": str(e)})
+
+
+class AnalyteAddMethodsAPIView(APIView):
+    permission_classes = (AllowAny,)
+
+    def post(self, request, id, *args, **kwargs):
+        try:
+            analyte = Analyte.objects.get(id=id)
+            
+            # Ensure 'methods' is parsed as a list of integers
+            methods = request.data.get('methods', [])
+            if isinstance(methods, str):
+                methods = list(map(int, methods.split(',')))
+            
+            analyte.methods.set(methods)  # Assuming methods are passed as a list of IDs
+            analyte.save()
+
+            return Response({"status": status.HTTP_200_OK, "message": "Methods added to analyte successfully."})
+        except Analyte.DoesNotExist:
+            return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "Analyte not found."})
+        except Exception as e:
+            return Response({"status": status.HTTP_400_BAD_REQUEST, "message": str(e)})
+
+class AnalyteUpdateMethodsAPIView(APIView):
+    permission_classes = (AllowAny,)
+
+    def put(self, request, id, *args, **kwargs):
+        try:
+            analyte = Analyte.objects.get(id=id)
+            methods = request.data.get('methods', [])
+            if isinstance(methods, str):
+                methods = list(map(int, methods.split(',')))
+            
+            analyte.methods.set(methods)  # Assuming methods are passed as a list of IDs
+            analyte.save()
+            serialized_data = AnalyteSerializer(analyte).data
+            return Response({"status": status.HTTP_200_OK, "analyte_data": serialized_data, "message": "Methods updated for Analyte successfully."})
+        except Analyte.DoesNotExist:
+            return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "Analyte does not exist."})
+        except Exception as e:
+            return Response({"status": status.HTTP_400_BAD_REQUEST, "message": str(e)})
+
+#Analytes assocaited with method~
+class AnalytesByMethodAPIView(APIView):
+    permission_classes = (AllowAny,)  # Adjust permissions as needed
+
+    def get(self, request, id, *args, **kwargs):
+        try:
+            # Retrieve the Method object based on id
+            method = Method.objects.get(id=id)
+            
+            # Retrieve all analytes associated with the method
+            analytes = Analyte.objects.filter(methods=method)
+            
+            # Serialize the queryset of analytes
+            serializer = AnalyteSerializer(analytes, many=True)
+            
+            return Response({"status": status.HTTP_200_OK, "data": serializer.data})
+        
+        except Method.DoesNotExist:
+            return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "Method object does not exist."})
+        
+        except Exception as e:
+            return Response({"status": status.HTTP_500_INTERNAL_SERVER_ERROR, "message": str(e)})
+
+#Analytes assocaited with instrument~
+class AnalytesByInstrumentAPIView(APIView):
+    permission_classes = (AllowAny,)  # Adjust permissions as needed
+
+    def get(self, request, id, *args, **kwargs):
+        try:
+            # Retrieve the Instrument object based on id
+            instrument = Instrument.objects.get(id=id)
+            
+            # Retrieve all analytes associated with the method
+            analytes = Analyte.objects.filter(instruments=instrument)
+            
+            # Serialize the queryset of analytes
+            serializer = AnalyteSerializer(analytes, many=True)
+            
+            return Response({"status": status.HTTP_200_OK, "data": serializer.data})
+        
+        except Instrument.DoesNotExist:
+            return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "Instrument object does not exist."})
+        
+        except Exception as e:
+            return Response({"status": status.HTTP_500_INTERNAL_SERVER_ERROR, "message": str(e)})
+
+#Analytes assocaited with reagent
+class AnalytesByReagentAPIView(APIView):
+    permission_classes = (AllowAny,)  # Adjust permissions as needed
+
+    def get(self, request, id, *args, **kwargs):
+        try:
+            # Retrieve the Method object based on id
+            reagent = Reagents.objects.get(id=id)
+            
+            # Retrieve all analytes associated with the reagent
+            analytes = Analyte.objects.filter(reagents=reagent)
+            
+            # Serialize the queryset of analytes
+            serializer = AnalyteSerializer(analytes, many=True)
+            
+            return Response({"status": status.HTTP_200_OK, "data": serializer.data})
+        
+        except Reagents.DoesNotExist:
+            return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "Reagents object does not exist."})
+        
+        except Exception as e:
+            return Response({"status": status.HTTP_500_INTERNAL_SERVER_ERROR, "message": str(e)})
+
+#Analytes assocaited with unit~
+class AnalytesByUnitAPIView(APIView):
+    permission_classes = (AllowAny,)  # Adjust permissions as needed
+
+    def get(self, request, id, *args, **kwargs):
+        try:
+            # Retrieve the Units object based on id
+            unit = Units.objects.get(id=id)
+            
+            # Retrieve all analytes associated with the unit
+            analytes = Analyte.objects.filter(units=unit)
+            
+            # Serialize the queryset of analytes
+            serializer = AnalyteSerializer(analytes, many=True)
+            
+            return Response({"status": status.HTTP_200_OK, "data": serializer.data})
+        
+        except Units.DoesNotExist:
+            return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "Units object does not exist."})
+        
+        except Exception as e:
+            return Response({"status": status.HTTP_500_INTERNAL_SERVER_ERROR, "message": str(e)})
+
+#Analyte adding units
+class AnalytesUnitsAPIView(APIView):
+    permission_classes = (AllowAny,)  # Adjust permission classes as needed
+
+    def get(self, request, id, *args, **kwargs):
+        try:
+            analyte = Analyte.objects.get(id=id)
+            units = analyte.units.all()  # Fetch all units associated with the analyte
+            unit_ids = [unit.id for unit in units]
+            
+            # Serialize data
+            serialized_data = {
+                #"analyte": AnalyteSerializer(analyte).data,
+                "units": unit_ids,  # Send list of units IDs
+                "master_unit": analyte.master_unit.id if analyte.master_unit else None
+            }
+            
+            return Response({"status": status.HTTP_200_OK, "data": serialized_data})
+        
+        except Analyte.DoesNotExist:
+            return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "Analyte not found."})
+        
+        except Exception as e:
+            return Response({"status": status.HTTP_400_BAD_REQUEST, "message": str(e)})
+
+
+class AnalyteAddUnitsAPIView(APIView):
+    permission_classes = (AllowAny,)
+
+    def post(self, request, id, *args, **kwargs):
+        try:
+            analyte = Analyte.objects.get(id=id)
+            
+            # Ensure 'units' and 'masterUnit' are parsed correctly
+            units = request.data.get('units', [])
+            if isinstance(units, str):
+                units = list(map(int, units.split(',')))
+
+            master_unit_id = request.data.get('masterUnit', None)
+
+            if master_unit_id:
+                master_unit = Units.objects.get(id=master_unit_id)
+                analyte.master_unit = master_unit
+
+            analyte.units.set(units)  # Assuming units are passed as a list of IDs
+            analyte.save()
+
+            return Response({"status": status.HTTP_200_OK, "message": "Units added to analyte successfully."})
+        except Analyte.DoesNotExist:
+            return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "Analyte not found."})
+        except Units.DoesNotExist:
+            return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "Master unit not found."})
+        except Exception as e:
+            return Response({"status": status.HTTP_400_BAD_REQUEST, "message": str(e)})
+
+class AnalyteUpdateUnitsAPIView(APIView):
+    permission_classes = (AllowAny,)
+
+    def put(self, request, id, *args, **kwargs):
+        try:
+            analyte = Analyte.objects.get(id=id)
+            units = request.data.get('units', [])
+            if isinstance(units, str):
+                units = list(map(int, units.split(',')))
+
+            master_unit_id = request.data.get('masterUnit', None)
+
+            if master_unit_id:
+                master_unit = Units.objects.get(id=master_unit_id)
+                analyte.master_unit = master_unit
+
+            analyte.units.set(units)  # Assuming units are passed as a list of IDs
+            analyte.save()
+
+            serialized_data = AnalyteSerializer(analyte).data
+            return Response({"status": status.HTTP_200_OK, "analyte_data": serialized_data, "message": "Units updated for Analyte successfully."})
+        except Analyte.DoesNotExist:
+            return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "Analyte does not exist."})
+        except Units.DoesNotExist:
+            return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "Master unit not found."})
+        except Exception as e:
+            return Response({"status": status.HTTP_400_BAD_REQUEST, "message": str(e)})
+
+class DeleteInstrumentTypeView(APIView):
+    permission_classes = (AllowAny,)
+    
+    def delete(self, request, *args, **kwargs):
+        try:
+            instrument_type = InstrumentType.objects.get(id=kwargs.get('id'))
+            instrument_type.delete()  # Deletes the InstrumentType object from the database
+            return Response({"status": status.HTTP_200_OK, "message": "InstrumentType deleted successfully."})
+
+        except InstrumentType.DoesNotExist:
+            return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "No such InstrumentType to delete."})
+
+class DeleteMethodView(APIView):
+    permission_classes = (AllowAny,)
+    
+    def delete(self, request, *args, **kwargs):
+        try:
+            method = Method.objects.get(id=kwargs.get('id'))
+            method.delete()  # Deletes the Method object from the database
+            return Response({"status": status.HTTP_200_OK, "message": "Method deleted successfully."})
+
+        except Method.DoesNotExist:
+            return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "No such Method to delete."})
+
+class DeleteReagentView(APIView):
+    permission_classes = (AllowAny,)
+    
+    def delete(self, request, *args, **kwargs):
+        try:
+            reagent = Reagents.objects.get(id=kwargs.get('id'))
+            reagent.delete()  # Deletes the Reagents object from the database
+            return Response({"status": status.HTTP_200_OK, "message": "Reagent deleted successfully."})
+
+        except Reagents.DoesNotExist:
+            return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "No such Method to delete."})
+
+class DeleteAnalyteView(APIView):
+    permission_classes = (AllowAny,)
+    
+    def delete(self, request, *args, **kwargs):
+        try:
+            analyte = Analyte.objects.get(id=kwargs.get('id'))
+            analyte.delete()  # Deletes the Analyte object from the database
+            return Response({"status": status.HTTP_200_OK, "message": "Analyte deleted successfully."})
+
+        except Analyte.DoesNotExist:
+            return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "No such Analyte to delete."})
+
+class DeleteInstrumentView(APIView):
+    permission_classes = (AllowAny,)
+    
+    def delete(self, request, *args, **kwargs):
+        try:
+            instrument = Instrument.objects.get(id=kwargs.get('id'))
+            instrument.delete()  # Deletes the Instrument object from the database
+            return Response({"status": status.HTTP_200_OK, "message": "Instrument deleted successfully."})
+
+        except Instrument.DoesNotExist:
+            return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "No such Instrument to delete."})
+
+class DeleteMAnufacturerView(APIView):
+    permission_classes = (AllowAny,)
+    
+    def delete(self, request, *args, **kwargs):
+        try:
+            manufactural = Manufactural.objects.get(id=kwargs.get('id'))
+            manufactural.delete()  # Deletes the Manufactural object from the database
+            return Response({"status": status.HTTP_200_OK, "message": "Manufacturer deleted successfully."})
+
+        except Manufactural.DoesNotExist:
+            return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "No such Manufacturer to delete."})

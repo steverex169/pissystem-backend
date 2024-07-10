@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from databaseadmin.models import ParticipantProvince,ParticipantCountry, ParticipantSector,ParticipantType,Department,Designation,District,City,News,Instrument, Units, Analyte, ActivityLogUnits, Reagents, Manufactural, Method,Scheme, InstrumentType,News
+from databaseadmin.models import ParticipantProvince,ParticipantCountry, ParticipantSector,ParticipantType,Department,Designation,District,City,News,Instrument, Units, Analyte, ActivityLogUnits, Reagents, Manufactural, Method, Scheme, Cycle, Sample, InstrumentType
 
 
 class CitySerializer(serializers.ModelSerializer):
@@ -16,7 +16,6 @@ class ProvinceSerializer(serializers.ModelSerializer):
     class Meta:
         model = ParticipantProvince
         fields = ('__all__')
-
 
 class DistrictSerializer(serializers.ModelSerializer):
     class Meta:
@@ -70,12 +69,25 @@ class InstrumentTypeSerializer(serializers.ModelSerializer):
 class MethodSerializer(serializers.ModelSerializer):
     class Meta:
         model = Method
-        fields = ('__all__')   
+        fields = ('__all__')     
 
 class SchemeSerializer(serializers.ModelSerializer):
     class Meta:
         model = Scheme
-        fields = ('__all__')  
+        fields = ('__all__')     
+
+class CycleSerializer(serializers.ModelSerializer):
+    noofanalytes = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Cycle
+        fields = (
+            'id', 'organization_id', 'scheme_name', 'cycle_no', 'rounds', 'cycle', 
+            'start_date', 'end_date', 'status', 'analytes', 'noofanalytes'
+        )
+
+    def get_noofanalytes(self, obj):
+        return obj.noofanalytes   
 
 class AnalyteSerializer(serializers.ModelSerializer):
     noofreagents = serializers.IntegerField(read_only=True) 
@@ -95,4 +107,9 @@ class InstrumentSerializer(serializers.ModelSerializer):
 class NewsSerializer(serializers.ModelSerializer):
     class Meta:
         model = News
+        fields = ('__all__') 
+
+class SampleSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Sample
         fields = ('__all__') 
