@@ -174,4 +174,29 @@ urlpatterns = [
         SchemeAddAnalyteAPIView.as_view(), name='scheme-add-analyte'),
     path('scheme-update-analyte/<id>',
          SchemeUpdateAnalyteAPIView.as_view(), name='scheme-update-analyte'),
+
+         #Analytes assocaited with unit
+     path('analyte-units/<id>',
+         AnalytesByUnitAPIView.as_view(), name='analyte-units'),  
+
+     #Analytes assocaited with reagent
+     path('analyte-reagents/<id>',
+         AnalytesByReagentAPIView.as_view(), name='analyte-reagents'),  
+
+     #Analytes assocaited with method
+     path('analyte-methods/<id>',
+         AnalytesByMethodAPIView.as_view(), name='analyte-methods'),   
+
+     #Analytes assocaited with instrument
+     path('analyte-instruments/<id>',
+         AnalytesByInstrumentAPIView.as_view(), name='analyte-instruments'),    
+
+     path('instrument-instrumenttype/<id>',
+         InstrumentAndInstrumentTypeAPIView.as_view(), name='instrument-instrumenttype'),  
+         
+     path('instrument-manufacturer/<id>',
+         InstrumentsInManufacturerAPIView.as_view(), name='instrument-manufacturer'),  
+         
+     path('reagent-manufacturer/<id>',
+         ReagentsInManufacturerAPIView.as_view(), name='reagent-manufacturer'), 
 ]
