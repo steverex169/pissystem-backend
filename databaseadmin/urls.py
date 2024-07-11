@@ -108,8 +108,7 @@ urlpatterns = [
     
      path('delete-instrument/<id>',
          DeleteInstrumentView.as_view(), name='delete-instrument'),
-    path('news-list',
-         NewsListView.as_view(), name='news-list'),
+
     path('scheme-list/<id>',
         SchemeAPIView.as_view(), name='scheme-list'),
     path('scheme-list',
@@ -130,10 +129,6 @@ urlpatterns = [
          SampleListView.as_view(), name='sample-list'),
     path('post-sample',
          SamplePostView.as_view(), name='post-sample'),
-    # path('news-list-participant/<id>',
-    #      NewsListViewParticipant.as_view(), name='news-list-participantt'),
-    path('news-add',
-         NewsAddAPIView.as_view(), name='news-add'),
 
     #analyte adding reagents
     path('analyte-reagents-list/<id>',
@@ -174,4 +169,10 @@ urlpatterns = [
         SchemeAddAnalyteAPIView.as_view(), name='scheme-add-analyte'),
     path('scheme-update-analyte/<id>',
          SchemeUpdateAnalyteAPIView.as_view(), name='scheme-update-analyte'),
+
+   #news      
+    path('news-list/<id>',
+         NewsListView.as_view(), name='news-list'),
+    path('news-add',
+         NewsAddAPIView.as_view(), name='news-add'),  
 ]
