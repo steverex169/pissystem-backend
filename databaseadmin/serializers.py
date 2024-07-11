@@ -33,22 +33,27 @@ class MethodSerializer(serializers.ModelSerializer):
         fields = ('__all__')     
 
 class SchemeSerializer(serializers.ModelSerializer):
+    noofanalytes = serializers.IntegerField(read_only=True)
     class Meta:
         model = Scheme
-        fields = ('__all__')     
+        fields = ('__all__')
+    #     fields = (
+    #         'id', 'organization_id', 'name', 'added_by', 'status', ' date_of_addition', 'analytes', 'noofanalytes'
+    #     )
+
+    # def get_noofanalytes(self, obj):
+    #     return obj.noofanalytes  
+    
 
 class CycleSerializer(serializers.ModelSerializer):
-    noofanalytes = serializers.SerializerMethodField()
+    # noofanalytes = serializers.SerializerMethodField()
 
     class Meta:
         model = Cycle
-        fields = (
-            'id', 'organization_id', 'scheme_name', 'cycle_no', 'rounds', 'cycle', 
-            'start_date', 'end_date', 'status', 'analytes', 'noofanalytes'
-        )
+        fields = ('__all__')
 
-    def get_noofanalytes(self, obj):
-        return obj.noofanalytes  
+    # def get_noofanalytes(self, obj):
+    #     return obj.noofanalytes  
 
 class AnalyteSerializer(serializers.ModelSerializer):
     noofreagents = serializers.IntegerField(read_only=True) 
