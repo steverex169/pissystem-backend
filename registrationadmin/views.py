@@ -47,6 +47,43 @@ class PendingLabsView(APIView):
         except Lab.DoesNotExist:
             return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "Sorry! No pending labs exist."})
 
+class ApproveUnapproveLabView(APIView):
+    permission_classes = (AllowAny,)
+    parser_classes = (parsers.MultiPartParser, parsers.FormParser,)
+
+    def put(self, request, *args, **kwargs):
+        try:
+            staff = Staff.objects.get(account_id=kwargs.get('id'))
+            try:
+                lab = Lab.objects.get(id=request.data['lab_id'])
+
+                request.data._mutable = True
+
+                if request.data['is_approved'] == 'true':
+                    request.data['status'] = 'Approved'
+                else:
+                    request.data['status'] = 'Unapproved'
+
+                request.data['done_by'] = staff.id
+                request.data['done_at'] = datetime.datetime.now()
+                request.data._mutable = False
+
+                serializer = LabInformationSerializer(
+                    lab, data=request.data, partial=True)
+
+                if serializer.is_valid():
+                    serializer.save()
+
+                    return Response({"status": status.HTTP_200_OK, "data": serializer.data, "message": "Lab has been approved successfully."})
+                else:
+                    return Response({"status": status.HTTP_400_BAD_REQUEST, "message": serializer.errors})
+
+            except Lab.DoesNotExist:
+                return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "Sorry! No lab exists with this id."})
+
+        except Staff.DoesNotExist:
+            return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "Sorry! No staff exists with this id."})
+
 class UnapprovedLabsView(APIView):
     permission_classes = (IsAuthenticated,)
 

@@ -1,5 +1,5 @@
 from django.urls import path
-from registrationadmin.views import RoundAPIView, RoundPostAPIView, RoundUpdateAPIView, RoundDeleteAPIView,  ActivityLogRegistrationadmin, PendingLabsView, ApprovedLabsView, UnapprovedLabsView, RoundsLabsAPIView, RoundAddLabsAPIView, RoundUpdateLabsAPIView
+from registrationadmin.views import RoundAPIView,ApproveUnapproveLabView,  RoundPostAPIView, RoundUpdateAPIView, RoundDeleteAPIView,  ActivityLogRegistrationadmin, PendingLabsView, ApprovedLabsView, UnapprovedLabsView, RoundsLabsAPIView, RoundAddLabsAPIView, RoundUpdateLabsAPIView
 
 urlpatterns = [
     path('pending-labs/<id>',
@@ -8,6 +8,8 @@ urlpatterns = [
          ApprovedLabsView.as_view(), name='approved-labs/<id>'),
     path('unapproved-labs/<id>',
          UnapprovedLabsView.as_view(), name='unapproved-labs/<id>'),
+    path('approve-unapprove-lab/<id>',
+         ApproveUnapproveLabView.as_view(), name='approve-unapprove-lab'),
     path('history_list/<id>', ActivityLogRegistrationadmin.as_view(), name='history_list'),
     path('round-list/<id>',
          RoundAPIView.as_view(), name='round-list/<id>'),

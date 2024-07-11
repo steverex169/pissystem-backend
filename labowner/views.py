@@ -468,12 +468,17 @@ class LabListByOrganization(APIView):
                 staff_members = Staff.objects.filter(organization_id=organization.id)
                 labs = Lab.objects.filter(staff_id__in=staff_members)
 
-             # Serialize labs, even if empty
-            serializer = LabInformationSerializer(labs, many=True)
-            return Response({
-                "status": status.HTTP_200_OK,
-                "data": serializer.data
-            }, status=status.HTTP_200_OK)
+            if labs is not None and labs.exists():
+                serializer = LabInformationSerializer(labs, many=True)
+                return Response({
+                    "status": status.HTTP_200_OK,
+                    "data": serializer.data
+                }, status=status.HTTP_200_OK)
+            else:
+                return Response({
+                    "status": status.HTTP_404_NOT_FOUND,
+                    "message": "No labs found."
+                }, status=status.HTTP_404_NOT_FOUND)
         
         except Organization.DoesNotExist:
             return Response({

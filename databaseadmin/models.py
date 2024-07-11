@@ -1,3 +1,5 @@
+
+from account.models import UserAccount
 from django.db import models
 from organization.models import Organization
 from django.utils import timezone
@@ -24,13 +26,117 @@ TYPE= (
     ('Method', 'Method'),
     ('Manufactural', 'Manufactural'),
     ('Analyte', 'Analyte'),
-    ('Instrumentlist', 'Instrumentlist')
+    ('Instrumentlist', 'Instrumentlist'),
+    ('City', 'City'),
+    ('ParticipantCountry','ParticipantCountry'),
+    ('ParticipantProvince','ParticipantProvince'),
+    ('District', 'District'),
+    ('Department', 'Department'),
+    ('Designation', 'Designation'),
+    ('ParticipantType', 'ParticipantType'),
+    ('ParticipantSector', 'ParticipantSector'),
     )
+
+class City(models.Model):
+    organization_id = models.ForeignKey(
+        Organization, on_delete=models.CASCADE, null=True, blank=True)
+    name = models.CharField(max_length=255, blank=False, null=True)
+    date_of_addition = models.DateTimeField(blank=True, null=True)  # Changed to DateTimeField
+
+    def __str__(self):
+        return self.name
+
+    class Meta:
+        verbose_name = 'Participant City'
+
+class ParticipantCountry(models.Model):
+    organization_id = models.ForeignKey(
+        Organization, on_delete=models.CASCADE, null=True, blank=True)
+    name = models.CharField(max_length=255, blank=False, null=True)
+    date_of_addition = models.DateTimeField(blank=True, null=True)  # Changed to DateTimeField
+
+    def __str__(self):
+        return self.name
+
+    class Meta:
+        verbose_name = 'Participant Country'
+
+class ParticipantProvince(models.Model):
+    organization_id = models.ForeignKey(
+        Organization, on_delete=models.CASCADE, null=True, blank=True)
+    name = models.CharField(max_length=255, blank=False, null=True)
+    date_of_addition = models.DateTimeField(blank=True, null=True)  # Changed to DateTimeField
+
+    def __str__(self):
+        return self.name
+
+    class Meta:
+        verbose_name = 'Participant Province'
+
+class District(models.Model):
+    organization_id = models.ForeignKey(
+        Organization, on_delete=models.CASCADE, null=True, blank=True)
+    name = models.CharField(max_length=255, blank=False, null=True)
+    date_of_addition = models.DateTimeField(blank=True, null=True)  # Changed to DateTimeField
+
+    def __str__(self):
+        return self.name
+
+    class Meta:
+        verbose_name = 'Participant District'
+
+class Department(models.Model):
+    organization_id = models.ForeignKey(
+        Organization, on_delete=models.CASCADE, null=True, blank=True)
+    name = models.CharField(max_length=255, blank=False, null=True)
+    date_of_addition = models.DateTimeField(blank=True, null=True)  # Changed to DateTimeField
+
+    def __str__(self):
+        return self.name
+
+    class Meta:
+        verbose_name = 'Participant Department'
+
+class Designation(models.Model):
+    organization_id = models.ForeignKey(
+        Organization, on_delete=models.CASCADE, null=True, blank=True)
+    name = models.CharField(max_length=255, blank=False, null=True)
+    date_of_addition = models.DateTimeField(blank=True, null=True)  # Changed to DateTimeField
+
+    def __str__(self):
+        return self.name
+
+    class Meta:
+        verbose_name = 'Participant Designation'
+
+class ParticipantType(models.Model):
+    organization_id = models.ForeignKey(
+        Organization, on_delete=models.CASCADE, null=True, blank=True)
+    name = models.CharField(max_length=255, blank=False, null=True)
+    date_of_addition = models.DateTimeField(blank=True, null=True)  # Changed to DateTimeField
+
+    def __str__(self):
+        return self.name
+
+    class Meta:
+        verbose_name = 'Participant Type'
+
+class ParticipantSector(models.Model):
+    organization_id = models.ForeignKey(
+        Organization, on_delete=models.CASCADE, null=True, blank=True)
+    name = models.CharField(max_length=255, blank=False, null=True)
+    date_of_addition = models.DateTimeField(blank=True, null=True)  # Changed to DateTimeField
+
+    def __str__(self):
+        return self.name
+
+    class Meta:
+        verbose_name = 'Participant Sector'
+
 class Units(models.Model):
     organization_id = models.ForeignKey(
         Organization, on_delete=models.CASCADE, null=True, blank=True)
     name = models.CharField(max_length=255, blank=False, null=True)
-    formula = models.CharField(max_length=255, blank=False, null=True)
     date_of_addition = models.DateTimeField(blank=True, null=True)  # Changed to DateTimeField
 
     def __str__(self):
@@ -43,10 +149,9 @@ class Manufactural(models.Model):
     organization_id = models.ForeignKey(
         Organization, on_delete=models.CASCADE, null=True, blank=True)
     name = models.CharField(max_length=255, blank=False, null=True)
-    address = models.CharField(max_length=255, blank=True, null=True)
-    country = models.CharField(max_length=255, blank=False, null=True)
-    telephone = models.CharField(max_length=255, blank=True, null=True)
-    city =models.CharField(max_length=255, blank=False, null=True)
+    country = models.ForeignKey(
+        ParticipantCountry, on_delete=models.SET_NULL, null=True, blank=True)
+    website =models.CharField(max_length=10000000, blank=False, null=True)
     date_of_addition = models.DateTimeField(blank=True, null=True) 
     def __str__(self):
         return self.name
@@ -68,19 +173,6 @@ class Method(models.Model):
     class Meta:       
         verbose_name = 'Method'
 
-# class Analyte(models.Model):
-#     organization_id = models.ForeignKey(
-#         Organization, on_delete=models.CASCADE, null=True, blank=True)
-#     name = models.CharField(max_length=255, blank=True, null=True)
-#     code = models.PositiveBigIntegerField(blank=True, null=True)
-#     date_of_addition = models.DateTimeField(blank=True, null=True) 
-#     status = models.CharField(
-#         max_length=50, choices=STATUS, default='Inactive', blank=True)
-#     def __str__(self):
-#         return self.name
-
-#     class Meta:       
-#         verbose_name = 'Analyte'
 
 class Reagents(models.Model):
     organization_id = models.ForeignKey(
@@ -88,6 +180,10 @@ class Reagents(models.Model):
     name = models.CharField(max_length=255, blank=False, null=True)
     code = models.PositiveBigIntegerField(blank=False, null=True)
     date_of_addition = models.DateTimeField(blank=True, null=True) 
+    manufactural = models.ForeignKey(
+        Manufactural, on_delete=models.SET_NULL, null=True, blank=True)
+    country = models.ForeignKey(
+        ParticipantCountry, on_delete=models.SET_NULL, null=True, blank=True)
     status = models.CharField(
         max_length=50, choices=STATUS, default='Inactive', blank=True)
     def __str__(self):
@@ -115,9 +211,13 @@ class Instrument(models.Model):
         InstrumentType, on_delete=models.SET_NULL, null=True, blank=True)
     manufactural = models.ForeignKey(
         Manufactural, on_delete=models.SET_NULL, null=True, blank=True)
+    country = models.ForeignKey(
+        ParticipantCountry, on_delete=models.SET_NULL, null=True, blank=True)
     name = models.CharField(max_length=255, blank=False,
                             null=True, verbose_name='Instrument')
     code = models.PositiveBigIntegerField(blank=False, null=True)
+    model = models.CharField(max_length=255, blank=False, null=True)
+    
     date_of_addition = models.DateTimeField(null=True, blank=True)
     status = models.CharField(
         max_length=50, choices=STATUS, default='Inactive', blank=True)
@@ -269,6 +369,22 @@ class ActivityLogUnits(models.Model):
         Sample, on_delete=models.CASCADE, null=True, blank=True)
     start_date = models.DateField(null=True, blank=True)
     end_date = models.DateField(null=True, blank=True)
+    city_id = models.ForeignKey(
+        City, on_delete=models.CASCADE, null=True, blank=True)
+    country_id = models.ForeignKey(
+        ParticipantCountry, on_delete=models.CASCADE, null=True, blank=True)
+    province_id = models.ForeignKey(
+        ParticipantProvince, on_delete=models.CASCADE, null=True, blank=True)
+    district_id = models.ForeignKey(
+        District, on_delete=models.CASCADE, null=True, blank=True)
+    department_id = models.ForeignKey(
+        Department, on_delete=models.CASCADE, null=True, blank=True)
+    designation_id = models.ForeignKey(
+        Designation, on_delete=models.CASCADE, null=True, blank=True)
+    type_id = models.ForeignKey(
+        ParticipantType, on_delete=models.CASCADE, null=True, blank=True)
+    sector_id = models.ForeignKey(
+        ParticipantSector, on_delete=models.CASCADE, null=True, blank=True)
     old_value = models.TextField(null= True, blank=True)
     new_value = models.TextField(null= True, blank=True)
     date_of_addition = models.DateTimeField(blank=True, null=True)  
@@ -291,6 +407,8 @@ class ActivityLogUnits(models.Model):
 class News(models.Model):
     organization_id = models.ForeignKey(
         Organization, on_delete=models.CASCADE, null=True, blank=True)
+    added_by = models.ForeignKey(
+        UserAccount, on_delete=models.CASCADE, null=True, blank=True)
     title = models.CharField(max_length=255, blank=False, null=True)
     description = models.TextField()
     picture = models.ImageField(upload_to='news_pictures/', blank=True, null=True)
