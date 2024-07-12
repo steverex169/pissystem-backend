@@ -2364,6 +2364,7 @@ class CycleAPIView(APIView):
 
                 # Retrieve the scheme associated with the cycle
                 scheme = cycle.scheme_name
+                
                 if scheme:
                     analytes_count = scheme.analytes.count()
                     
@@ -2376,6 +2377,7 @@ class CycleAPIView(APIView):
                     scheme_data['noofanalytes'] = analytes_count
 
                     cycle_data['scheme_name'] = scheme.name
+                    cycle_data['price'] = scheme.price
                     cycle_data['scheme_id'] = scheme.id
                 else:
                     cycle_data['scheme_name'] = None
@@ -2458,8 +2460,8 @@ class CycleUpdateAPIView(APIView):
             cycle = Cycle.objects.get(id=kwargs.get('id'))
 
             # Store old values before updating
-            old_values = {field: getattr(cycle, field) for field in ["scheme_name", "cycle_no", "rounds", "cycle", "status", "start_date", "end_date" ]}
-            old_values = {field: getattr(cycle, field) for field in ["scheme_name", "cycle_no", "rounds", "cycle", "status", "start_date", "end_date"]}
+            old_values = {field: getattr(cycle, field) for field in ["scheme_name", "cycle_no", "rounds", "cycle", "status"]}
+            old_values = {field: getattr(cycle, field) for field in ["scheme_name", "cycle_no", "rounds", "cycle", "status"]}
             
             serializer = CycleSerializer(cycle, data=request.data, partial=True)
 
@@ -2467,7 +2469,7 @@ class CycleUpdateAPIView(APIView):
                 updated_cycle = serializer.save()
                 
                 # Retrieve new values after updating
-                new_values = {field: getattr(updated_cycle, field) for field in ["scheme_name", "cycle_no", "rounds", "cycle", "status", "start_date", "end_date"]}
+                new_values = {field: getattr(updated_cycle, field) for field in ["scheme_name", "cycle_no", "rounds", "cycle", "status"]}
 
                 # Find the fields that have changed
                 changed_fields = {field: new_values[field] for field in new_values if new_values[field] != old_values[field]}
@@ -2478,8 +2480,6 @@ class CycleUpdateAPIView(APIView):
                 # Save data in activity log as a single field
                 ActivityLogUnits.objects.create(
                     cycle_id=cycle,
-                    start_date=request.data['start_date'],
-                    end_date=request.data['end_date'],
                     field_name="Changes",
                     old_value= ", ".join([f"{field}: {old_values[field]}" for field in changed_fields]),
                     new_value=changes_string,

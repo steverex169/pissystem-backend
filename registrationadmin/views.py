@@ -9,8 +9,9 @@ from rest_framework.views import APIView
 from databaseadmin.models import Scheme
 from labowner.models import Lab, OfferedTest, Pathologist, SampleCollector
 from labowner.serializers import LabInformationSerializer,  PathologistSerializer, OfferedTestSerializer
-from registrationadmin.serializers import RoundSerializer, ActivityLogUnitsSerializer
-from registrationadmin.models import  ActivityLogUnits, Round, SelectedScheme
+from registrationadmin.serializers import RoundSerializer, ActivityLogUnitsSerializer, PaymentSerializer
+from registrationadmin.models import  ActivityLogUnits, Round,Payment, SelectedScheme
+
 from staff.models import Staff
 from labowner.models import Lab 
 
@@ -27,7 +28,62 @@ import datetime
 from django.shortcuts import get_object_or_404
 from databaseadmin.models import Scheme 
 
+
+class PaymentPostAPIView(APIView):
+    permission_classes = (AllowAny,)
+
+    def post(self, request, *args, **kwargs):
+        try:
+            # Fetch the staff user based on account_id
+            account_id = request.data['added_by']
+            staff_user = Staff.objects.get(account_id=account_id)
+            
+            # Retrieve the organization associated with the staff user
+            organization = staff_user.organization_id
+
+            # Fetch the participant instance based on participant name
+            participant_name = request.data.get('participant')
+            try:
+                participant = Lab.objects.get(name=participant_name, organization_id=organization)
+            except Lab.DoesNotExist:
+                return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "Invalid participant name provided."})
+
+            # Create a new Payment instance
+            payment = Payment.objects.create(
+                organization_id=organization,
+                participant_id=participant,
+                price=request.data['price'],
+                discount=request.data['discount'],
+                photo=request.data['photo'],
+                paymentmethod=request.data['paymentmethod'],
+                paydate=request.data['paydate']
+            )
+
+            # Ensure 'scheme' is parsed as a list of integers
+            scheme = request.data.get('scheme', [])
+            print("scheme",scheme)
+            if isinstance(scheme, str):
+                scheme = list(map(int, scheme.split(',')))
+            
+            payment.scheme.set(scheme)  # Assuming scheme are passed as a list of IDs
+            payment.save()
+
+            # Serialize the payment instance
+            payment_serializer = PaymentSerializer(payment)
+            return Response({
+                "status": status.HTTP_201_CREATED,
+                "payment_data": payment_serializer.data,
+                "message": "Payment added successfully."
+            })
+
+        except Staff.DoesNotExist:
+            return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "Invalid account_id."})
+
+        except Exception as e:
+            return Response({"status": status.HTTP_400_BAD_REQUEST, "message": str(e)})
+
 # API for displaying list of pending labs
+
 class PendingLabsView(APIView):
     permission_classes = (IsAuthenticated,)
 

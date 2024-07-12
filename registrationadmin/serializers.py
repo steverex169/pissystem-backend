@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from registrationadmin.models import Round, ActivityLogUnits, SelectedScheme
+from registrationadmin.models import Round, ActivityLogUnits, SelectedScheme, Payment
 
 class RoundSerializer(serializers.ModelSerializer):
     nooflabs = serializers.IntegerField(read_only=True)
@@ -7,20 +7,7 @@ class RoundSerializer(serializers.ModelSerializer):
     class Meta:
         model = Round
         fields = ('__all__') 
-
-# class RoundSerializer(serializers.ModelSerializer):
-#     nooflabs = serializers.IntegerField(read_only=True)
-#     class Meta:
-#         model = Round
-#         fields = (
-#             'id', 'account_id', 'organization_id', 'rounds', 'scheme', 'cycle_no', 'sample', 'participants',
-#             'issue_date', 'closing_date', 'status', 'nooflabs'
-#         )
-
-#     def get_nooflabs(self, obj):
-#         return obj.nooflabs        
-
-
+    
 class ActivityLogUnitsSerializer(serializers.ModelSerializer):
     class Meta:
         model = ActivityLogUnits
@@ -30,3 +17,8 @@ class SelectedSchemeSerializer(serializers.ModelSerializer):
     class Meta:
         model = SelectedScheme
         fields = ('__all__')
+        
+class PaymentSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Payment
+        fields = ('__all__')     
