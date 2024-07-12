@@ -1,5 +1,5 @@
 from django.contrib import admin
-from databaseadmin.models import ParticipantProvince,ParticipantCountry,City,District,Department,Designation,ParticipantType,ParticipantSector, Cycle, News,Instrument, Method, Scheme, Sample, InstrumentType,ActivityLogUnits, Units, Reagents, Manufactural, Analyte
+from databaseadmin.models import ParticipantProvince,ParticipantCountry,City,District,Department,Designation,ParticipantType,ParticipantSector, Cycle,  News, Instrument, Method, Scheme, Sample, InstrumentType,ActivityLogUnits, Units, Reagents, Manufactural, Analyte
 
 # Register your models here.
 
@@ -25,15 +25,18 @@ class MethodAdmin(admin.ModelAdmin):
     search_fields = ('id', 'name', 'date_of_addition','code','status')
 
 class SchemeAdmin(admin.ModelAdmin):
-    list_display = ('id', 'name', 'date_of_addition', 'status')
-    search_fields = ('id', 'name', 'date_of_addition', 'status')
+    list_display = ('id', 'name', 'price','noofanalytes', 'date_of_addition', 'status')
+    search_fields = ('id', 'name', 'price', 'noofanalytes', 'date_of_addition', 'status')
+
+    def get_analytes(self, obj):
+        return ', '.join([analytes.name for analytes in obj.analytes.all()])
 
 class CycleAdmin(admin.ModelAdmin):
-    list_display = ('id', 'organization_id','noofanalytes', 'scheme_name', 'cycle_no', 'rounds','cycle', 'start_date', 'end_date', 'status')
-    search_fields = ('id', 'organization_id','noofanalytes', 'scheme_name', 'cycle_no', 'rounds','cycle', 'start_date', 'end_date', 'status')
+    list_display = ('id', 'organization_id', 'scheme_name', 'cycle_no', 'rounds','cycle', 'start_date', 'end_date', 'status')
+    search_fields = ('id', 'organization_id', 'scheme_name', 'cycle_no', 'rounds','cycle', 'start_date', 'end_date', 'status')
 
-    def get_analyte(self, obj):
-        return ', '.join([analyte.name for analyte in obj.analyte.all()])
+    # def get_analyte(self, obj):
+    #     return ', '.join([analyte.name for analyte in obj.analyte.all()])
 
 class ReagentsAdmin(admin.ModelAdmin):
     list_display = ('id', 'name', 'date_of_addition', 'code','status')
@@ -44,7 +47,7 @@ class AnalyteAdmin(admin.ModelAdmin):
     search_fields = ('id', 'name', 'date_of_addition', 'code', 'get_methods','noofmethods', 'get_instruments','noofinstruments', 'get_reagents', 'noofreagents','get_units', 'master_unit','status')
 
     def get_reagents(self, obj):
-        return ', '.join([reagent.name for reagent in obj.reagents.all()])
+        return ', '.join([scheme.name for reagent in obj.reagents.all()])
 
     get_reagents.short_description = 'Reagents'
 
