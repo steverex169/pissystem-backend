@@ -14,6 +14,9 @@ class Migration(migrations.Migration):
         ('databaseadmin', '0001_initial'),
         ('organization', '0001_initial'),
         ('labowner', '__first__'),
+        ('organization', '__first__'),
+        ('databaseadmin', '0001_initial'),
+        ('labowner', '__first__'),
     ]
 
     operations = [

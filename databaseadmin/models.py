@@ -36,7 +36,6 @@ TYPE= (
     ('ParticipantType', 'ParticipantType'),
     ('ParticipantSector', 'ParticipantSector'),
     )
-
 class City(models.Model):
     organization_id = models.ForeignKey(
         Organization, on_delete=models.CASCADE, null=True, blank=True)
@@ -399,6 +398,8 @@ class ActivityLogUnits(models.Model):
 
     class Meta:
         verbose_name = 'History'
+
+
 
 class News(models.Model):
     organization_id = models.ForeignKey(
