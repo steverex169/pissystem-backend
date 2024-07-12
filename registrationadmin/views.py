@@ -13,7 +13,6 @@ from registrationadmin.models import  ActivityLogUnits, Round
 from staff.models import Staff
 from labowner.models import Lab 
 from labowner.serializers import LabInformationSerializer
-from django.conf import settings
 from django.http import JsonResponse
 from django.db.models import Count
 from django.db.models import Q
@@ -284,6 +283,8 @@ class RoundAPIView(APIView):
             serialized_data = []
             for round_obj in round_list:
                 round_data = model_to_dict(round_obj)
+                 # Convert participants field to a list of participant IDs
+                round_data['participants'] = list(round_obj.participants.values_list('id', flat=True))
                 scheme = round_obj.scheme
                 if scheme:
                     round_data['scheme_name'] = scheme.name
@@ -298,6 +299,7 @@ class RoundAPIView(APIView):
         
         except Round.DoesNotExist:
             return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "No Round records found."})
+
 class RoundPostAPIView(APIView):
     permission_classes = (AllowAny,)
 
@@ -321,9 +323,10 @@ class RoundPostAPIView(APIView):
                 scheme=scheme,  # Assign the fetched Scheme object
                 cycle_no=request.data['cycle_no'],
                 sample=request.data['sample'],
+                # participants=request.data['participants'],
                 issue_date=request.data['issue_date'],
                 closing_date=request.data['closing_date'],
-                notes=request.data['notes'],
+                # notes=request.data['notes'],
                 status=request.data['status'],
             )
 
@@ -342,61 +345,6 @@ class RoundPostAPIView(APIView):
         except Exception as e:
             return Response({"status": status.HTTP_400_BAD_REQUEST, "message": str(e)})
 
-# class RoundPostAPIView(APIView):
-#     permission_classes = (AllowAny,)  # Temporary permission setting for demonstration
-
-#     def post(self, request, *args, **kwargs):
-#         try:
-#             # Fetch the staff user based on account_id
-#             account_id = request.data.get('added_by')  # Use 'added_by' from request data
-#             staff_user = Staff.objects.get(account_id=account_id)
-
-#             # Retrieve the organization associated with the staff user
-#             organization = staff_user.organization_id
-
-#             # Create a new round
-#             round = Round.objects.create(
-#                 organization_id=organization,
-#                 rounds=request.data['rounds'], 
-#                 scheme=request.data['scheme'],
-#                 cycle_no=request.data['cycle_no'],
-#                 sample=request.data['sample'],
-#                 issue_date=request.data['issue_date'],
-#                 closing_date=request.data['closing_date'],
-#                 notes=request.data['notes'],
-#                 status=request.data['status'],
-#             )
-
-#             # Concatenate all changes into a single string
-#             changes_string = ", ".join([f"{field}: {request.data[field]}" for field in ["rounds", "scheme", "cycle_no", "sample", "issue_date", "closing_date", "notes", "status"]])
-
-#             # Save data in activity log as a single field
-#             activity_log = ActivityLogUnits.objects.create(
-#                 round_id=round,
-#                 old_value="", 
-#                 new_value=changes_string, 
-#                 issue_date=request.data['issue_date'],
-#                 closing_date=request.data['closing_date'],
-#                 field_name="Changes",
-#                 actions='Added'
-#             )
-
-#             round_serializer = RoundSerializer(round)
-#             activity_log_serializer = ActivityLogUnitsSerializer(activity_log)
-
-#             return Response({
-#                 "status": status.HTTP_201_CREATED,
-#                 "unit_data": round_serializer.data,
-#                 "activity_log_data": activity_log_serializer.data,
-#                 "message": "Round added successfully."
-#             })
-
-#         except Staff.DoesNotExist:
-#             return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "Invalid account_id."})
-
-#         except Exception as e:
-#             return Response({"status": status.HTTP_400_BAD_REQUEST, "message": str(e)})
-
 class RoundUpdateAPIView(APIView):
     permission_classes = (AllowAny,)
 
@@ -405,7 +353,7 @@ class RoundUpdateAPIView(APIView):
             round = Round.objects.get(id=kwargs.get('id'))
 
             # Store old values before updating
-            old_values = {field: getattr(round, field) for field in ["rounds", "scheme", "cycle_no", "sample", "issue_date", "closing_date", "notes", "status"]}
+            old_values = {field: getattr(round, field) for field in ["rounds", "scheme", "cycle_no", "sample", "participants", "issue_date", "closing_date", "status"]}
             
             serializer = RoundSerializer(round, data=request.data, partial=True)
 
@@ -413,7 +361,7 @@ class RoundUpdateAPIView(APIView):
                 updated_unit = serializer.save()
                 
                 # Retrieve new values after updating
-                new_values = {field: getattr(updated_unit, field) for field in ["rounds", "scheme", "cycle_no", "sample", "issue_date", "closing_date", "notes", "status"]}
+                new_values = {field: getattr(updated_unit, field) for field in ["rounds", "scheme", "cycle_no", "sample", "participants", "issue_date", "closing_date", "status"]}
 
                 # Find the fields that have changed
                 changed_fields = {field: new_values[field] for field in new_values if new_values[field] != old_values[field]}
@@ -457,3 +405,75 @@ class RoundDeleteAPIView(APIView):
             return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "Sorry! No such record to delete."})
 
 
+# Round Add Participants
+class RoundsLabsAPIView(APIView):
+    permission_classes = (AllowAny,)  # Adjust permission classes as needed
+
+    def get(self, request, id, *args, **kwargs):
+        try:
+            round = Round.objects.get(id=id)
+            participants = round.participants.all()  # Fetch all participants associated with the round
+            participant_ids = [participant.id for participant in participants]
+            
+            # Serialize data
+            serialized_data = {
+                #"round": RoundSerializer(round).data,
+                "participants": participant_ids  # Send list of lab IDs
+            }
+            
+            return Response({"status": status.HTTP_200_OK, "data": serialized_data})
+        
+        except Round.DoesNotExist:
+            return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "Round not found."})
+        
+        except Exception as e:
+            return Response({"status": status.HTTP_400_BAD_REQUEST, "message": str(e)})
+
+class RoundAddLabsAPIView(APIView):
+    permission_classes = (AllowAny,)
+
+    def post(self, request, id, *args, **kwargs):
+        try:
+            round = Round.objects.get(id=id)
+            
+            # Ensure 'participants' is parsed as a list of integers
+            participants = request.data.get('participants', [])
+            if isinstance(participants, str):
+                participants = participants.split(',')
+            if not isinstance(participants, list):
+                raise ValueError("participants must be a list of integers.")
+
+            # Convert all elements to integers and handle possible conversion errors
+            participants = [int(r) for r in participants if r.strip().isdigit()]
+            
+            round.participants.set(participants)  # Assuming participants are passed as a list of IDs
+            round.save()
+
+            return Response({"status": status.HTTP_200_OK, "message": "participants added to round successfully."})
+        except Round.DoesNotExist:
+            return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "Round not found."})
+        except ValueError as ve:
+            return Response({"status": status.HTTP_400_BAD_REQUEST, "message": str(ve)})
+        except Exception as e:
+            return Response({"status": status.HTTP_400_BAD_REQUEST, "message": str(e)})
+
+
+
+class RoundUpdateLabsAPIView(APIView):
+    permission_classes = (AllowAny,)
+
+    def put(self, request, id, *args, **kwargs):
+        try:
+            round = Round.objects.get(id=id)
+            participants = request.data.get('participants', [])
+            if isinstance(participants, str):
+                participants = list(map(int, participants.split(',')))
+            
+            round.participants.set(participants)  # Assuming participants are passed as a list of IDs
+            round.save()
+            serialized_data = RoundSerializer(round).data
+            return Response({"status": status.HTTP_200_OK, "analyte_data": serialized_data, "message": "Labs updated for Round successfully."})
+        except Round.DoesNotExist:
+            return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "Round does not exist."})
+        except Exception as e:
+            return Response({"status": status.HTTP_400_BAD_REQUEST, "message": str(e)})
