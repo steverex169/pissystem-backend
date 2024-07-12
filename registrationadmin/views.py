@@ -60,14 +60,14 @@ class PaymentPostAPIView(APIView):
                     paydate=request.data['paydate']
                 )
 
-            # Ensure 'scheme' is parsed as a list of integers
-            scheme = request.data.get('scheme', [])
-            print("scheme",scheme)
-            if isinstance(scheme, str):
-                scheme = list(map(int, scheme.split(',')))
-            
-            payment.scheme.set(scheme)  # Assuming scheme are passed as a list of IDs
-            payment.save()
+                # Ensure 'scheme' is parsed as a list of integers
+                scheme = request.data.get('scheme', [])
+                if isinstance(scheme, str):
+                    scheme = list(map(int, scheme.split(',')))
+                
+                payment.scheme.set(scheme)  # Assuming scheme are passed as a list of IDs
+                payment.save()
+
                 # Update the payment status to 'Paid'
                 participant.payment_status = 'Paid'
                 participant.save()
