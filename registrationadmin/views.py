@@ -60,6 +60,7 @@ class PaymentPostAPIView(APIView):
 
             # Ensure 'scheme' is parsed as a list of integers
             scheme = request.data.get('scheme', [])
+            print("scheme",scheme)
             if isinstance(scheme, str):
                 scheme = list(map(int, scheme.split(',')))
             

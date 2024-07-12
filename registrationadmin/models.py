@@ -75,10 +75,10 @@ class Payment(models.Model):
     scheme =models.ManyToManyField(Scheme, blank=True)
     participant_id = models.ForeignKey(
         Lab, on_delete=models.CASCADE, null=True, blank=True)
-    price = models.CharField(blank=False, null=True)
-    discount = models.CharField(blank=False, null=True)
+    price = models.CharField(max_length=255,blank=False, null=True)
+    discount = models.CharField(max_length=255,blank=False, null=True)
     photo = models.CharField(max_length=255, blank=False, null=True)
-    paymentmethod = models.CharField(blank=True, null=True) 
+    paymentmethod = models.CharField(max_length=255,blank=True, null=True) 
     paydate = models.DateField(null=True, blank=True)
     def __str__(self):
         return self.price
