@@ -1,9 +1,5 @@
 from rest_framework import serializers
-from registrationadmin.models import Round, ActivityLogUnits
-
-
-
-
+from registrationadmin.models import Round, ActivityLogUnits, SelectedScheme
 
 class RoundSerializer(serializers.ModelSerializer):
     nooflabs = serializers.IntegerField(read_only=True)
@@ -29,3 +25,8 @@ class ActivityLogUnitsSerializer(serializers.ModelSerializer):
     class Meta:
         model = ActivityLogUnits
         fields = ('__all__')     
+
+class SelectedSchemeSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = SelectedScheme
+        fields = ('__all__')

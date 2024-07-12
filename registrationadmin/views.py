@@ -10,7 +10,7 @@ from databaseadmin.models import Scheme
 from labowner.models import Lab, OfferedTest, Pathologist, SampleCollector
 from labowner.serializers import LabInformationSerializer,  PathologistSerializer, OfferedTestSerializer
 from registrationadmin.serializers import RoundSerializer, ActivityLogUnitsSerializer
-from registrationadmin.models import  ActivityLogUnits, Round
+from registrationadmin.models import  ActivityLogUnits, Round, SelectedScheme
 from staff.models import Staff
 from labowner.models import Lab 
 
@@ -178,18 +178,31 @@ class RoundAPIView(APIView):
 
     def get(self, request, *args, **kwargs):
         try:
-            # Get the staff user's account_id
-            account_id = kwargs.get('id')
+            user_id = kwargs.get('id')
+        # Fetch user_type based on user_id
+            user_type = UserAccount.objects.get(id=user_id)
             
-            # Fetch the staff user based on account_id
-            staff_user = Staff.objects.get(account_id=account_id)
-            
-            # Retrieve the organization associated with the staff user
-            organization = staff_user.organization_id
-
-            # Filter rounds based on the organization
-            round_list = Round.objects.filter(organization_id=organization)
-            
+            if user_type.account_type == 'labowner':
+                try:
+                    participant = Lab.objects.get(account_id=user_id)
+                    organization = participant.organization_id
+                    round_list = Round.objects.filter(organization_id=organization.id)
+                except Lab.DoesNotExist:
+                    return Response({
+                        "status": status.HTTP_404_NOT_FOUND,
+                        "message": "Lab not found."
+                    }, status=status.HTTP_404_NOT_FOUND)
+            else:
+                try:
+                    staff_member = Staff.objects.get(account_id=user_id)
+                    organization = staff_member.organization_id
+                    round_list = Round.objects.filter(organization_id=organization.id)
+                    
+                except Staff.DoesNotExist:
+                    return Response({
+                        "status": status.HTTP_404_NOT_FOUND,
+                        "message": "Staff member not found."
+                    }, status=status.HTTP_404_NOT_FOUND)
             # Serialize rounds data including scheme name
             serialized_data = []
             for round_obj in round_list:
@@ -388,3 +401,37 @@ class RoundUpdateLabsAPIView(APIView):
             return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "Round does not exist."})
         except Exception as e:
             return Response({"status": status.HTTP_400_BAD_REQUEST, "message": str(e)})
+        
+
+# Participants Dashboard Rounds API      
+class SelectedSchemeListAPIView(APIView):
+    
+    def get(self, request, *args, **kwargs):
+        try:
+            account_id = kwargs.get('id')
+            
+            lab = Lab.objects.get(account_id=account_id)
+            
+            lab_id = lab.id
+            
+            scheme_list = SelectedScheme.objects.filter(lab_id=lab_id)
+            
+            serialized_data = []
+            for scheme in scheme_list:
+                scheme_data = {
+                    'id': scheme.id,
+                    'name': scheme.scheme_id.scheme_name,
+                    # 'city': scheme.city,
+                    # 'country': scheme.country,
+                    # 'telephone': scheme.telephone,
+                    # 'address': scheme.address,
+                }
+                serialized_data.append(scheme_data)
+
+            return Response({"status": status.HTTP_200_OK, "data": serialized_data})
+
+        except Lab.DoesNotExist:
+            return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "Invalid account_id."})
+        
+        except SelectedScheme.DoesNotExist:
+            return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "No Record Exist."})
