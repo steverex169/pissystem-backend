@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from registrationadmin.models import Round, ActivityLogUnits, Payment
+from registrationadmin.models import Round, ActivityLogUnits, Payment, SelectedScheme
 
 
 
@@ -20,4 +20,8 @@ class ActivityLogUnitsSerializer(serializers.ModelSerializer):
 class PaymentSerializer(serializers.ModelSerializer):
     class Meta:
         model = Payment
+        fields = ('__all__')     
+class SelectedSchemeSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = SelectedScheme
         fields = ('__all__')     
