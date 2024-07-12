@@ -9,8 +9,8 @@ from rest_framework.views import APIView
 from databaseadmin.models import Scheme
 from labowner.models import Lab, OfferedTest, Pathologist, SampleCollector
 from labowner.serializers import LabInformationSerializer,  PathologistSerializer, OfferedTestSerializer
-from registrationadmin.serializers import RoundSerializer, ActivityLogUnitsSerializer, PaymentSerializer
-from registrationadmin.models import  ActivityLogUnits, Round, Payment
+from registrationadmin.serializers import RoundSerializer, ActivityLogUnitsSerializer, PaymentSerializer,SelectedSchemeSerializer
+from registrationadmin.models import  ActivityLogUnits, Round, Payment, SelectedScheme
 from staff.models import Staff
 from labowner.models import Lab 
 
@@ -26,6 +26,7 @@ from organization.models import Organization
 import datetime
 from django.shortcuts import get_object_or_404
 from databaseadmin.models import Scheme 
+from django.db import transaction
 
 
 class PaymentPostAPIView(APIView):
@@ -48,31 +49,47 @@ class PaymentPostAPIView(APIView):
                 return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "Invalid participant name provided."})
 
             # Create a new Payment instance
-            payment = Payment.objects.create(
-                organization_id=organization,
-                participant_id=participant,
-                price=request.data['price'],
-                discount=request.data['discount'],
-                photo=request.data['photo'],
-                paymentmethod=request.data['paymentmethod'],
-                paydate=request.data['paydate']
-            )
+            with transaction.atomic():
+                payment = Payment.objects.create(
+                    organization_id=organization,
+                    participant_id=participant,
+                    price=request.data['price'],
+                    discount=request.data['discount'],
+                    photo=request.data['photo'],
+                    paymentmethod=request.data['paymentmethod'],
+                    paydate=request.data['paydate']
+                )
 
-            # Ensure 'scheme' is parsed as a list of integers
-            scheme = request.data.get('scheme', [])
-            if isinstance(scheme, str):
-                scheme = list(map(int, scheme.split(',')))
-            
-            payment.scheme.set(scheme)  # Assuming scheme are passed as a list of IDs
-            payment.save()
+                # Update the payment status to 'Paid'
+                participant.payment_status = 'Paid'
+                participant.save()
 
-            # Serialize the payment instance
-            payment_serializer = PaymentSerializer(payment)
-            return Response({
-                "status": status.HTTP_201_CREATED,
-                "payment_data": payment_serializer.data,
-                "message": "Payment added successfully."
-            })
+                # Create SelectedScheme instance
+                selectedscheme = SelectedScheme.objects.create(
+                    organization_id=organization,
+                    lab_id=participant,
+                    added_at=datetime.datetime.now()
+                )
+
+                # Ensure 'scheme' is parsed as a list of integers
+                scheme = request.data.get('scheme', [])
+                if isinstance(scheme, str):
+                    scheme = list(map(int, scheme.split(',')))
+
+                # Set schemes for Payment and SelectedScheme
+                payment.scheme.set(scheme)
+                selectedscheme.scheme_id.set(scheme)
+
+                # Serialize the payment instance
+                payment_serializer = PaymentSerializer(payment)
+                selectedscheme_serializer = SelectedSchemeSerializer(selectedscheme)
+
+                return Response({
+                    "status": status.HTTP_201_CREATED,
+                    "payment_data": payment_serializer.data,
+                    "selected_scheme": selectedscheme_serializer.data,
+                    "message": "Payment added successfully."
+                })
 
         except Staff.DoesNotExist:
             return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "Invalid account_id."})

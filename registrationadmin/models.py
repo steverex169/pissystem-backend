@@ -66,7 +66,20 @@ class Round(models.Model):
 
     class Meta:       
         verbose_name = 'Round'
+class SelectedScheme(models.Model):
+    organization_id = models.ForeignKey(
+        Organization, on_delete=models.CASCADE, null=True, blank=True)
+    lab_id = models.ForeignKey(
+        Lab, on_delete=models.CASCADE, verbose_name='Lab name', null=True)
+    scheme_id =models.ManyToManyField(Scheme, blank=True)
+    added_at= models.DateTimeField(
+        null=True, blank=True, verbose_name="Scheme added date")
+    def __str__(self):
+        return self.lab_id.name + " - " + self.scheme_id.scheme_name 
 
+    class Meta:
+        verbose_name = 'Scheme'
+        
 class Payment(models.Model):
     organization_id = models.ForeignKey(
          Organization, on_delete=models.CASCADE, null=True, blank=True)
