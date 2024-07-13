@@ -10,7 +10,7 @@ class Migration(migrations.Migration):
     initial = True
 
     dependencies = [
-        ('organization', '0001_initial'),
+        ('organization', '__first__'),
         migrations.swappable_dependency(settings.AUTH_USER_MODEL),
     ]
 
@@ -68,17 +68,33 @@ class Migration(migrations.Migration):
             name='Scheme',
             fields=[
                 ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('name', models.CharField(blank=True, max_length=255, null=True)),
+                ('name', models.CharField(blank=True, max_length=255, null=True, verbose_name='Scheme')),
+                ('price', models.CharField(blank=True, max_length=255, null=True)),
                 ('date_of_addition', models.DateTimeField(blank=True, null=True)),
                 ('status', models.CharField(blank=True, choices=[('Active', 'Active'), ('Inactive', 'Inactive')], default='Inactive', max_length=50)),
                 ('added_by', models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.CASCADE, to=settings.AUTH_USER_MODEL)),
+                ('analytes', models.ManyToManyField(blank=True, to='databaseadmin.Analyte')),
                 ('organization_id', models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.CASCADE, to='organization.organization')),
             ],
             options={
                 'verbose_name': 'Scheme',
             },
         ),
-
+        migrations.CreateModel(
+            name='Sample',
+            fields=[
+                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
+                ('sampleno', models.CharField(max_length=255, null=True)),
+                ('details', models.TextField()),
+                ('notes', models.TextField(max_length=255, null=True)),
+                ('scheme', models.TextField(blank=True, null=True)),
+                ('account_id', models.OneToOneField(blank=True, null=True, on_delete=django.db.models.deletion.CASCADE, to=settings.AUTH_USER_MODEL)),
+                ('organization_id', models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.CASCADE, to='organization.organization')),
+            ],
+            options={
+                'verbose_name': 'Sample',
+            },
+        ),
         migrations.CreateModel(
             name='Reagents',
             fields=[
@@ -243,10 +259,9 @@ class Migration(migrations.Migration):
                 ('cycle_no', models.CharField(blank=True, max_length=255, null=True)),
                 ('rounds', models.PositiveBigIntegerField(blank=True, null=True)),
                 ('cycle', models.CharField(blank=True, choices=[('Months', 'Months'), ('Year', 'Year')], default='Months', max_length=50)),
-                ('start_date', models.DateTimeField(blank=True, null=True)),
-                ('end_date', models.DateTimeField(blank=True, null=True)),
+                ('start_date', models.DateField(blank=True, null=True)),
+                ('end_date', models.DateField(blank=True, null=True)),
                 ('status', models.CharField(blank=True, choices=[('Active', 'Active'), ('Inactive', 'Inactive')], default='Inactive', max_length=50)),
-                ('analytes', models.ManyToManyField(blank=True, to='databaseadmin.analyte')),
                 ('organization_id', models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.CASCADE, to='organization.organization')),
                 ('scheme_name', models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.CASCADE, to='databaseadmin.scheme')),
             ],
@@ -269,7 +284,7 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name='analyte',
             name='instruments',
-            field=models.ManyToManyField(blank=True, to='databaseadmin.instrument'),
+            field=models.ManyToManyField(blank=True, to='databaseadmin.Instrument'),
         ),
         migrations.AddField(
             model_name='analyte',
@@ -279,7 +294,7 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name='analyte',
             name='methods',
-            field=models.ManyToManyField(blank=True, to='databaseadmin.method'),
+            field=models.ManyToManyField(blank=True, to='databaseadmin.Method'),
         ),
         migrations.AddField(
             model_name='analyte',
@@ -289,19 +304,17 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name='analyte',
             name='reagents',
-            field=models.ManyToManyField(blank=True, to='databaseadmin.reagents'),
+            field=models.ManyToManyField(blank=True, to='databaseadmin.Reagents'),
         ),
         migrations.AddField(
             model_name='analyte',
             name='units',
-            field=models.ManyToManyField(blank=True, to='databaseadmin.units'),
+            field=models.ManyToManyField(blank=True, to='databaseadmin.Units'),
         ),
         migrations.CreateModel(
             name='ActivityLogUnits',
             fields=[
                 ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('start_date', models.DateTimeField(blank=True, null=True)),
-                ('end_date', models.DateTimeField(blank=True, null=True)),
                 ('old_value', models.TextField(blank=True, null=True)),
                 ('new_value', models.TextField(blank=True, null=True)),
                 ('date_of_addition', models.DateTimeField(blank=True, null=True)),
@@ -309,7 +322,6 @@ class Migration(migrations.Migration):
                 ('field_name', models.CharField(max_length=255, null=True)),
                 ('actions', models.CharField(choices=[('Updated', 'Updated'), ('Added', 'Added'), ('Deleted', 'Deleted')], default='Added', max_length=50, verbose_name='Which action is performed?')),
                 ('status', models.CharField(blank=True, choices=[('Active', 'Active'), ('Inactive', 'Inactive')], default='Inactive', max_length=50)),
-                ('cycle', models.CharField(blank=True, choices=[('Months', 'Months'), ('Year', 'Year')], default='Months', max_length=50)),
                 ('type', models.CharField(choices=[('Units', 'Units'), ('Instruments', 'Instruments'), ('Reagent', 'Reagent'), ('Method', 'Method'), ('Manufactural', 'Manufactural'), ('Analyte', 'Analyte'), ('Instrumentlist', 'Instrumentlist'), ('City', 'City'), ('ParticipantCountry', 'ParticipantCountry'), ('ParticipantProvince', 'ParticipantProvince'), ('District', 'District'), ('Department', 'Department'), ('Designation', 'Designation'), ('ParticipantType', 'ParticipantType'), ('ParticipantSector', 'ParticipantSector')], default='Units', max_length=50, verbose_name='Form type?')),
                 ('analyte_id', models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.CASCADE, to='databaseadmin.analyte')),
                 ('city_id', models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.CASCADE, to='databaseadmin.city')),
@@ -325,7 +337,7 @@ class Migration(migrations.Migration):
                 ('organization_id', models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.CASCADE, related_name='databaseadmin_activity_log_units', to='organization.organization')),
                 ('province_id', models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.CASCADE, to='databaseadmin.participantprovince')),
                 ('reagent_id', models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.CASCADE, to='databaseadmin.reagents')),
-                # ('sample_id', models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.CASCADE, to='databaseadmin.sample')),
+                ('sample_id', models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.CASCADE, to='databaseadmin.sample')),
                 ('scheme_id', models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.CASCADE, to='databaseadmin.scheme')),
                 ('sector_id', models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.CASCADE, to='databaseadmin.participantsector')),
                 ('type_id', models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.CASCADE, to='databaseadmin.participanttype')),

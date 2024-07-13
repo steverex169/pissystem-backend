@@ -1,4 +1,5 @@
 from datetime import datetime
+import datetime
 from django.forms.models import model_to_dict
 import requests
 from rest_framework.response import Response
@@ -6,13 +7,14 @@ from rest_framework import status
 from rest_framework import parsers
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.views import APIView
-from labowner.models import Lab, OfferedTest, Pathologist, SampleCollector
-from labowner.serializers import LabInformationSerializer,  PathologistSerializer, OfferedTestSerializer
-from .serializers import RoundSerializer, ActivityLogUnitsSerializer
-from registrationadmin.models import  ActivityLogUnits, Round
+from databaseadmin.models import Scheme
+from registrationadmin.serializers import RoundSerializer, ActivityLogUnitsSerializer, PaymentSerializer,SelectedSchemeSerializer
+from registrationadmin.models import  ActivityLogUnits, Round, Payment, SelectedScheme
 from staff.models import Staff
 from labowner.models import Lab 
 from labowner.serializers import LabInformationSerializer
+from django.shortcuts import get_object_or_404
+from django.forms.models import model_to_dict
 from django.http import JsonResponse
 from django.db.models import Count
 from django.db.models import Q
@@ -20,8 +22,120 @@ from account.models import UserAccount
 from organization.models import Organization
 from django.shortcuts import get_object_or_404
 from databaseadmin.models import Scheme 
+from django.db import transaction
+
+
+class UpdateMembershipStatusView(APIView):
+    permission_classes = (AllowAny,)
+
+    def put(self, request, *args, **kwargs):
+        try:
+            # Fetch the staff user based on account_id
+            account_id = request.data.get('added_by')
+            staff_user = Staff.objects.get(account_id=account_id)
+
+            # Retrieve the organization associated with the staff user
+            organization = staff_user.organization_id
+
+            # Retrieve the existing status object
+            membership_status = Lab.objects.get(id=kwargs.get('id'), organization_id=organization)
+
+            serializer = LabInformationSerializer(membership_status, data=request.data, partial=True)
+            
+            if serializer.is_valid():
+                serializer.save()
+                return Response(serializer.data)
+            else:
+                return Response({"status": status.HTTP_400_BAD_REQUEST, "message": serializer.errors})
+                
+        except Staff.DoesNotExist:
+            return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "Invalid account_id."})
+
+        except Lab.DoesNotExist:
+            return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "No such record exists."})
+
+        except Exception as e:
+            return Response({"status": status.HTTP_400_BAD_REQUEST, "message": str(e)})
+
+
+class PaymentPostAPIView(APIView):
+    permission_classes = (AllowAny,)
+
+    def post(self, request, *args, **kwargs):
+        try:
+            # Fetch the staff user based on account_id
+            account_id = request.data['added_by']
+            staff_user = Staff.objects.get(account_id=account_id)
+            
+            # Retrieve the organization associated with the staff user
+            organization = staff_user.organization_id
+
+            # Fetch the participant instance based on participant name
+            participant_name = request.data.get('participant')
+            try:
+                participant = Lab.objects.get(name=participant_name, organization_id=organization)
+            except Lab.DoesNotExist:
+                return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "Invalid participant name provided."})
+
+            # Create a new Payment instance
+            with transaction.atomic():
+                payment = Payment.objects.create(
+                    organization_id=organization,
+                    participant_id=participant,
+                    price=request.data['price'],
+                    discount=request.data['discount'],
+                    photo=request.data['photo'],
+                    paymentmethod=request.data['paymentmethod'],
+                    paydate=request.data['paydate']
+                )
+
+                # Ensure 'scheme' is parsed as a list of integers
+                scheme = request.data.get('scheme', [])
+                if isinstance(scheme, str):
+                    scheme = list(map(int, scheme.split(',')))
+                
+                payment.scheme.set(scheme)  # Assuming scheme are passed as a list of IDs
+                payment.save()
+
+                # Update the payment status to 'Paid'
+                participant.payment_status = 'Paid'
+                participant.save()
+
+                # Create SelectedScheme instance
+                selectedscheme = SelectedScheme.objects.create(
+                    organization_id=organization,
+                    lab_id=participant,
+                    added_at=datetime.datetime.now()
+                )
+
+                # Ensure 'scheme' is parsed as a list of integers
+                scheme = request.data.get('scheme', [])
+                if isinstance(scheme, str):
+                    scheme = list(map(int, scheme.split(',')))
+
+                # Set schemes for Payment and SelectedScheme
+                payment.scheme.set(scheme)
+                selectedscheme.scheme_id.set(scheme)
+
+                # Serialize the payment instance
+                payment_serializer = PaymentSerializer(payment)
+                selectedscheme_serializer = SelectedSchemeSerializer(selectedscheme)
+
+                return Response({
+                    "status": status.HTTP_201_CREATED,
+                    "payment_data": payment_serializer.data,
+                    "selected_scheme": selectedscheme_serializer.data,
+                    "message": "Payment added successfully."
+                })
+
+        except Staff.DoesNotExist:
+            return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "Invalid account_id."})
+
+        except Exception as e:
+            return Response({"status": status.HTTP_400_BAD_REQUEST, "message": str(e)})
 
 # API for displaying list of pending labs
+
 class PendingLabsView(APIView):
     permission_classes = (IsAuthenticated,)
 
@@ -131,72 +245,6 @@ class UnapprovedLabsView(APIView):
             return Response({"status": status.HTTP_404_NOT_FOUND, "message": "Staff not found."})
         except Lab.DoesNotExist:
             return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "Sorry! No pending labs exist."})
-
-# API for displaying list of approved labs
-class ApproveUnapproveLabView(APIView):
-    permission_classes = (AllowAny,)
-    parser_classes = (parsers.MultiPartParser, parsers.FormParser,)
-
-    # Patch request to update data of the Lab for approval
-
-    def put(self, request, *args, **kwargs):
-        try:
-            staff = Staff.objects.get(account_id=kwargs.get('id'))
-            try:
-                lab = Lab.objects.get(id=request.data['lab_id'])
-
-                request.data._mutable = True
-
-                # If shared percentage (referee fee percentage) value is coming to API
-                # It means it is approved operation otherwise it is assumed to be unapproved operation
-                if request.data['is_approved'] == 'true':
-                    request.data['status'] = 'Approved'
-                else:
-                    request.data['status'] = 'Unapproved'
-
-                request.data['done_by'] = staff.id
-                request.data['done_at'] = datetime.now()
-                request.data._mutable = False
-
-                serializer = LabInformationSerializer(lab, data=request.data, partial=True)
-
-                if serializer.is_valid():
-                    serializer.save()
-
-                    # if request.data['is_approved'] == 'true':
-                    #     subject, from_email, to = 'Approval Notification', settings.EMAIL_HOST_USER, lab.email
-
-                    #     data = {
-                    #         'lab_name': lab.name,
-                    #         'email': lab.email,
-                    #         'login_link': settings.LINK_OF_REACT_APP + "/login"
-                    #     }
-
-                    #     send_mail(subject, "approval-mail.html", from_email, to, data)
-                    #     audit_data = {}
-                    #     audit_data['lab_id'] = str(serializer.data['id'])
-                    #     audit_data['generated_at'] = str(serializer.data['done_at'])
-                    # else:
-                    #     subject, from_email, to = 'Non-Approval Notification', settings.EMAIL_HOST_USER, lab.email
-
-                    #     data = {
-                    #         'lab_name': lab.name,
-                    #         'contact_email': "complaints@labhazir.com",
-                    #         'contact_number': "+923018540968"
-                    #     }
-
-                    #     send_mail(subject, "nonapproval-mail.html", from_email, to, data)
-
-                    return Response({"status": status.HTTP_200_OK, "data": serializer.data, "message": "Lab has been approved successfully."})
-                else:
-                    return Response({"status": status.HTTP_400_BAD_REQUEST, "message": serializer._errors})
-
-            except Lab.DoesNotExist:
-                return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "Sorry! No lab exists with this id."})
-
-        except Staff.DoesNotExist:
-            return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "Sorry! No staff exists with this id."})
-
 
 # API for displaying list of approved labs
 class ApprovedLabsView(APIView):

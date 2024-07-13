@@ -5,8 +5,8 @@ from databaseadmin.models import ParticipantProvince,ParticipantCountry,City,Dis
 
 class ActivityLogUnitsAdmin(admin.ModelAdmin):
 
-    list_display = ('id', 'organization_id', 'reagent_id','method_id', 'scheme_id', 'cycle_id', 'sample_id',  'start_date', 'end_date', 'analyte_id', 'instrumenttype_id','unit_id', 'manufactural_id', 'type','old_value', 'new_value', 'date_of_addition','actions','status', 'cycle')
-    search_fields = ('id', 'organization_id', 'reagent_id','method_id',  'scheme_id', 'cycle_id',  'sample_id',  'start_date', 'end_date','analyte_id', 'instrumenttype_id','unit_id', 'manufactural_id', 'type','old_value', 'new_value', 'date_of_addition','actions','status', 'cycle')
+    list_display = ('id', 'organization_id', 'reagent_id','method_id', 'scheme_id', 'cycle_id', 'sample_id',  'analyte_id', 'instrumenttype_id','unit_id', 'manufactural_id', 'type','old_value', 'new_value', 'date_of_addition','actions','status')
+    search_fields = ('id', 'organization_id', 'reagent_id','method_id',  'scheme_id', 'cycle_id',  'sample_id', 'analyte_id', 'instrumenttype_id','unit_id', 'manufactural_id', 'type','old_value', 'new_value', 'date_of_addition','actions','status')
 
 class InstrumentTypeAdmin(admin.ModelAdmin):
     list_display = ('id', 'name', 'date_of_addition', )

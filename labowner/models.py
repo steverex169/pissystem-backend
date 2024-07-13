@@ -199,10 +199,9 @@ class Lab(models.Model):
                             null=True, verbose_name='Lab name')
     user_name = models.CharField(max_length=255, blank=False,
                             null=True, verbose_name='user name')
-    payments_status = models.CharField(
-        max_length=50, choices=PAYMENT_STATUS, default='Unpaid')
-    membership_status = models.CharField(
-        max_length=50, choices=MEMBERSHIP_STATUS, default='Suspended')
+    payment_status = models.CharField(max_length=50, choices=PAYMENT_STATUS, default='Unpaid')
+    membership_status = models.CharField(max_length=50, choices=MEMBERSHIP_STATUS, default='Suspended')
+    
     financial_settlement = models.CharField(
         max_length=50, choices=FINANCIAL_SETTLEMENT, default='Self', blank=True, null=True)
     logo = models.ImageField(

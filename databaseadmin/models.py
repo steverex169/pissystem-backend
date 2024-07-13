@@ -36,7 +36,6 @@ TYPE= (
     ('ParticipantType', 'ParticipantType'),
     ('ParticipantSector', 'ParticipantSector'),
     )
-
 class City(models.Model):
     organization_id = models.ForeignKey(
         Organization, on_delete=models.CASCADE, null=True, blank=True)
@@ -266,7 +265,7 @@ class Analyte(models.Model):
 class Scheme(models.Model):
     organization_id = models.ForeignKey(
         Organization, on_delete=models.CASCADE, null=True, blank=True)
-    name = models.CharField(max_length=255, blank=True, null=True)
+    name = models.CharField(max_length=255, blank=True, null=True,verbose_name='Scheme')
     price = models.CharField(max_length=255, blank=True, null=True)
     added_by= models.ForeignKey(
         UserAccount, on_delete=models.CASCADE, null=True, blank=True) 
@@ -369,8 +368,6 @@ class ActivityLogUnits(models.Model):
         Cycle, on_delete=models.CASCADE, null=True, blank=True)
     sample_id = models.ForeignKey(
         Sample, on_delete=models.CASCADE, null=True, blank=True)
-    start_date = models.DateField(null=True, blank=True)
-    end_date = models.DateField(null=True, blank=True)
     city_id = models.ForeignKey(
         City, on_delete=models.CASCADE, null=True, blank=True)
     country_id = models.ForeignKey(
@@ -396,8 +393,6 @@ class ActivityLogUnits(models.Model):
         max_length=50, choices= ACTIONS, default= 'Added', verbose_name='Which action is performed?')
     status = models.CharField(
         max_length=50, choices=STATUS, default='Inactive', blank=True)
-    cycle = models.CharField(
-        max_length=50, choices=CYCLE, default='Months', blank=True)
     type = models.CharField(
         max_length=50, choices= TYPE, default= 'Units', verbose_name='Form type?')
     def __str__(self):
@@ -405,6 +400,8 @@ class ActivityLogUnits(models.Model):
 
     class Meta:
         verbose_name = 'History'
+
+
 
 class News(models.Model):
     organization_id = models.ForeignKey(

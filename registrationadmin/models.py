@@ -66,7 +66,38 @@ class Round(models.Model):
 
     class Meta:       
         verbose_name = 'Round'
+class SelectedScheme(models.Model):
+    organization_id = models.ForeignKey(
+        Organization, on_delete=models.CASCADE, null=True, blank=True)
+    lab_id = models.ForeignKey(
+        Lab, on_delete=models.CASCADE, verbose_name='Lab name', null=True)
+    scheme_id =models.ManyToManyField(Scheme, blank=True)
+    added_at= models.DateTimeField(
+        null=True, blank=True, verbose_name="Scheme added date")
+    def __str__(self):
+        return self.lab_id.name + " - " + self.scheme_id.scheme_name 
 
+    class Meta:
+        verbose_name = 'Scheme'
+        
+class Payment(models.Model):
+    organization_id = models.ForeignKey(
+         Organization, on_delete=models.CASCADE, null=True, blank=True)
+    account_id = models.ForeignKey(
+        UserAccount, on_delete=models.CASCADE, null=True, blank=True)
+    scheme =models.ManyToManyField(Scheme, blank=True)
+    participant_id = models.ForeignKey(
+        Lab, on_delete=models.CASCADE, null=True, blank=True)
+    price = models.CharField(max_length=255,blank=False, null=True)
+    discount = models.CharField(max_length=255,blank=False, null=True)
+    photo = models.CharField(max_length=255, blank=False, null=True)
+    paymentmethod = models.CharField(max_length=255,blank=True, null=True) 
+    paydate = models.DateField(null=True, blank=True)
+    def __str__(self):
+        return self.price
+
+    class Meta:
+        verbose_name = 'Payment'
 
 
 class ActivityLogUnits(models.Model):
