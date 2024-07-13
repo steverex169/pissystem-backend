@@ -25,18 +25,18 @@ class MethodAdmin(admin.ModelAdmin):
     search_fields = ('id', 'name', 'date_of_addition','code','status')
 
 class SchemeAdmin(admin.ModelAdmin):
-    list_display = ('id', 'name', 'price','noofanalytes', 'date_of_addition', 'status')
+    list_display = ('id', 'name', 'price', 'noofanalytes', 'date_of_addition', 'status')
     search_fields = ('id', 'name', 'price', 'noofanalytes', 'date_of_addition', 'status')
 
     def get_analytes(self, obj):
         return ', '.join([analytes.name for analytes in obj.analytes.all()])
 
 class CycleAdmin(admin.ModelAdmin):
-    list_display = ('id', 'organization_id', 'scheme_name', 'cycle_no', 'rounds','cycle', 'start_date', 'end_date', 'status')
-    search_fields = ('id', 'organization_id', 'scheme_name', 'cycle_no', 'rounds','cycle', 'start_date', 'end_date', 'status')
+    list_display = ('id', 'organization_id', 'scheme_name', 'cycle_no', 'rounds','cycle', 'start_date', 'end_date', 'noofanalytes', 'status')
+    search_fields = ('id', 'organization_id', 'scheme_name', 'cycle_no', 'rounds','cycle', 'start_date', 'end_date', 'noofanalytes', 'status')
 
-    # def get_analyte(self, obj):
-    #     return ', '.join([analyte.name for analyte in obj.analyte.all()])
+    def get_analytes(self, obj):
+        return ', '.join([analytes.name for analytes in obj.analytes.all()])
 
 class ReagentsAdmin(admin.ModelAdmin):
     list_display = ('id', 'name', 'date_of_addition', 'code','status')
@@ -75,8 +75,10 @@ class NewsAdmin(admin.ModelAdmin):
     search_fields = ('id', 'title', 'date_of_addition', 'description',)
 
 class SampleAdmin(admin.ModelAdmin):
-    list_display = ('id', 'sampleno', 'details', 'notes','scheme')
-    search_fields = ('id', 'sampleno', 'details', 'notes','scheme')
+    list_display = ('id','organization_id', 'samplename', 'noofanalytes', 'sampleno', 'scheme_id',   'detail', 'notes', 'added_by', 'status')
+    search_fields = ('id','organization_id','samplename','noofanalytes', 'sampleno', 'scheme_id', 'detail', 'notes', 'added_by', 'status')
+    def get_analytes(self, obj):
+        return ', '.join([analytes.name for analytes in obj.analytes.all()])
     
 class CityTypeAdmin(admin.ModelAdmin):
     list_display = ('id', 'name', 'date_of_addition', )

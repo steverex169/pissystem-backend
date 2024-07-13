@@ -19,6 +19,10 @@ CYCLE = (
     ('Months', 'Months'),
     ('Year', 'Year'),
 )
+SAMPLE_STATUS =(
+        ('Created', 'Created'),
+        ('Rounded', 'Rounded'),
+)
 TYPE= (
     ('Units', 'Units'),
     ('Instruments', 'Instruments'),
@@ -305,9 +309,14 @@ class Cycle(models.Model):
         max_length=50, choices=CYCLE, default='Months', blank=True)  
     start_date = models.DateField(blank=True, null=True)
     end_date = models.DateField(blank=True, null=True)
+    analytes = models.ManyToManyField(Analyte, blank=True)
     status = models.CharField(
-        max_length=50, choices=STATUS, default='Inactive', blank=True)
+        max_length=50, choices=STATUS, default='Active', blank=True)
     
+
+    @property
+    def noofanalytes(self):
+        return self.analytes.count()
 
     # def save(self, *args, **kwargs):
     #     # Skip status update if the instance is not yet saved (no ID)
@@ -329,15 +338,26 @@ class Sample(models.Model):
     organization_id = models.ForeignKey(
          Organization, on_delete=models.CASCADE, null=True, blank=True)
     account_id = models.OneToOneField(
-        UserAccount, on_delete=models.CASCADE, primary_key=False, null=True, blank=True)
+        UserAccount, on_delete=models.CASCADE, primary_key=False, null=True, blank=True, related_name='sample_account_id')
+    samplename = models.CharField(max_length=255, blank=False, null=True)
     sampleno = models.CharField(max_length=255, blank=False, null=True)
-    details = models.TextField()
+    scheme_id = models.ForeignKey(
+         Scheme, on_delete=models.CASCADE, null=True, blank=True)
+    detail = models.TextField(max_length=255, blank=False, null=True)
     notes = models.TextField(max_length=255, blank=False, null=True)
-    scheme = models.TextField(blank=True, null=True) 
-    # added_by = models.ForeignKey(
-    #     UserAccount, on_delete=models.CASCADE, null=True, blank=True)
+    added_by = models.ForeignKey(
+        UserAccount, on_delete=models.CASCADE, null=True, blank=True,  related_name='sample_added_by')
+    date_of_addition = models.DateTimeField(blank=True, null=True) 
+    # analytes = models.ManyToManyField(Analyte, blank=True)
+    analytes = models.ManyToManyField(Analyte, related_name='samples', blank=True)
+    # cycle_no = models.ForeignKey(Cycle, on_delete=models.CASCADE, null=True, blank=True)
+    status = models.CharField(
+        max_length=50, choices=SAMPLE_STATUS, default='Created', blank=True)  
         
-    def __str__(self):
+    @property
+    def noofanalytes(self):
+        return self.analytes.count()
+        
         return self.sampleno
 
     class Meta:

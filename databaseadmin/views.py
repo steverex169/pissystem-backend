@@ -2341,7 +2341,7 @@ class SchemeDeleteAPIView(APIView):
             return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "Sorry! No such record to delete."})     
 
 class CycleAPIView(APIView):
-    permission_classes = (AllowAny,)  # AllowAny temporarily for demonstration
+    permission_classes = (AllowAny,)  # Temporarily for demonstration
 
     def get(self, request, *args, **kwargs):
         try:
@@ -2379,9 +2379,11 @@ class CycleAPIView(APIView):
                     cycle_data['scheme_name'] = scheme.name
                     cycle_data['price'] = scheme.price
                     cycle_data['scheme_id'] = scheme.id
+                    cycle_data['noofanalytes'] = analytes_count  # Ensure noofanalytes is added to cycle_data
                 else:
                     cycle_data['scheme_name'] = None
                     cycle_data['scheme_id'] = None  # Handle case where scheme is None
+                    cycle_data['noofanalytes'] = 0  # or None, depending on your preference
 
                 serialized_data.append(cycle_data)
 
@@ -2395,6 +2397,7 @@ class CycleAPIView(APIView):
         
         except Exception as e:
             return Response({"status": status.HTTP_500_INTERNAL_SERVER_ERROR, "message": str(e)})
+            
             
 class CyclePostAPIView(APIView):
     permission_classes = (AllowAny,)  # Temporary permission setting for demonstration
@@ -3041,6 +3044,31 @@ class SchemeUpdateAnalyteAPIView(APIView):
             return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "Scheme does not exist."})
         except Exception as e:
             return Response({"status": status.HTTP_400_BAD_REQUEST, "message": str(e)})
+
+
+# Analytes Assocaited With Cycle
+class AnalytesByCycleAPIView(APIView):
+    permission_classes = (AllowAny,)  # Adjust permissions as needed
+
+    def get(self, request, id, *args, **kwargs):
+        try:
+            # Retrieve the Cycle object based on id
+            scheme = Scheme.objects.get(id=id)
+            
+            # Retrieve all analytes associated with the cycle
+            analytes = Analyte.objects.filter(scheme=scheme)
+            
+            # Serialize the queryset of analytes
+            serializer = AnalyteSerializer(analytes, many=True)
+            
+            return Response({"status": status.HTTP_200_OK, "data": serializer.data})
+        
+        except Scheme.DoesNotExist:
+            return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "Scheme object does not exist."})
+        
+        except Exception as e:
+            return Response({"status": status.HTTP_500_INTERNAL_SERVER_ERROR, "message": str(e)})
+
         
 class AnalyteAPIView(APIView):
     permission_classes = (AllowAny,)  # AllowAny temporarily for demonstration
@@ -3359,25 +3387,69 @@ class NewsAddAPIView(APIView):
 
         return Response({"status": status.HTTP_400_BAD_REQUEST, "errors": serializer.errors})
 
-class SampleListView(APIView):
-
+# Sample
+class SampleListView(APIView):   
     permission_classes = (AllowAny,)
-
     def get(self, request, *args, **kwargs):
         try:
-            sample = Staff.objects.get(account_id=kwargs.get('id'))
-
-            organization = sample.organization_id
-            sample_list = Sample.objects.filter(organization_id=organization)
-            serialized_data = [model_to_dict(sample) for sample in sample_list]
+            # Get the staff user's account_id
+            account_id = kwargs.get('id')
+            # Fetch the staff user based on account_id
+            staff_user = Staff.objects.get(account_id=account_id)
             
+            # Retrieve the organization associated with the staff user
+            organization = staff_user.organization_id
+            
+            # Filter samples based on the organization
+            sample_list = Sample.objects.filter(organization_id=organization)
+            
+            # Serialize data
+            serialized_data = []
+            for sample in sample_list:
+                sample_data = {
+                    'id': sample.id,
+                    'samplename': sample.samplename,
+                    'sampleno': sample.sampleno,
+                    'detail': sample.detail,
+                    'notes': sample.notes,
+                    'scheme_id': sample.scheme_id.id if sample.scheme_id else None,
+                    'status': sample.status,
+                }
+                
+                # Fetch name from Scheme table based on scheme_id
+                if sample.scheme_id:
+                    scheme = Scheme.objects.get(id=sample.scheme_id.id)
+                    sample_data['scheme'] = scheme.name
+                else:
+                    sample_data['scheme'] = None
+                
+                # Ensure the sample is saved to get an ID before accessing the analytes field
+                if sample.pk is None:
+                    sample.save()
+
+                analytes_count = sample.analytes.count()
+                
+                # Convert analytes to a list of dictionaries
+                analytes = list(sample.analytes.values('id', 'name', 'code', 'status'))
+                sample_data['analytes'] = analytes
+                sample_data['noofanalytes'] = analytes_count
+    
+                # Fetch cycle_no from Cycle model based on scheme_id
+                if sample.scheme_id:
+                    cycle = Cycle.objects.filter(scheme_name_id=sample.scheme_id.id).first()
+                    sample_data['cycle_no'] = cycle.cycle_no if cycle else None
+                else:
+                    sample_data['cycle_no'] = None
+
+                serialized_data.append(sample_data)
+
             return Response({"status": status.HTTP_200_OK, "data": serialized_data})
-
+        
         except Staff.DoesNotExist:
-            return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "Staff record not found."})
-
+            return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "Invalid account_id."})
+        
         except Sample.DoesNotExist:
-            return Response({"status": status.HTTP_404_NOT_FOUND, "message": "No Sample found with that ID."})
+            return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "No Sample records found."})
 
 class SamplePostView(APIView):
     permission_classes = (AllowAny,)
@@ -3386,20 +3458,25 @@ class SamplePostView(APIView):
         try:
             # Fetch the staff user based on account_id
             account_id = request.data.get('added_by')
+            # print("Accounttttttttttttt", account_id)
             staff_user = Staff.objects.get(account_id=account_id)
             organization = staff_user.organization_id
-
+            id = request.data.get('scheme')
+            scheme_id = Scheme.objects.get(id=id)
             # Assuming Sample model has account_id field as ForeignKey to UserAccount
             # Fetch the UserAccount instance based on account_id
            
-
+            user_account = get_object_or_404(UserAccount, id=account_id)
             sample = Sample.objects.create(
-                organization_id=organization,
-           
+                organization_id = organization,
+                samplename=request.data['samplename'],
                 sampleno=request.data['sampleno'],
-                details=request.data['details'],
+                scheme_id=scheme_id,
+                detail=request.data['detail'],
                 notes=request.data['notes'],
-                scheme=request.data['scheme'],
+                # status=request.data['status'],
+                added_by=user_account,
+                date_of_addition=timezone.now(),
             )
 
             sample_serializer = SampleSerializer(sample)
@@ -3416,6 +3493,99 @@ class SamplePostView(APIView):
         
         except Exception as e:
             return Response({"status": status.HTTP_400_BAD_REQUEST, "message": str(e)})
+
+class SampleListUpdateAPIView(APIView):
+    def put(self, request, id, *args, **kwargs):
+        try:
+            sample = Sample.objects.get(id=id)
+            serializer = SampleSerializer(sample, data=request.data, partial=True)
+
+            if serializer.is_valid():
+                serializer.save()
+                return Response({"status": status.HTTP_200_OK, "data": serializer.data, "message": "Updated Successfully"})
+            else:
+                return Response({"status": status.HTTP_400_BAD_REQUEST, "message": serializer.errors})
+
+        except Sample.DoesNotExist:
+            return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "Sample with this ID doesn't exist."})
+
+class SampleListDeleteAPIView(APIView):    
+    def delete(self, request, *args, **kwargs):
+        try:
+            Sample.objects.get(id=kwargs.get('id')).delete()
+            return Response({"status": status.HTTP_200_OK, "message": "Deleted successfully"})
+
+        except Sample.DoesNotExist:
+            return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "Sorry! No such record to delete."}) 
+
+# Sample Analytes
+class SampleAnalyteAPIView(APIView):
+    permission_classes = (AllowAny,)  # Adjust permission classes as needed
+
+    def get(self, request, id, *args, **kwargs):
+        try:
+            sample = Sample.objects.get(id=id)
+            analytes = sample.analytes.all()  # Fetch all reagents associated with the analyte
+            analyte_ids = [analyte.id for analyte in analytes]
+            
+            # Serialize data
+            serialized_data = {
+                #"scheme": SchemeSerializer(scheme).data,
+                "analytes": analyte_ids  # Send list of reagent IDs
+            }
+            
+            return Response({"status": status.HTTP_200_OK, "data": serialized_data})
+        
+        except Sample.DoesNotExist:
+            return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "Sample not found."})
+        
+        except Exception as e:
+            return Response({"status": status.HTTP_400_BAD_REQUEST, "message": str(e)})
+
+class SampleAddAnalyteAPIView(APIView):
+    permission_classes = (AllowAny,)
+    def post(self, request, id, *args, **kwargs):
+        print("sdhs id", id, kwargs.get('id'))
+
+        try:
+            analyte = Sample.objects.get(id=id)
+            print("amnalut", analyte) 
+            # Ensure 'instruments' is parsed as a list of integers
+            analytes = request.data.get('analytes', [])
+            print("analytes2", analytes)
+            if isinstance(analytes, str):
+                analytes = list(map(int, analytes.split(',')))
+            
+            analyte.analytes.set(analytes)  # Assuming instruments are passed as a list of IDs
+            analyte.save()
+
+            return Response({"status": status.HTTP_200_OK, "message": "Equipments added to analyte successfully."})
+        except Sample.DoesNotExist:
+            return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "Analyte not found."})
+        except Exception as e:
+            return Response({"status": status.HTTP_400_BAD_REQUEST, "message": str(e)})
+
+class SampleUpdateAnalyteAPIView(APIView):
+    permission_classes = (AllowAny,)
+
+    def put(self, request, id, *args, **kwargs):
+       
+        try:
+            sample = Sample.objects.get(id=id)
+            analytes = request.data.get('analytes', [])
+            if isinstance(analytes, str):
+                analytes = list(map(int, analytes.split(',')))
+            
+            sample.analytes.set(analytes)  # Assuming reagents are passed as a list of IDs
+            sample.save()
+            serialized_data = SampleSerializer(sample).data
+            return Response({"status": status.HTTP_200_OK, "analyte_data": serialized_data, "message": "Reagents updated for Analyte successfully."})
+        except Sample.DoesNotExist:
+            return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "Sample does not exist."})
+        except Exception as e:
+            return Response({"status": status.HTTP_400_BAD_REQUEST, "message": str(e)})
+
+
 #Analyte adding equipments
 class AnalytesEquipmentsAPIView(APIView):
     permission_classes = (AllowAny,)  # Adjust permission classes as needed

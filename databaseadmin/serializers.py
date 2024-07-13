@@ -85,8 +85,7 @@ class SchemeSerializer(serializers.ModelSerializer):
     
 
 class CycleSerializer(serializers.ModelSerializer):
-    # noofanalytes = serializers.SerializerMethodField()
-
+    noofanalytes = serializers.IntegerField(read_only=True)
     class Meta:
         model = Cycle
         fields = ('__all__')
@@ -115,6 +114,7 @@ class NewsSerializer(serializers.ModelSerializer):
         fields = ('__all__') 
 
 class SampleSerializer(serializers.ModelSerializer):
+    noofanalytes = serializers.IntegerField(read_only=True)
     class Meta:
         model = Sample
         fields = ('__all__') 
