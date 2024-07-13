@@ -14,7 +14,6 @@ class RoundAdmin(admin.ModelAdmin):
 
     def get_lab(self, obj):
         return ', '.join([lab.name for lab in obj.lab.all()])
-  
 
 admin.site.register(ActivityLogUnits, ActivityLogUnitsAdmin)
 admin.site.register(Round, RoundAdmin)

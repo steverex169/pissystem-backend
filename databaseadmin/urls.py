@@ -1,5 +1,5 @@
 from django.urls import path
-from databaseadmin.views import ProvinceUpdateAPIView,ProvinceCreateAPIView, ProvinceListAPIView,DeleteMAnufacturerView,ReagentsInManufacturerAPIView,InstrumentsInManufacturerAPIView,DeleteInstrumentView,AnalytesByInstrumentAPIView,DeleteReagentView,AnalytesByReagentAPIView,CountryUpdateAPIView,CountryCreateAPIView,CountryListAPIView,DeleteAnalyteView,DeleteMethodView,AnalytesByMethodAPIView,DeleteInstrumentTypeView,InstrumentAndInstrumentTypeAPIView, NewsAddAPIView,SampleListView, SamplePostView, SchemeAPIView, SchemeUpdateAPIView, SchemeDeleteAPIView, CycleAPIView, CyclePostAPIView, CycleUpdateAPIView, CycleDeleteAPIView,AnalytesByUnitAPIView,ParticipantSectorUpdateAPIView,ParticipantSectorCreateAPIView,ParticipantSectorListAPIView,ParticipantTypeUpdateAPIView,ParticipantTypeCreateAPIView,ParticipantTypeListAPIView,DesignationListAPIView,DesignationCreateAPIView,DesignationUpdateAPIView,DepartmentListAPIView,DepartmentCreateAPIView,DepartmentUpdateAPIView,DistrictListAPIView,DistrictCreateAPIView,DistrictUpdateAPIView,CityListAPIView,CityCreateAPIView,CityUpdateAPIView,AnalyteUpdateUnitsAPIView,AnalytesUnitsAPIView,AnalyteAddUnitsAPIView,AnalyteUpdateMethodsAPIView, AnalyteAddMethodsAPIView,AnalytesMethodsAPIView,AnalyteUpdateEquipmentsAPIView,AnalytesEquipmentsAPIView,AnalyteAddEquipmentsAPIView,AnalyteUpdateReagentsAPIView,AnalyteAddReagentsAPIView,AnalytesReagentsAPIView,AnalyteAddReagents,AnalytesListAPIView,MethodsPostAPIView,InstrumentsPostAPIView,InstrumentTypeCreateView,UnitsListAPIView,NewsListView,InstrumentsAPIView, InstrumentsUpdateAPIView, InstrumentTypeView,AnalyteUpdateAPIView, AnalyteAPIView, MethodsAPIView, UpdateInstrumentTypeView,  MethodsUpdateAPIView, UnitsAPIView, UnitsUpdateAPIView, ActivityLogDatabaseadmin, ReagentsListAPIView, ReagentsPostAPIView, ReagentsPutAPIView ,ManufacturalListAPIView, ManufacturalPostAPIView, ManufacturalPutAPIView, SchemePostAPIView, SchemeAnalyteAPIView, SchemeAddAnalyteAPIView, SchemeUpdateAnalyteAPIView
+from databaseadmin.views import ProvinceUpdateAPIView,ProvinceCreateAPIView, ProvinceListAPIView,DeleteMAnufacturerView,ReagentsInManufacturerAPIView,InstrumentsInManufacturerAPIView,DeleteInstrumentView,AnalytesByInstrumentAPIView,DeleteReagentView,AnalytesByReagentAPIView,CountryUpdateAPIView,CountryCreateAPIView,CountryListAPIView,DeleteAnalyteView,DeleteMethodView,AnalytesByMethodAPIView,DeleteInstrumentTypeView,InstrumentAndInstrumentTypeAPIView, NewsAddAPIView,SampleListView, SamplePostView, SampleListUpdateAPIView, SampleAddAnalyteAPIView, SampleListDeleteAPIView, SampleAnalyteAPIView, SampleUpdateAnalyteAPIView, SchemeAPIView, SchemeUpdateAPIView, SchemeDeleteAPIView, CycleAPIView, CyclePostAPIView, CycleUpdateAPIView, CycleDeleteAPIView,AnalytesByUnitAPIView,ParticipantSectorUpdateAPIView,ParticipantSectorCreateAPIView,ParticipantSectorListAPIView,ParticipantTypeUpdateAPIView,ParticipantTypeCreateAPIView,ParticipantTypeListAPIView,DesignationListAPIView,DesignationCreateAPIView,DesignationUpdateAPIView,DepartmentListAPIView,DepartmentCreateAPIView,DepartmentUpdateAPIView,DistrictListAPIView,DistrictCreateAPIView,DistrictUpdateAPIView,CityListAPIView,CityCreateAPIView,CityUpdateAPIView,AnalyteUpdateUnitsAPIView,AnalytesUnitsAPIView,AnalyteAddUnitsAPIView,AnalyteUpdateMethodsAPIView, AnalyteAddMethodsAPIView,AnalytesMethodsAPIView,AnalyteUpdateEquipmentsAPIView,AnalytesEquipmentsAPIView,AnalyteAddEquipmentsAPIView,AnalyteUpdateReagentsAPIView,AnalyteAddReagentsAPIView,AnalytesReagentsAPIView,AnalyteAddReagents,AnalytesListAPIView,MethodsPostAPIView,InstrumentsPostAPIView,InstrumentTypeCreateView,UnitsListAPIView,NewsListView,InstrumentsAPIView, InstrumentsUpdateAPIView, InstrumentTypeView,AnalyteUpdateAPIView, AnalyteAPIView, MethodsAPIView, UpdateInstrumentTypeView,  MethodsUpdateAPIView, UnitsAPIView, UnitsUpdateAPIView, ActivityLogDatabaseadmin, ReagentsListAPIView, ReagentsPostAPIView, ReagentsPutAPIView ,ManufacturalListAPIView, ManufacturalPostAPIView, ManufacturalPutAPIView, SchemePostAPIView, SchemeAnalyteAPIView, SchemeAddAnalyteAPIView, SchemeUpdateAnalyteAPIView, AnalytesByCycleAPIView
 
 urlpatterns = [
     #Participant 
@@ -128,8 +128,19 @@ urlpatterns = [
         CycleDeleteAPIView.as_view(), name='delete-cycle/<id>'),  
     path('sample-list/<id>',
          SampleListView.as_view(), name='sample-list'),
-    path('post-sample',
-         SamplePostView.as_view(), name='post-sample'),
+    path('post-sample-list',
+     SamplePostView.as_view(), name='post-sample-list'),
+    path('update-sample-list/<id>',
+    SampleListUpdateAPIView.as_view(), name='update-sample-list'),
+    path('delete-sample/<id>',
+        SampleListDeleteAPIView.as_view(), name='delete-sample'),
+    path('sample-analyte-list/<id>',
+         SampleAnalyteAPIView.as_view(), name='sample-analyte-list'),     
+    path('sample-add-analyte/<id>',
+        SampleAddAnalyteAPIView.as_view(), name='sample-add-analyte'),
+    path('sample-update-analyte/<id>',
+         SampleUpdateAnalyteAPIView.as_view(), name='sample-update-analyte'),
+
     # path('news-list-participant/<id>',
     #      NewsListViewParticipant.as_view(), name='news-list-participantt'),
     path('news-add',
@@ -166,7 +177,11 @@ urlpatterns = [
         AnalyteAddUnitsAPIView.as_view(), name='analyte-add-units'),
     path('analyte-update-units/<id>',
          AnalyteUpdateUnitsAPIView.as_view(), name='analyte-update-units'),
-         
+
+   #Analytes assocaited with method
+     path('analyte-methods/<id>',
+         AnalytesByMethodAPIView.as_view(), name='analyte-methods'),  
+
     # Scheme Analytes
     path('scheme-analyte-list/<id>',
          SchemeAnalyteAPIView.as_view(), name='scheme-analyte-list'),     
@@ -174,4 +189,8 @@ urlpatterns = [
         SchemeAddAnalyteAPIView.as_view(), name='scheme-add-analyte'),
     path('scheme-update-analyte/<id>',
          SchemeUpdateAnalyteAPIView.as_view(), name='scheme-update-analyte'),
+
+     #Analytes assocaited with cycle
+     path('analyte-cycles/<id>',
+         AnalytesByCycleAPIView.as_view(), name='analyte-cycles'),   
 ]
