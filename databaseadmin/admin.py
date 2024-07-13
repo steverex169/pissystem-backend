@@ -5,8 +5,8 @@ from databaseadmin.models import ParticipantProvince,ParticipantCountry,City,Dis
 
 class ActivityLogUnitsAdmin(admin.ModelAdmin):
 
-    list_display = ('id', 'organization_id', 'reagent_id','method_id', 'scheme_id', 'cycle_id', 'sample_id',  'start_date', 'end_date', 'analyte_id', 'instrumenttype_id','unit_id', 'manufactural_id', 'type','old_value', 'new_value', 'date_of_addition','actions','status', 'cycle')
-    search_fields = ('id', 'organization_id', 'reagent_id','method_id',  'scheme_id', 'cycle_id',  'sample_id',  'start_date', 'end_date','analyte_id', 'instrumenttype_id','unit_id', 'manufactural_id', 'type','old_value', 'new_value', 'date_of_addition','actions','status', 'cycle')
+    list_display = ('id', 'organization_id', 'reagent_id','method_id', 'scheme_id', 'cycle_id', 'sample_id',  'analyte_id', 'instrumenttype_id','unit_id', 'manufactural_id', 'type','old_value', 'new_value', 'date_of_addition','actions','status')
+    search_fields = ('id', 'organization_id', 'reagent_id','method_id',  'scheme_id', 'cycle_id',  'sample_id', 'analyte_id', 'instrumenttype_id','unit_id', 'manufactural_id', 'type','old_value', 'new_value', 'date_of_addition','actions','status')
 
 class InstrumentTypeAdmin(admin.ModelAdmin):
     list_display = ('id', 'name', 'date_of_addition', )
@@ -47,7 +47,7 @@ class AnalyteAdmin(admin.ModelAdmin):
     search_fields = ('id', 'name', 'date_of_addition', 'code', 'get_methods','noofmethods', 'get_instruments','noofinstruments', 'get_reagents', 'noofreagents','get_units', 'master_unit','status')
 
     def get_reagents(self, obj):
-        return ', '.join([reagent.name for reagent in obj.reagents.all()])
+        return ', '.join([scheme.name for reagent in obj.reagents.all()])
 
     get_reagents.short_description = 'Reagents'
 
