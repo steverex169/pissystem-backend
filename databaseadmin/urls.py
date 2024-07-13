@@ -108,8 +108,7 @@ urlpatterns = [
     
      path('delete-instrument/<id>',
          DeleteInstrumentView.as_view(), name='delete-instrument'),
-    path('news-list',
-         NewsListView.as_view(), name='news-list'),
+
     path('scheme-list/<id>',
         SchemeAPIView.as_view(), name='scheme-list'),
     path('scheme-list',

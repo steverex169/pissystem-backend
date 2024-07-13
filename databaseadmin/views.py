@@ -1541,29 +1541,33 @@ class ActivityLogDatabaseadmin(APIView):
                         reagent = Reagents.objects.get(id=id_value)
                         activity_log = ActivityLogUnits.objects.filter(reagent_id=reagent.id)
                     except Reagents.DoesNotExist:
-                        # If InstrumentType also does not exist, try Reagents
                         try:
-                            method = Method.objects.get(id=id_value)
-                            activity_log = ActivityLogUnits.objects.filter(method_id=method.id)
-                        except Method.DoesNotExist:
+                            scheme = Scheme.objects.get(id=id_value)
+                            activity_log = ActivityLogUnits.objects.filter(scheme_id=scheme.id)
+                        except Scheme.DoesNotExist: 
+                        # If InstrumentType also does not exist, try Reagents
                             try:
-                                scheme = Scheme.objects.get(id=id_value)
-                                activity_log = ActivityLogUnits.objects.filter(scheme_id=scheme.id)
-                            except Scheme.DoesNotExist:
+                                method = Method.objects.get(id=id_value)
+                                activity_log = ActivityLogUnits.objects.filter(method_id=method.id)
+                            except Method.DoesNotExist:
                                 try:
-                                    manufactural = Manufactural.objects.get(id=id_value)
-                                    activity_log = ActivityLogUnits.objects.filter(manufactural_id=manufactural.id)
-                                except Manufactural.DoesNotExist:
+                                    scheme = Scheme.objects.get(id=id_value)
+                                    activity_log = ActivityLogUnits.objects.filter(scheme_id=scheme.id)
+                                except Scheme.DoesNotExist:
                                     try:
-                                        sample = Sample.objects.get(id=id_value)
-                                        activity_log = ActivityLogUnits.objects.filter(sample_id=sample.id)
-                                    except Sample.DoesNotExist:
+                                        manufactural = Manufactural.objects.get(id=id_value)
+                                        activity_log = ActivityLogUnits.objects.filter(manufactural_id=manufactural.id)
+                                    except Manufactural.DoesNotExist:
                                         try:
-                                            instrument = Instrument.objects.get(id=id_value)
-                                            activity_log = ActivityLogUnits.objects.filter(instrument_id=instrument.id)
-                                        except Instrument.DoesNotExist:
-                                            return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "No record exists."}) 
-          
+                                            sample = Sample.objects.get(id=id_value)
+                                            activity_log = ActivityLogUnits.objects.filter(sample_id=sample.id)
+                                        except Sample.DoesNotExist:
+                                            try:
+                                                instrument = Instrument.objects.get(id=id_value)
+                                                activity_log = ActivityLogUnits.objects.filter(instrument_id=instrument.id)
+                                            except Instrument.DoesNotExist:
+                                                return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "No record exists."}) 
+            
 
             serializer = ActivityLogUnitsSerializer(activity_log, many=True)
             if activity_log.exists():
@@ -1823,7 +1827,6 @@ class ManufacturalListAPIView(APIView):
         try:
             # Get the staff user's account_id
             account_id = kwargs.get('id')
-            print("AAAAAAAAA", account_id)
             
             # Fetch the staff user based on account_id
             staff_user = Staff.objects.get(account_id=account_id)
@@ -2044,7 +2047,6 @@ class MethodsPostAPIView(APIView):
         try:
             # Fetch the staff user based on account_id
             account_id = request.data.get('added_by')
-            
             staff_user = Staff.objects.get(account_id=account_id)
             
             # Retrieve the organization associated with the staff user
@@ -2595,8 +2597,6 @@ class InstrumentTypeCreateView(APIView):
         except Exception as e:
             return Response({"status": status.HTTP_400_BAD_REQUEST, "message": str(e)})
 
-
-
 class UpdateInstrumentTypeView(APIView):
     permission_classes = (AllowAny,)
 
@@ -2798,6 +2798,7 @@ class AnalyteUpdateReagentsAPIView(APIView):
             return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "Analyte does not exist."})
         except Exception as e:
             return Response({"status": status.HTTP_400_BAD_REQUEST, "message": str(e)})
+
 
 #analytes
         
@@ -3224,13 +3225,14 @@ class NewsListView(APIView):
             # Fetch user_type based on user_id
             try:
                 user_type = UserAccount.objects.get(id=user_id)
+                
             except UserAccount.DoesNotExist:
                 return Response({
                     "status": status.HTTP_400_BAD_REQUEST,
                     "message": "User account not found."
                 }, status=status.HTTP_400_BAD_REQUEST)
             
-            newss = None
+            newss = None 
             if user_type.account_type == 'labowner':
                 try:
                     participant = Lab.objects.get(account_id=user_id)
