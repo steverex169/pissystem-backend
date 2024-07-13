@@ -21,6 +21,82 @@ from account.models import UserAccount
 from organization.models import Organization
 from django.shortcuts import get_object_or_404
 import datetime
+import pandas as pd
+
+class InstrumentTypefileView(APIView):
+    permission_classes = (AllowAny,)
+
+    def post(self, request, *args, **kwargs):
+        account_id = kwargs.get('id')
+        
+        # Fetch the staff user based on account_id
+        try:
+            staff_user = Staff.objects.get(account_id=account_id)
+        except Staff.DoesNotExist:
+            return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "Staff user not found."})
+
+        # Retrieve the organization associated with the staff user
+        organization = staff_user.organization_id
+
+        if not organization:
+            return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "Organization not found for the staff user."})
+
+        # Case 1: Data provided in request
+        if request.FILES.get('excel_file'):  # Assuming the Excel file is uploaded with key 'excel_file'
+            excel_file = request.FILES['excel_file']
+            excel_data = self.extract_excel_data(excel_file)
+            if excel_data:
+                # Filter out duplicates based on employee_code
+                unique_data = self.remove_duplicate_name(excel_data)
+                if not unique_data:
+                    return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "No unique data found after filtering duplicates."})
+                
+                # Attempt to save each unique entry
+                saved_entries = []
+                for entry in unique_data:
+                    try:
+                        employee = InstrumentType.objects.get(name=entry['name'])
+                        # If employee with same name already exists, skip this entry
+                        continue
+                    except InstrumentType.DoesNotExist:
+                        entry['organization_id'] = organization.id  # Append the organization ID
+                        serializer = InstrumentTypeSerializer(data=entry)
+                        if serializer.is_valid():
+                            serializer.save()
+                            saved_entries.append(serializer.data)
+                        else:
+                            return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "Invalid data provided.", "errors": serializer.errors})
+                
+                return Response({"status": status.HTTP_200_OK, "message": "Data extracted and saved successfully.", "saved_entries": saved_entries})
+            else:
+                return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "Failed to extract data from Excel file."}) 
+        else:
+            return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "Excel file not provided."})
+
+    def extract_excel_data(self, excel_file):
+        try:
+            # Assuming the Excel file has headers 'name'
+            df = pd.read_excel(excel_file)
+            # Assuming all rows contain the data of interest
+            data = df[['name']]  # Extract relevant columns
+            # Convert data to a list of dictionaries
+            extracted_data = data.to_dict(orient='records')
+            return extracted_data
+        except Exception as e:
+            print("Error extracting Excel data:", e)
+            return None
+
+    def remove_duplicate_name(self, excel_data):
+        unique_instrumentType_name = set()
+        unique_data = []
+        for entry in excel_data:
+            name = entry.get('name')
+            if name not in unique_instrumentType_name:
+                unique_instrumentType_name.add(name)
+                unique_data.append(entry)
+        return unique_data
+
+
 
 class ParticipantSectorListAPIView(APIView):
 
@@ -1696,6 +1772,7 @@ class ReagentsPostAPIView(APIView):
 
             # Save data in activity log as a single field
             ActivityLogUnits.objects.create(
+                organization_id=organization,
                 reagent_id=reagent,
                 date_of_addition=timezone.now(),
                 field_name="Changes",
@@ -1898,12 +1975,14 @@ class ManufacturalPostAPIView(APIView):
                 country=country,
                 date_of_addition=timezone.now(),
             )
-
+            user_account = UserAccount.objects.get(id=account_id)
             # Concatenate all changes into a single string with names
             changes_string = f"name: {request.data['name']}, website: {request.data['website']}, country: {country.name}"
 
             # Save data in activity log as a single field
             ActivityLogUnits.objects.create(
+                added_by= user_account,
+                organization_id=organization,
                 manufactural_id=manufactural,
                 date_of_addition=timezone.now(),
                 field_name="Changes",
@@ -2060,11 +2139,13 @@ class MethodsPostAPIView(APIView):
                 status=request.data['status'],
                 date_of_addition=timezone.now(),
             )
-
+            user_account = UserAccount.objects.get(id=account_id)
             changes_string = ", ".join([f"{field}: {request.data[field]}" for field in ["name", "code", "status"]])
 
             # Save data in activity log as a single field
             activity_log = ActivityLogUnits.objects.create(
+                added_by= user_account,
+                organization_id=organization,                
                 method_id=method,
                 old_value=None,
                 new_value=changes_string,
@@ -2073,8 +2154,7 @@ class MethodsPostAPIView(APIView):
                 type="Method"
             )
 
-            method_serializer = MethodSerializer(method)
-
+            method_serializer= MethodSerializer(method) 
             return Response({
                 "status": status.HTTP_201_CREATED,
                 "method_data": method_serializer.data,
@@ -2463,8 +2543,7 @@ class CycleUpdateAPIView(APIView):
             cycle = Cycle.objects.get(id=kwargs.get('id'))
 
             # Store old values before updating
-            old_values = {field: getattr(cycle, field) for field in ["scheme_name", "cycle_no", "rounds", "cycle", "status"]}
-            old_values = {field: getattr(cycle, field) for field in ["scheme_name", "cycle_no", "rounds", "cycle", "status"]}
+            old_values = {field: getattr(cycle, field) for field in ["scheme_name", "cycle_no", "rounds", "cycle", "status", "start_date", "end_date"]}
             
             serializer = CycleSerializer(cycle, data=request.data, partial=True)
 
@@ -2557,6 +2636,7 @@ class InstrumentTypeCreateView(APIView):
         try:
             # Fetch the staff user based on account_id
             account_id = request.data.get('added_by')
+            print("account id received here is", account_id)
             staff_user = Staff.objects.get(account_id=account_id)
             
             # Retrieve the organization associated with the staff user
@@ -2569,8 +2649,13 @@ class InstrumentTypeCreateView(APIView):
                 date_of_addition=timezone.now(),
             )
 
+            # Fetch the UserAccount instance
+            user_account = UserAccount.objects.get(id=account_id)
+
             # Save data in activity log
             activity_log = ActivityLogUnits.objects.create(
+                organization_id=organization,
+                added_by=user_account,
                 instrumenttype_id=instrument_type,
                 date_of_addition=timezone.now(),
                 field_name="name",
@@ -2594,6 +2679,9 @@ class InstrumentTypeCreateView(APIView):
         except Staff.DoesNotExist:
             return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "Invalid account_id."})
 
+        except UserAccount.DoesNotExist:
+            return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "Invalid user account_id."})
+
         except Exception as e:
             return Response({"status": status.HTTP_400_BAD_REQUEST, "message": str(e)})
 
@@ -2614,7 +2702,7 @@ class UpdateInstrumentTypeView(APIView):
             
             # Get the old value before updating the instrument_type
             old_value = instrument_type.name
-            
+            user_account = UserAccount.objects.get(id=account_id)
             # Serialize the updated data
             serializer = InstrumentTypeSerializer(instrument_type, data=request.data, partial=True)
 
@@ -2624,6 +2712,8 @@ class UpdateInstrumentTypeView(APIView):
                 
                 # Save data in activity log
                 ActivityLogUnits.objects.create(
+                    organization_id=organization,
+                    added_by=user_account,
                     instrumenttype_id=instrument_type,
                     date_of_addition=timezone.now(),
                     field_name="name",

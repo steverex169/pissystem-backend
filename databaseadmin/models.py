@@ -364,6 +364,8 @@ class Sample(models.Model):
         verbose_name = 'Sample'
 
 class ActivityLogUnits(models.Model):
+    added_by = models.ForeignKey(
+        UserAccount, on_delete=models.CASCADE, verbose_name='added by', null=True)
     organization_id = models.ForeignKey(
         Organization, on_delete=models.CASCADE, related_name='databaseadmin_activity_log_units', null=True, blank=True)
     analyte_id = models.ForeignKey(

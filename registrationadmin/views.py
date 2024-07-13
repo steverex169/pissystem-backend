@@ -1,4 +1,5 @@
 from datetime import datetime
+import datetime
 from django.forms.models import model_to_dict
 import requests
 from rest_framework.response import Response
@@ -7,15 +8,11 @@ from rest_framework import parsers
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.views import APIView
 from databaseadmin.models import Scheme
-from labowner.models import Lab, OfferedTest, Pathologist, SampleCollector
-from labowner.serializers import LabInformationSerializer,  PathologistSerializer, OfferedTestSerializer
 from registrationadmin.serializers import RoundSerializer, ActivityLogUnitsSerializer, PaymentSerializer,SelectedSchemeSerializer
 from registrationadmin.models import  ActivityLogUnits, Round, Payment, SelectedScheme
 from staff.models import Staff
 from labowner.models import Lab 
-
-from registrationadmin.serializers import RoundSerializer, ActivityLogUnitsSerializer
-from registrationadmin.models import  ActivityLogUnits, Round
+from labowner.serializers import LabInformationSerializer
 from django.shortcuts import get_object_or_404
 from django.forms.models import model_to_dict
 from django.http import JsonResponse
@@ -23,10 +20,42 @@ from django.db.models import Count
 from django.db.models import Q
 from account.models import UserAccount
 from organization.models import Organization
-import datetime
 from django.shortcuts import get_object_or_404
 from databaseadmin.models import Scheme 
 from django.db import transaction
+
+
+class UpdateMembershipStatusView(APIView):
+    permission_classes = (AllowAny,)
+
+    def put(self, request, *args, **kwargs):
+        try:
+            # Fetch the staff user based on account_id
+            account_id = request.data.get('added_by')
+            staff_user = Staff.objects.get(account_id=account_id)
+
+            # Retrieve the organization associated with the staff user
+            organization = staff_user.organization_id
+
+            # Retrieve the existing status object
+            membership_status = Lab.objects.get(id=kwargs.get('id'), organization_id=organization)
+
+            serializer = LabInformationSerializer(membership_status, data=request.data, partial=True)
+            
+            if serializer.is_valid():
+                serializer.save()
+                return Response(serializer.data)
+            else:
+                return Response({"status": status.HTTP_400_BAD_REQUEST, "message": serializer.errors})
+                
+        except Staff.DoesNotExist:
+            return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "Invalid account_id."})
+
+        except Lab.DoesNotExist:
+            return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "No such record exists."})
+
+        except Exception as e:
+            return Response({"status": status.HTTP_400_BAD_REQUEST, "message": str(e)})
 
 
 class PaymentPostAPIView(APIView):
@@ -131,6 +160,30 @@ class PendingLabsView(APIView):
         except Lab.DoesNotExist:
             return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "Sorry! No pending labs exist."})
 
+class AllLabsView(APIView):
+    permission_classes = (IsAuthenticated,)
+
+    def get(self, request, *args, **kwargs):
+        try:
+            staff = Staff.objects.get(account_id=kwargs.get('id'))
+            organization = staff.organization_id
+            pending_labs = Lab.objects.filter(organization_id=organization)
+            
+            serializer = LabInformationSerializer(pending_labs, many=True)
+            data = serializer.data
+
+            for i, lab in enumerate(pending_labs):
+                if lab.marketer_id is not None:
+                    data[i]['marketer_name'] = lab.marketer_id.name
+                    data[i]['marketer_phone'] = lab.marketer_id.phone
+
+            return Response({"status": status.HTTP_200_OK, "data": data})
+
+        except Staff.DoesNotExist:
+            return Response({"status": status.HTTP_404_NOT_FOUND, "message": "Staff not found."})
+        except Lab.DoesNotExist:
+            return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "Sorry! No pending labs exist."})
+
 class ApproveUnapproveLabView(APIView):
     permission_classes = (AllowAny,)
     parser_classes = (parsers.MultiPartParser, parsers.FormParser,)
@@ -176,15 +229,20 @@ class UnapprovedLabsView(APIView):
         try:
             staff = Staff.objects.get(account_id=kwargs.get('id'))
             organization = staff.organization_id
+            pending_labs = Lab.objects.filter(organization_id=organization, status="Pending")
             
-            unapproved_labs = Lab.objects.filter(Q(organization_id=organization, status="Unapproved") or Q(is_active="No"))
-            serializer_class = LabInformationSerializer(
-                unapproved_labs, many=True)
-            for i in range(len(unapproved_labs)):
-                serializer_class.data[i]['lab_phone'] = unapproved_labs[i].landline
+            serializer = LabInformationSerializer(pending_labs, many=True)
+            data = serializer.data
 
-            return Response({"status": status.HTTP_200_OK, "data": serializer_class.data})
+            for i, lab in enumerate(pending_labs):
+                if lab.marketer_id is not None:
+                    data[i]['marketer_name'] = lab.marketer_id.name
+                    data[i]['marketer_phone'] = lab.marketer_id.phone
 
+            return Response({"status": status.HTTP_200_OK, "data": data})
+
+        except Staff.DoesNotExist:
+            return Response({"status": status.HTTP_404_NOT_FOUND, "message": "Staff not found."})
         except Lab.DoesNotExist:
             return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "Sorry! No pending labs exist."})
 

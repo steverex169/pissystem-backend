@@ -47,7 +47,7 @@ class AnalyteAdmin(admin.ModelAdmin):
     search_fields = ('id', 'name', 'date_of_addition', 'code', 'get_methods','noofmethods', 'get_instruments','noofinstruments', 'get_reagents', 'noofreagents','get_units', 'master_unit','status')
 
     def get_reagents(self, obj):
-        return ', '.join([scheme.name for reagent in obj.reagents.all()])
+        return ', '.join([reagent.name for reagent in obj.reagents.all()])
 
     get_reagents.short_description = 'Reagents'
 

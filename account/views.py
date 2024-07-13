@@ -110,6 +110,7 @@ class RegisterView(CreateAPIView):
                     user_name=request.data['username'],
                     website=request.data['website'],
                     country=request.data['country'],
+                    photo=request.data['logo'],
                     registered_at=datetime.datetime.now()
                 )
              

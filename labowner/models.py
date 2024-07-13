@@ -65,15 +65,6 @@ SAMPLE_TYPE = (
     ('Body Fluid', 'Body Fluid'),   
     ('Others', 'Others'),   
 )
-PAYMENT_STATUS=(
-    ('Paid', 'Paid'),
-    ('Unpaid', 'Unpaid')
-)
-MEMBERSHIP_STATUS=(
-    ('Active', 'Active'),
-    ('Suspended', 'Suspended')
-)
-
 
 LAB_TYPE = (
     ('Main Lab', 'Main Lab'),
@@ -93,7 +84,14 @@ STATUS = (
     ('Cencel Request', 'Cencel Request'),
     ('Cencel', 'Cencel'),
 )
-
+PAYMENT_STATUS = (
+    ('Paid', 'Paid'),
+    ('Unpaid', 'Unpaid'),
+)
+MEMBERSHIP_STATUS = (
+    ('Active', 'Active'),
+    ('Suspended', 'Suspended'),
+)
 GENDER = (
     ('Male', 'Male'),
     ('Female', 'Female')
