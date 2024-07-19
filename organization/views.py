@@ -134,10 +134,13 @@ class OrganizationListView(APIView):
             serialized_data = []
             for organization in organization_list:
                 organization_data = model_to_dict(organization)
+                if organization_data.get('photo'):
+                    organization_data['photo']= organization.photo.url
                 serialized_data.append(organization_data)
             return Response({"status": status.HTTP_200_OK, "data": serialized_data})
         except Organization.DoesNotExist:
             return Response({"status": status.  HTTP_400_BAD_REQUEST, "message": "No Record Exist."})
+
 class OrganizationListUpdateAPIView(APIView):
     def put(self, request, *args, **kwargs):
         try:
