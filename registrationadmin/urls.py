@@ -16,7 +16,7 @@ urlpatterns = [
     path('post-round',
         RoundPostAPIView.as_view(), name='post-round'),
     path('update-round-list/<id>',
-        RoundUpdateAPIView.as_view(), name='update-round-list/<id>+'), 
+        RoundUpdateAPIView.as_view(), name='update-round-list'), 
     path('delete-round/<id>',
         RoundDeleteAPIView.as_view(), name='delete-round/<id>'),
 
