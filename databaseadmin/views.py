@@ -6,7 +6,7 @@ from rest_framework.views import APIView
 from databaseadmin.models import ParticipantProvince,ParticipantCountry, ParticipantType,ParticipantSector,Department,Designation,District,City,News,Instrument, Units, ActivityLogUnits,Reagents , Manufactural, Method,InstrumentType, Analyte
 
 from databaseadmin.serializers import CountrySerializer,NewsSerializer,InstrumentSerializer, MethodSerializer,AnalyteSerializer, InstrumentTypeSerializer, UnitsSerializer, ActivityLogUnitsSerializer, ReagentsSerializer, ManufacturalSerializer, Scheme, Cycle,Sample,ParticipantTypeSerializer, ParticipantSectorSerializer,DepartmentSerializer,DesignationSerializer,DistrictSerializer,CitySerializer,SchemeSerializer, CycleSerializer,  SampleSerializer, ProvinceSerializer
-
+from registrationadmin.models import Round
 from labowner.models import Lab
 from staff.models import Staff
 
@@ -2332,11 +2332,11 @@ class SchemePostAPIView(APIView):
                 price=request.data['price'],
                 date_of_addition=timezone.now(),
                 added_by=user_account,  # Use the UserAccount object
-                status=request.data['status'],
+                # status=request.data['status'],
             )
 
             # Concatenate all changes into a single string
-            changes_string = ", ".join([f"{field}: {request.data[field]}" for field in ["name", "price", "status"]])
+            changes_string = ", ".join([f"{field}: {request.data[field]}" for field in ["name", "price"]])
 
             # Save data in activity log as a single field
             ActivityLogUnits.objects.create(
@@ -2370,7 +2370,7 @@ class SchemeUpdateAPIView(APIView):
             scheme = Scheme.objects.get(id=kwargs.get('id'))
 
             # Store old values before updating
-            old_values = {field: getattr(scheme, field) for field in ["name", "price", "status"]}
+            old_values = {field: getattr(scheme, field) for field in ["name", "price"]}
             
             serializer = SchemeSerializer(scheme, data=request.data, partial=True)
 
@@ -2378,7 +2378,7 @@ class SchemeUpdateAPIView(APIView):
                 updated_analyte = serializer.save()
                 
                 # Retrieve new values after updating
-                new_values = {field: getattr(updated_analyte, field) for field in ["name", "price", "status"]}
+                new_values = {field: getattr(updated_analyte, field) for field in ["name", "price"]}
 
                 # Find the fields that have changed
                 changed_fields = {field: new_values[field] for field in new_values if new_values[field] != old_values[field]}
@@ -2459,6 +2459,7 @@ class CycleAPIView(APIView):
                     cycle_data['scheme_name'] = scheme.name
                     cycle_data['price'] = scheme.price
                     cycle_data['scheme_id'] = scheme.id
+                    print("scheme id",  cycle_data['scheme_id'])
                     cycle_data['noofanalytes'] = analytes_count  # Ensure noofanalytes is added to cycle_data
                 else:
                     cycle_data['scheme_name'] = None
@@ -2544,6 +2545,7 @@ class CycleUpdateAPIView(APIView):
 
             # Store old values before updating
             old_values = {field: getattr(cycle, field) for field in ["scheme_name", "cycle_no", "rounds", "cycle", "status", "start_date", "end_date"]}
+            # old_values = {field: getattr(cycle, field) for field in ["scheme_name", "cycle_no", "rounds", "cycle", "status", "start_date", "end_date"]}
             
             serializer = CycleSerializer(cycle, data=request.data, partial=True)
 
@@ -2586,9 +2588,16 @@ class CycleUpdateAPIView(APIView):
             return Response({"status": status.HTTP_400_BAD_REQUEST, "message": str(e)})
 
 class CycleDeleteAPIView(APIView):
-   def delete(self, request, *args, **kwargs):
+    def delete(self, request, *args, **kwargs):
+        cycle_id = kwargs.get('id')
         try:
-            Cycle.objects.get(id=kwargs.get('id')).delete()
+            cycle = Cycle.objects.get(id=cycle_id)
+            
+            # Check if the cycle is used in any round
+            if Round.objects.filter(cycle_no=cycle.cycle_no).exists():
+                return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "Cannot delete cycle. It has been utilized in round."})
+            
+            cycle.delete()
             return Response({"status": status.HTTP_200_OK, "message": "Deleted successfully"})
 
         except Cycle.DoesNotExist:

@@ -421,10 +421,10 @@ class RoundUpdateAPIView(APIView):
             serializer = RoundSerializer(round, data=request.data, partial=True)
 
             if serializer.is_valid():
-                updated_unit = serializer.save()
+                updated_round = serializer.save()
                 
                 # Retrieve new values after updating
-                new_values = {field: getattr(updated_unit, field) for field in ["rounds", "scheme", "cycle_no", "sample", "issue_date", "closing_date", "status"]}
+                new_values = {field: getattr(updated_round, field) for field in ["rounds", "scheme", "cycle_no", "sample", "issue_date", "closing_date", "status"]}
 
                 # Find the fields that have changed
                 changed_fields = {field: new_values[field] for field in new_values if new_values[field] != old_values[field]}
