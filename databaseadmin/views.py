@@ -1626,10 +1626,10 @@ class ActivityLogDatabaseadmin(APIView):
                                 method = Method.objects.get(id=id_value)
                                 activity_log = ActivityLogUnits.objects.filter(method_id=method.id)
                             except Method.DoesNotExist:
-                                try:
-                                    scheme = Scheme.objects.get(id=id_value)
-                                    activity_log = ActivityLogUnits.objects.filter(scheme_id=scheme.id)
-                                except Scheme.DoesNotExist:
+                                # try:
+                                #     scheme = Scheme.objects.get(id=id_value)
+                                #     activity_log = ActivityLogUnits.objects.filter(scheme_id=scheme.id)
+                                # except Scheme.DoesNotExist:
                                     try:
                                         manufactural = Manufactural.objects.get(id=id_value)
                                         activity_log = ActivityLogUnits.objects.filter(manufactural_id=manufactural.id)
