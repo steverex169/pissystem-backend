@@ -460,8 +460,15 @@ class RoundDeleteAPIView(APIView):
     permission_classes = (AllowAny,)
 
     def delete(self, request, *args, **kwargs):
+        round_id = kwargs.get('id')
         try:
-            Round.objects.get(id=kwargs.get('id')).delete()
+            round_instance = Round.objects.get(id=round_id)
+            
+            # Check if the round's status is 'Open'
+            if round_instance.status == 'Open':
+                return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "Cannot delete round. It is currently open."})
+            
+            round_instance.delete()
             return Response({"status": status.HTTP_200_OK, "message": "Deleted successfully"})
 
         except Round.DoesNotExist:

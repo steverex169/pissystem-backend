@@ -66,6 +66,7 @@ class Round(models.Model):
 
     class Meta:       
         verbose_name = 'Round'
+        
 class SelectedScheme(models.Model):
     organization_id = models.ForeignKey(
         Organization, on_delete=models.CASCADE, null=True, blank=True)
