@@ -15,12 +15,17 @@ STATUS = (
     ('Active', 'Active'),
     ('Inactive', 'Inactive'),
 )
+ANALYTETYPE=(
+    ('Quantitative', 'Quantitative'),
+    ('Qualitative', 'Qualitative'),
+)
 CYCLE = (
     ('Months', 'Months'),
     ('Year', 'Year'),
 )
 TYPE= (
     ('Units', 'Units'),
+    ('QualitativeType','QualitativeType'),
     ('Instruments', 'Instruments'),
     ('Reagent', 'Reagent'),
     ('Method', 'Method'),
@@ -144,6 +149,20 @@ class Units(models.Model):
     class Meta:
         verbose_name = 'Database Unit'
 
+class QualitativeType(models.Model):
+    organization_id = models.ForeignKey(
+        Organization, on_delete=models.CASCADE, null=True, blank=True)
+    name = models.CharField(max_length=255, blank=False, null=True)
+    number = models.CharField(max_length=255, blank=False, null=True)
+
+    date_of_addition = models.DateTimeField(blank=True, null=True)  # Changed to DateTimeField
+
+    def __str__(self):
+        return self.name
+
+    class Meta:
+        verbose_name = 'Database QualitativeType'
+
 class Manufactural(models.Model):
     organization_id = models.ForeignKey(
         Organization, on_delete=models.CASCADE, null=True, blank=True)
@@ -237,8 +256,11 @@ class Analyte(models.Model):
     instruments = models.ManyToManyField(Instrument, blank=True)
     reagents = models.ManyToManyField(Reagents, blank=True)
     units = models.ManyToManyField(Units, blank=True)
+    qualitativetype = models.ManyToManyField(QualitativeType, blank=True)
     status = models.CharField(
         max_length=50, choices=STATUS, default='Inactive', blank=True)
+    analytetype = models.CharField(
+        max_length=50, choices=ANALYTETYPE, default='Quantitative', blank=True)
     master_unit = models.ForeignKey(
         Units, on_delete=models.SET_NULL, related_name="master_unit", null=True, blank=True)
     
@@ -354,6 +376,8 @@ class ActivityLogUnits(models.Model):
          Reagents, on_delete=models.CASCADE, null=True, blank=True)
     unit_id = models.ForeignKey(
         Units, on_delete=models.CASCADE, null=True, blank=True)
+    qualitativetype_id = models.ForeignKey(
+        QualitativeType, on_delete=models.CASCADE, null=True, blank=True)
     instrumenttype_id = models.ForeignKey(
         InstrumentType, on_delete=models.CASCADE, null=True, blank=True)
     instrument_id = models.ForeignKey(

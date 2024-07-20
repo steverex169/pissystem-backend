@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from databaseadmin.models import ParticipantProvince,ParticipantCountry, ParticipantSector,ParticipantType,Department,Designation,District,City,News,Instrument, Units, Analyte, ActivityLogUnits, Reagents, Manufactural, Method, Scheme, Cycle, Sample, InstrumentType
+from databaseadmin.models import QualitativeType,ParticipantProvince,ParticipantCountry, ParticipantSector,ParticipantType,Department,Designation,District,City,News,Instrument, Units, Analyte, ActivityLogUnits, Reagents, Manufactural, Method, Scheme, Cycle, Sample, InstrumentType
 
 
 class CitySerializer(serializers.ModelSerializer):
@@ -44,6 +44,11 @@ class ParticipantSectorSerializer(serializers.ModelSerializer):
 class UnitsSerializer(serializers.ModelSerializer):
     class Meta:
         model = Units
+        fields = ('__all__')
+
+class QualitativeTypeSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = QualitativeType
         fields = ('__all__')
 
 class ReagentsSerializer(serializers.ModelSerializer):
