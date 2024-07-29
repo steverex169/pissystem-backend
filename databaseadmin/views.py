@@ -1121,31 +1121,30 @@ class DesignationUpdateAPIView(APIView):
 class UnitsListAPIView(APIView):
 
     def get(self, request, *args, **kwargs):
+        account_id = kwargs.get('id')
+        # print("id", account_id)
         try:
-            # Get the staff user's account_id
-            account_id = kwargs.get('id')
-            
-            # Fetch the staff user based on account_id
-            staff_user = Staff.objects.get(account_id=account_id)
-            
-            # Retrieve the organization associated with the staff user
-            organization = staff_user.organization_id
-            
-            # Filter units based on the organization
-            units_list = Units.objects.filter(organization_id=organization)
-            
-            # Serialize data
-            serialized_data = [model_to_dict(unit) for unit in units_list]
-            
-            return Response({"status": status.HTTP_200_OK, "data": serialized_data})
-        
-        except Staff.DoesNotExist:
-            return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "Invalid account_id."})
-        
+            user_account = UserAccount.objects.get(id=account_id)
+            organization = None
+
+            if user_account.account_type == 'labowner':
+                participant = Lab.objects.get(account_id=account_id)
+                organization = participant.organization_id
+            else:
+                staff_member = Staff.objects.get(account_id=account_id)
+                organization = staff_member.organization_id
+
+            if organization:
+                units_list = Units.objects.filter(organization_id=organization.id)
+                serialized_data = [model_to_dict(unit) for unit in units_list]
+                return Response({"status": status.HTTP_200_OK, "data": serialized_data})
+
+        except (UserAccount.DoesNotExist, Lab.DoesNotExist, Staff.DoesNotExist):
+            return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "Invalid account or related records not found."})
+
         except Units.DoesNotExist:
             return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "No Units records found."})
-
-        
+    
 class UnitsAPIView(APIView):
     permission_classes = (AllowAny,)  # Temporary permission setting for demonstration
 
@@ -1258,18 +1257,19 @@ class UnitsUpdateAPIView(APIView):
             
 class InstrumentsAPIView(APIView):
     permission_classes = (AllowAny,)
-
     def get(self, request, *args, **kwargs):
         try:
             # Get the staff user's account_id
             account_id = kwargs.get('id')
-            
-            # Fetch the staff user based on account_id
-            staff_user = Staff.objects.get(account_id=account_id)
-            
-            # Retrieve the organization associated with the staff user
-            organization = staff_user.organization_id
-            
+            user_account = UserAccount.objects.get(id=account_id)
+
+            if user_account.account_type == 'labowner':
+                participant = Lab.objects.get(account_id=account_id)
+                organization = participant.organization_id
+            else:
+                staff_user = Staff.objects.get(account_id=account_id)
+                organization = staff_user.organization_id
+                
             # Filter instruments based on the organization
             instruments_list = Instrument.objects.filter(organization_id=organization)
             
@@ -1613,13 +1613,15 @@ class ReagentsListAPIView(APIView):
         try:
             # Get the staff user's account_id
             account_id = kwargs.get('id')
-            
-            # Fetch the staff user based on account_id
-            staff_user = Staff.objects.get(account_id=account_id)
-            
-            # Retrieve the organization associated with the staff user
-            organization = staff_user.organization_id
-            
+            user_account = UserAccount.objects.get(id=account_id)
+
+            if user_account.account_type == 'labowner':
+                participant = Lab.objects.get(account_id=account_id)
+                organization = participant.organization_id
+            else:
+                staff_user = Staff.objects.get(account_id=account_id)
+                organization = staff_user.organization_id
+                
             # Filter reagents based on the organization
             reagents_list = Reagents.objects.filter(organization_id=organization)
             
@@ -2014,13 +2016,15 @@ class MethodsAPIView(APIView):
         try:
             # Get the staff user's account_id
             account_id = kwargs.get('id')
+            user_account = UserAccount.objects.get(id=account_id)
 
-            # Fetch the staff user based on account_id
-            staff_user = Staff.objects.get(account_id=account_id)
-
-            # Retrieve the organization associated with the staff user
-            organization = staff_user.organization_id
-
+            if user_account.account_type == 'labowner':
+                participant = Lab.objects.get(account_id=account_id)
+                organization = participant.organization_id
+            else:
+                staff_user = Staff.objects.get(account_id=account_id)
+                organization = staff_user.organization_id
+                
             # Filter methods based on the organization
             methods_list = Method.objects.filter(organization_id=organization)
 

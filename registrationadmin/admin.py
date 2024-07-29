@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Round, ActivityLogUnits,Payment
+from .models import Round, ActivityLogUnits,Payment, SelectedScheme
 
 # Register your models here.
 
@@ -14,22 +14,51 @@ class RoundAdmin(admin.ModelAdmin):
 
     def get_lab(self, obj):
         return ', '.join([lab.name for lab in obj.lab.all()])
+    
+# class SelectedSchemeAdmin(admin.ModelAdmin):
+#     list_display = ('id', 'organization_id', 'lab_id', 'scheme_id', 'added_at')
+#     search_fields = ('id', 'organization_id', 'lab_id', 'scheme_id', 'added_at')
+
+  
+
+# class PaymentAdmin(admin.ModelAdmin):
+#     list_display = (
+#         'id', 'organization_id', 'participant_id','get_schemes',  'price',
+#         'discount', 'photo', 'paymentmethod', 'paydate'
+#     )
+#     search_fields = (
+#         'id', 'organization_id__name', 'participant_id__name','get_schemes', 
+#         'price', 'discount', 'paymentmethod', 'paydate'
+#     )
+#     def get_schemes(self, obj):
+#         return ', '.join([scheme.name for scheme in obj.scheme.all()])
+
+#     get_schemes.short_description = 'Schemes'
 
 class PaymentAdmin(admin.ModelAdmin):
     list_display = (
-        'id', 'organization_id', 'participant_id','get_schemes',  'price',
+        'id', 'organization_id', 'participant_id', 'get_schemes', 'price',
         'discount', 'photo', 'paymentmethod', 'paydate'
     )
     search_fields = (
-        'id', 'organization_id__name', 'participant_id__name','get_schemes', 
+        'id', 'organization_id__name', 'participant_id__name', 'scheme', 
         'price', 'discount', 'paymentmethod', 'paydate'
     )
+
     def get_schemes(self, obj):
-        return ', '.join([scheme.name for scheme in obj.scheme.all()])
+        if obj.scheme:
+            scheme_ids = [int(sid) for sid in obj.scheme.split(',') if sid.isdigit()]
+            schemes = SelectedScheme.objects.filter(id__in=scheme_ids)
+            return ', '.join([scheme.id for scheme in schemes])
+        return None
 
     get_schemes.short_description = 'Schemes'
+
+
+
 
 admin.site.register(ActivityLogUnits, ActivityLogUnitsAdmin)
 admin.site.register(Round, RoundAdmin)
 admin.site.register(Payment, PaymentAdmin)
+# admin.site.register(SelectedScheme, SelectedSchemeAdmin)
   

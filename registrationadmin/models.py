@@ -3,7 +3,7 @@ from django.db import models
 from organization.models import Organization
 from django.utils import timezone
 from account.models import UserAccount
-from databaseadmin.models import Scheme
+from databaseadmin.models import Analyte, Instrument, Method, Reagents, Scheme, Units
 from labowner.models import Lab
 
 ACTIONS= (
@@ -17,6 +17,14 @@ STATUS = (
     ('Open', 'Open'),
     ('Closed', 'Closed'),
     ('Report Available', 'Report Available'),
+)
+RESULT_STATUS = (
+    ('Pending', 'Pending'),
+    ('Approved', 'Approved'),
+    ('Accept', 'Accept'),
+    ('Unapproved', 'Unapproved'),
+    ('Cencel Request', 'Cencel Request'),
+    ('Submited', 'Submited'),
 )
 # Option = (
 #     ('Created', 'Created'),
@@ -73,7 +81,7 @@ class Payment(models.Model):
          Organization, on_delete=models.CASCADE, null=True, blank=True)
     account_id = models.ForeignKey(
         UserAccount, on_delete=models.CASCADE, null=True, blank=True)
-    scheme =models.ManyToManyField(Scheme, blank=True)
+    scheme =models.CharField(max_length=255,blank=False, null=True)
     participant_id = models.ForeignKey(
         Lab, on_delete=models.CASCADE, null=True, blank=True)
     price = models.CharField(max_length=255,blank=False, null=True)
@@ -115,16 +123,15 @@ class ActivityLogUnits(models.Model):
         verbose_name = 'History'
 
 class SelectedScheme(models.Model):
-    organization_id = models.ForeignKey(
-        Organization, on_delete=models.CASCADE, null=True, blank=True)
-    lab_id = models.ForeignKey(
-        Lab, on_delete=models.CASCADE, verbose_name='Lab name', null=True)
-    scheme_id = models.ForeignKey(Scheme, on_delete=models.CASCADE,
-                                primary_key=False, verbose_name='Scheme name', null=True)
-    added_at= models.DateTimeField(
-        null=True, blank=True, verbose_name="Scheme added date", default=datetime.now)
+    organization_id = models.ForeignKey(Organization, on_delete=models.CASCADE, null=True, blank=True)
+    participant = models.CharField(max_length=255,blank=False, null=True)   
+    scheme_id = models.CharField(max_length=255,blank=False, null=True)
+    added_at = models.DateTimeField(null=True, blank=True, verbose_name="Scheme added date")
+
     def __str__(self):
-        return self.lab_id.name + " - " + self.scheme_id.scheme_name 
+        return str(self.id)
+        
 
     class Meta:
-        verbose_name = 'Scheme'
+        verbose_name = 'Selected Scheme'
+
