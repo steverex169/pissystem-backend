@@ -36,3 +36,10 @@ class AnalyteSchemeSerializer(serializers.ModelSerializer):
     class Meta:
         model = Analyte
         fields = ('__all__')  
+
+class AnalyteResultSubmitSerializer(serializers.Serializer):
+    analyte_id = serializers.IntegerField()
+    analyte_name = serializers.CharField(max_length=255)
+    lab_count = serializers.IntegerField()
+    mean_result = serializers.FloatField()
+    median_result = serializers.FloatField()

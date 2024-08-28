@@ -499,13 +499,15 @@ class Result(models.Model):
     instrument = models.ForeignKey(Instrument, on_delete=models.CASCADE, verbose_name='Instrument', primary_key=False, null=True, blank=False)
     method = models.ForeignKey(Method, on_delete=models.CASCADE, verbose_name='Method', primary_key=False, null=True, blank=False)
     reagents = models.ForeignKey(Reagents, on_delete=models.CASCADE, verbose_name='Reagents', primary_key=False, null=True, blank=False)
-    result = models.CharField(max_length=255, blank=True, null=True)
+    # result = models.CharField(max_length=255, blank=True, null=True)
+    result = models.DecimalField(max_digits=10, decimal_places=2, blank=True, null=True)  # Updated to DecimalField
     result_status = models.CharField(
         max_length=50, choices=RESULT_STATUS, default='Pending')
     updated_at = models.DateTimeField(auto_now=True)  # Automatically set to now every time the object is saved
     rounds = models.PositiveBigIntegerField(blank=True, null=True) 
 
     def __str__(self):
-        return self.result
+        # return self.result
+        return str(self.result) if self.result is not None else 'No Result'
     class Meta:
         verbose_name = 'Result'

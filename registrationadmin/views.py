@@ -7,10 +7,10 @@ from rest_framework import status
 from rest_framework import parsers
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.views import APIView
-from databaseadmin.models import Scheme
+from databaseadmin.models import Cycle, Scheme
 from labowner.models import Lab, OfferedTest, Pathologist, Result, SampleCollector
 from labowner.serializers import LabInformationSerializer,  PathologistSerializer, OfferedTestSerializer, ResultSerializer
-from registrationadmin.serializers import AnalyteSchemeSerializer, RoundSerializer, ActivityLogUnitsSerializer, PaymentSerializer,SelectedSchemeSerializer
+from registrationadmin.serializers import AnalyteResultSubmitSerializer, AnalyteSchemeSerializer, RoundSerializer, ActivityLogUnitsSerializer, PaymentSerializer,SelectedSchemeSerializer
 from registrationadmin.models import  ActivityLogUnits, Round,Payment, SelectedScheme
 
 from staff.models import Staff
@@ -29,7 +29,8 @@ import datetime
 from django.shortcuts import get_object_or_404
 from databaseadmin.models import Scheme 
 from django.db import transaction
-
+from django.db.models import Avg
+import numpy as np 
 # class PaymentPostAPIView(APIView):
 #     permission_classes = (AllowAny,)
 
@@ -263,14 +264,12 @@ class ApprovedLabsView(APIView):
         try:
             staff = Staff.objects.get(account_id=kwargs.get('id'))
             organization = staff.organization_id
+            # print("SSSSSSSSSSSSSSSSSSS", staff.id)
            
-            
-
             approved_labs = Lab.objects.filter(
                organization_id=organization, status="Approved")
             serializer_class = LabInformationSerializer(
                 approved_labs, many=True)
-
             for i in range(0, len(approved_labs)):
                 serializer_class.data[i]['lab_address'] = approved_labs[i].address
                 serializer_class.data[i]['lab_email'] = approved_labs[i].email
@@ -549,34 +548,33 @@ class RoundUpdateLabsAPIView(APIView):
         
 # Participants Dashboard Rounds API      
 class SelectedSchemeListAPIView(APIView):
-    
-    def get(self, request, *args, **kwargs):
+      def get(self, request, *args, **kwargs):
         try:
             account_id = kwargs.get('id')
-            print("account_idddddd", account_id)
-            participant_id = Lab.objects.get(account_id=account_id)
+            # Fetch the participant (Lab) based on account_id
+            participant = Lab.objects.get(account_id=account_id)
             
             # Fetch all SelectedScheme instances for the given participant
-            selected_schemes = SelectedScheme.objects.filter(participant=participant_id.id)
-            print("selected_schemesssss", selected_schemes)
-                # List to hold serialized data
+            selected_schemes = SelectedScheme.objects.filter(participant=participant.id)
+            
+            # List to hold serialized data
             serialized_data = []
             
             for selected_scheme in selected_schemes:
                 # Assuming selected_scheme.scheme_id is a string representation of a list
-                # Use ast.literal_eval(selected_scheme.scheme_id) to convert the string back into a list
                 scheme_ids = ast.literal_eval(selected_scheme.scheme_id)
                 
-                # Fetch Scheme objects corresponding to each scheme_id
-                schemes = Scheme.objects.filter(id__in=scheme_ids)
-                print("Schemesssss:", schemes)
-                # Serialize each Scheme object
-                for scheme in schemes:
-                    # Fetch related Round data for each scheme and include related Round data
-                    # rounds = Round.objects.filter(scheme_id=scheme.id) OR 
+                # Filter Cycle objects based on the scheme_ids (which correspond to Cycle ids)
+                cycles = Cycle.objects.filter(id__in=scheme_ids)
+                
+                for cycle in cycles:
+                    # Fetch Scheme object associated with the Cycle
+                    scheme = cycle.scheme_name
+                    
+                    # Fetch related Round data for each scheme
                     rounds = Round.objects.filter(scheme=scheme)
-                    print("Rounds for Scheme:", scheme.id, rounds)
-
+                    
+                    # Serialize round data
                     rounds_data = [
                         {
                             'rounds': round.rounds,
@@ -588,8 +586,10 @@ class SelectedSchemeListAPIView(APIView):
                         }
                         for round in rounds
                     ]
+                    
+                    # Serialize the scheme data along with rounds data
                     scheme_data = {
-                        'id':scheme.id,
+                        'id': scheme.id,
                         'name': scheme.name,
                         'status': scheme.status,
                         'price': scheme.price,
@@ -600,11 +600,72 @@ class SelectedSchemeListAPIView(APIView):
             # Return the serialized data as JSON response
             return Response({"status": status.HTTP_200_OK, "data": serialized_data})
 
+        except Lab.DoesNotExist:
+            return Response({"status": status.HTTP_404_NOT_FOUND, "message": "Participant not found."})
+
         except ValueError as ve:
             return Response({"status": status.HTTP_400_BAD_REQUEST, "message": str(ve)})
         
         except SelectedScheme.DoesNotExist:
             return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "No Record Exist."})
+        
+    # def get(self, request, *args, **kwargs):
+    #     try:
+    #         account_id = kwargs.get('id')
+    #         # print("account_idddddd", account_id)
+    #         participant_id = Lab.objects.get(account_id=account_id)
+            
+    #         # Fetch all SelectedScheme instances for the given participant
+    #         selected_schemes = SelectedScheme.objects.filter(participant=participant_id.id)
+    #         print("selected_schemesssss", selected_schemes)
+    #             # List to hold serialized data
+    #         serialized_data = []
+            
+    #         for selected_scheme in selected_schemes:
+    #             # Assuming selected_scheme.scheme_id is a string representation of a list
+    #             # Use ast.literal_eval(selected_scheme.scheme_id) to convert the string back into a list
+    #             scheme_ids = ast.literal_eval(selected_scheme.scheme_id)
+                
+    #             # Fetch Scheme objects corresponding to each scheme_id
+    #             schemes = Scheme.objects.filter(id__in=scheme_ids)
+    #             # print("Schemesssss:", schemes)
+    #             # Serialize each Scheme object
+    #             for scheme in schemes:
+    #                 # Fetch related Round data for each scheme and include related Round data
+    #                 # rounds = Round.objects.filter(scheme_id=scheme.id) OR 
+    #                 rounds = Round.objects.filter(scheme=scheme)
+    #                 # print("Rounds for Scheme:", scheme.id, rounds)
+
+    #                 rounds_data = [
+    #                     {
+    #                         'rounds': round.rounds,
+    #                         'cycle_no': round.cycle_no,
+    #                         'sample': round.sample,
+    #                         'issue_date': round.issue_date,
+    #                         'closing_date': round.closing_date,
+    #                         'status': round.status,
+    #                     }
+    #                     for round in rounds
+    #                 ]
+    #                 scheme_data = {
+    #                     'id':scheme.id,
+    #                     'name': scheme.name,
+    #                     'status': scheme.status,
+    #                     'price': scheme.price,
+    #                     'rounds': rounds_data  # Include rounds data here
+    #                 }
+    #                 serialized_data.append(scheme_data)
+
+    #         # Return the serialized data as JSON response
+    #         return Response({"status": status.HTTP_200_OK, "data": serialized_data})
+
+    #     except ValueError as ve:
+    #         return Response({"status": status.HTTP_400_BAD_REQUEST, "message": str(ve)})
+        
+    #     except SelectedScheme.DoesNotExist:
+    #         return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "No Record Exist."})
+
+# ££££££££££££££££££££££££££££££££££££££££££££££££££££££££££££££££££££££
 
 # Results API Participants Dashboard
 # class ParticipantResultView(APIView):
@@ -627,11 +688,7 @@ class ParticipantResultView(APIView):
     def get(self, request, *args, **kwargs):
         try:
             # filtering only unique analyte records
-            participant_results = (
-                Result.objects.filter(scheme_id=kwargs.get('id'))
-                .order_by('analyte', '-updated_at')
-                .distinct('analyte')
-            )
+            participant_results = Result.objects.filter(scheme_id=kwargs.get('id'))  
             serializer = ResultSerializer(participant_results, many=True)
             return Response({"status": status.HTTP_200_OK, "data": serializer.data})
         except Result.DoesNotExist:
@@ -650,7 +707,7 @@ class ParticipantResultView(APIView):
                 return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "Sorry! No such record to delete."})
             except Result.DoesNotExist:
                 return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "No such Result exists."})
-    # Put request to update data of the sample collactor
+    
     def put(self, request, *args, **kwargs):
         try:
             # Here what we are getting as id is the id of offered test record to be updated
@@ -668,85 +725,145 @@ class ParticipantResultView(APIView):
         except Result.DoesNotExist:
             return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "No such record exists."})
 
-  
     def post(self, request, *args, **kwargs):
         try:
             lab = Lab.objects.get(account_id=kwargs.get('id'))
-            print("idddddddddd", kwargs.get('id'))
-            # result = Result.objects.filter(lab_id=lab.id)
-            
-            # Retrieve the organization associated with the staff user
             organization = lab.organization_id
 
-            # Make request.data mutable to modify it
-            request.data._mutable = True
+            # Prepare the data to be saved or updated
             data = {
-            'scheme_id': request.data.get('scheme_id'),
-            'lab_id': lab.id,
-            'organization_id': organization.id if organization else None,
-            'units': request.data.get('unit_name'),
-            'instrument': request.data.get('instrument_name'),
-            'method': request.data.get('method_name'),
-            'reagents': request.data.get('reagent_name'),
-            'result': request.data.get('result'),
-            'analyte': request.data.get('analyte_id'),
-            'rounds' : request.data.get('rounds'),
+                'scheme_id': request.data.get('scheme_id'),
+                'lab_id': lab.id,
+                'organization_id': organization.id if organization else None,
+                'units': request.data.get('unit_name'),
+                'instrument': request.data.get('instrument_name'),
+                'method': request.data.get('method_name'),
+                'reagents': request.data.get('reagent_name'),
+                'result': request.data.get('result'),
+                'analyte': request.data.get('analyte_id'),
+                'rounds': request.data.get('rounds'),
             }
 
-             # Set request.data to the prepared data
-            request.data.update(data)
-            request.data._mutable = False
+            # Check if the result already exists for the given lab, analyte, and round
+            existing_result = Result.objects.filter(
+                lab_id=lab.id,
+                analyte_id=request.data.get('analyte_id'),
+                rounds=request.data.get('rounds')
+            ).first()
 
-             # Initialize serializer with the provided data
-            serializer_class = ResultSerializer(data=request.data)
-
-            if serializer_class.is_valid():
-                serializer_class.save()
-                return Response({"status": status.HTTP_200_OK, "data": serializer_class.data, "message": "Participent Result added successfully."})
+            if existing_result:
+                # If it exists, update the existing record
+                serializer = ResultSerializer(existing_result, data=data)
+                action = "updated"
             else:
-                return Response({"status": status.HTTP_400_BAD_REQUEST, "message": serializer_class.errors})
+                # If it doesn't exist, create a new record
+                serializer = ResultSerializer(data=data)
+                action = "created"
 
-        except Lab.DoesNotExist:
-            return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "No such Lab exists."})
-        
-#All Analytes related to selected_schemes on participant dashboard
-class SelectedSchemeAnalytesList(APIView):
-    def get(self, request, *args, **kwargs):
-        try:
-            account_id = kwargs.get('id')
-            participant_id = Lab.objects.get(account_id=account_id)
-
-            # Fetch all SelectedScheme instances for the given participant
-            selected_schemes = SelectedScheme.objects.filter(participant=participant_id.id)
-            analytes_set = set()
-            
-            for selected_scheme in selected_schemes:
-                # Convert scheme_id string representation back into a list
-                scheme_ids = ast.literal_eval(selected_scheme.scheme_id)
-                
-                # Fetch Scheme objects corresponding to each scheme_id
-                schemes = Scheme.objects.filter(id__in=scheme_ids)
-                
-                for scheme in schemes:
-                    # Fetch Analyte objects related to the current Scheme
-                    analytes = scheme.analytes.all()
-                    analytes_set.update(analytes)
-            
-            analyte_data = []
-            for analyte in analytes_set:
-                analyte_data.append({
-                    'name': analyte.name,
-                    'code': analyte.code,
-                    'status': analyte.status,
-                    'date_of_addition': analyte.date_of_addition,
+            # Save the result and return the appropriate response
+            if serializer.is_valid():
+                serializer.save()
+                return Response({
+                    "status": status.HTTP_200_OK, 
+                    "data": serializer.data, 
+                    "message": f"Participant result {action} successfully."
+                })
+            else:
+                return Response({
+                    "status": status.HTTP_400_BAD_REQUEST, 
+                    "message": serializer.errors
                 })
 
-            return JsonResponse({'analytes': analyte_data}, status=200)
-        
         except Lab.DoesNotExist:
-            return JsonResponse({'error': 'Participant not found'}, status=404)
+            return Response({
+                "status": status.HTTP_400_BAD_REQUEST, 
+                "message": "No such Lab exists."
+            })
+
         except Exception as e:
-            return JsonResponse({'error': str(e)}, status=500)
+            return Response({
+                "status": status.HTTP_500_INTERNAL_SERVER_ERROR, 
+                "message": str(e)
+            })
+
+    # def post(self, request, *args, **kwargs):
+    #     try:
+    #         lab = Lab.objects.get(account_id=kwargs.get('id'))
+    #         print("idddddddddd", kwargs.get('id'))
+    #         # result = Result.objects.filter(lab_id=lab.id)
+            
+    #         # Retrieve the organization associated with the staff user
+    #         organization = lab.organization_id
+
+    #         # Make request.data mutable to modify it
+    #         request.data._mutable = True
+    #         data = {
+    #         'scheme_id': request.data.get('scheme_id'),
+    #         'lab_id': lab.id,
+    #         'organization_id': organization.id if organization else None,
+    #         'units': request.data.get('unit_name'),
+    #         'instrument': request.data.get('instrument_name'),
+    #         'method': request.data.get('method_name'),
+    #         'reagents': request.data.get('reagent_name'),
+    #         'result': request.data.get('result'),
+    #         'analyte': request.data.get('analyte_id'),
+    #         'rounds' : request.data.get('rounds'),
+    #         }
+
+    #          # Set request.data to the prepared data
+    #         request.data.update(data)
+    #         request.data._mutable = False
+
+    #          # Initialize serializer with the provided data
+    #         serializer_class = ResultSerializer(data=request.data)
+
+    #         if serializer_class.is_valid():
+    #             serializer_class.save()
+    #             return Response({"status": status.HTTP_200_OK, "data": serializer_class.data, "message": "Participent Result added successfully."})
+    #         else:
+    #             return Response({"status": status.HTTP_400_BAD_REQUEST, "message": serializer_class.errors})
+
+    #     except Lab.DoesNotExist:
+    #         return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "No such Lab exists."})
+        
+#All Analytes related to selected_schemes on participant dashboard
+# class SelectedSchemeAnalytesList(APIView):
+#     def get(self, request, *args, **kwargs):
+#         try:
+#             account_id = kwargs.get('id')
+#             participant_id = Lab.objects.get(account_id=account_id)
+
+#             # Fetch all SelectedScheme instances for the given participant
+#             selected_schemes = SelectedScheme.objects.filter(participant=participant_id.id)
+#             analytes_set = set()
+            
+#             for selected_scheme in selected_schemes:
+#                 # Convert scheme_id string representation back into a list
+#                 scheme_ids = ast.literal_eval(selected_scheme.scheme_id)
+                
+#                 # Fetch Scheme objects corresponding to each scheme_id
+#                 schemes = Scheme.objects.filter(id__in=scheme_ids)
+                
+#                 for scheme in schemes:
+#                     # Fetch Analyte objects related to the current Scheme
+#                     analytes = scheme.analytes.all()
+#                     analytes_set.update(analytes)
+            
+#             analyte_data = []
+#             for analyte in analytes_set:
+#                 analyte_data.append({
+#                     'name': analyte.name,
+#                     'code': analyte.code,
+#                     'status': analyte.status,
+#                     'date_of_addition': analyte.date_of_addition,
+#                 })
+
+#             return JsonResponse({'analytes': analyte_data}, status=200)
+        
+#         except Lab.DoesNotExist:
+#             return JsonResponse({'error': 'Participant not found'}, status=404)
+#         except Exception as e:
+#             return JsonResponse({'error': str(e)}, status=500)
 
 # Analytes related to single scheme
 # class AnalyteSpecificScheme(APIView):
@@ -769,7 +886,8 @@ class SelectedSchemeAnalytesList(APIView):
         
 #         except Exception as e:
 #             return Response({'status': status.HTTP_500_INTERNAL_SERVER_ERROR, 'message': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-        
+
+# Analytes related to single scheme        
 class AnalyteSpecificScheme(APIView):
     def get(self, request, *args, **kwargs):
         try:
@@ -784,23 +902,81 @@ class AnalyteSpecificScheme(APIView):
             analyte_serializer = AnalyteSchemeSerializer(analytes, many=True)
 
             # Fetch the Round entries associated with this scheme and having status 'Ready'
-            rounds = Round.objects.filter(scheme=scheme, status='Ready')
+            rounds = Round.objects.filter(scheme=scheme)
 
             # Serialize the round data
             round_serializer = RoundSerializer(rounds, many=True)
-            
-            # Include the scheme name in the response
-            # Include the scheme name and round data in the response
+
+           # Fetch all Result entries associated with this scheme
+            results = Result.objects.filter(scheme_id=scheme_id)
+            result_serializer = ResultSerializer(results, many=True)
+
+            # Create a list to store participant IDs
+            participant_ids = []
+
+            # Iterate through each Result to fetch the corresponding lab's account_id
+            for result in results:
+                lab = result.lab_id  # Fetch the related Lab object
+                participant_id = lab.account_id_id # Get the account_id from the Lab object
+                participant_ids.append(participant_id)  # Add to the list
+
+            # Include the scheme name, round data, and participant IDs in the response
             response_data = {
                 'scheme_name': scheme.name,
                 'analytes': analyte_serializer.data,
-                'rounds': round_serializer.data
+                'rounds': round_serializer.data,
+                'participant_ids': participant_ids  # Include all participant IDs
             }
+
 
             return Response({'status': status.HTTP_200_OK, 'data': response_data}, status=status.HTTP_200_OK)
         
         except Scheme.DoesNotExist:
             return Response({'status': status.HTTP_404_NOT_FOUND, 'message': 'Scheme not found'}, status=status.HTTP_404_NOT_FOUND)
         
+        except Exception as e:
+            return Response({'status': status.HTTP_500_INTERNAL_SERVER_ERROR, 'message': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        
+
+# API for calculating number of labs who has submitted the results against specific analyte 
+class AnalyteResultSubmit(APIView):
+    def get(self, request, *args, **kwargs):
+        try:
+            scheme_id = kwargs.get('id')
+            scheme = Scheme.objects.get(id=scheme_id)
+            analytes = scheme.analytes.all()
+
+            analyte_results = []
+
+            for analyte in analytes:
+                 # Filter results by scheme_id and analyte
+                results = Result.objects.filter(scheme_id=scheme_id, analyte=analyte)
+
+                # Get unique labs that have submitted results
+                lab_count = results.values('lab_id').distinct().count()
+                # lab_count = Result.objects.filter(scheme_id=scheme_id, analyte=analyte).values('lab_id').distinct().count()
+                # Calculate the mean of the 'result' field
+                mean_result = results.aggregate(mean_result=Avg('result'))['mean_result']
+                 # Calculate the median of the 'result' field
+                result_values = list(results.values_list('result', flat=True).exclude(result=None))
+                print("SSSSSSS",result_values )
+                median_result = np.median(result_values) if result_values else 0
+                print("median",median_result )
+
+                analyte_results.append({
+                    'analyte_id': analyte.id,
+                    'analyte_name': analyte.name,
+                    'lab_count': lab_count,
+                    'mean_result': mean_result if mean_result is not None else 0, # Handle case when no results are available
+                    'median_result': median_result  # Include median result
+                })
+
+            # Use the serializer to serialize the response data
+            serializer =AnalyteResultSubmitSerializer(analyte_results, many=True)
+            return Response({'status': status.HTTP_200_OK, 'data': serializer.data}, status=status.HTTP_200_OK)
+
+        except Scheme.DoesNotExist:
+            return Response({'status': status.HTTP_404_NOT_FOUND, 'message': 'Scheme not found'}, status=status.HTTP_404_NOT_FOUND)
+
         except Exception as e:
             return Response({'status': status.HTTP_500_INTERNAL_SERVER_ERROR, 'message': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

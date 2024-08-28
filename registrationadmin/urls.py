@@ -1,5 +1,5 @@
 from django.urls import path
-from registrationadmin.views import ParticipantResultView, PaymentPostAPIView, RoundAPIView,ApproveUnapproveLabView,  RoundPostAPIView, RoundUpdateAPIView, RoundDeleteAPIView,  ActivityLogRegistrationadmin, PendingLabsView, ApprovedLabsView, UnapprovedLabsView, RoundsLabsAPIView, RoundAddLabsAPIView, RoundUpdateLabsAPIView, SelectedSchemeListAPIView, SelectedSchemeAnalytesList,AnalyteSpecificScheme
+from registrationadmin.views import AnalyteResultSubmit, ParticipantResultView, PaymentPostAPIView, RoundAPIView,ApproveUnapproveLabView,  RoundPostAPIView, RoundUpdateAPIView, RoundDeleteAPIView,  ActivityLogRegistrationadmin, PendingLabsView, ApprovedLabsView, UnapprovedLabsView, RoundsLabsAPIView, RoundAddLabsAPIView, RoundUpdateLabsAPIView, SelectedSchemeListAPIView, AnalyteSpecificScheme
 
 
 urlpatterns = [
@@ -32,8 +32,8 @@ urlpatterns = [
      # selected-schemes related to participants
     path('selectedSchemes-list/<id>',
          SelectedSchemeListAPIView.as_view(), name='selectedSchemes-list'), 
-    path('selectedSchemesAnalytes-list/<id>',
-         SelectedSchemeAnalytesList.as_view(), name='selectedSchemesAnalytes-list'), 
+#     path('selectedSchemesAnalytes-list/<id>',
+#          SelectedSchemeAnalytesList.as_view(), name='selectedSchemesAnalytes-list'), 
 
     path('analyteSpecificScheme-list/<id>',
          AnalyteSpecificScheme.as_view(), name='analyteSpecificScheme-list'), 
@@ -42,6 +42,8 @@ urlpatterns = [
          ParticipantResultView.as_view(), name='resultpost'), 
     path('getResultsData/<id>',
          ParticipantResultView.as_view(), name='getResultsData'), 
+    path('getAnalyteResultSubmit/<id>',
+         AnalyteResultSubmit.as_view(), name='getAnalyteResultSubmit'), 
      
      #adding payment
      path('add-payment',

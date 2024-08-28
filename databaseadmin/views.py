@@ -2388,6 +2388,7 @@ class CycleAPIView(APIView):
                     cycle_data['scheme_id'] = None  # Handle case where scheme is None
 
                 serialized_data.append(cycle_data)
+                print("!!!!!!!!!!!!!!!!", serialized_data)
 
             return Response({"status": status.HTTP_200_OK, "data": serialized_data})
         
