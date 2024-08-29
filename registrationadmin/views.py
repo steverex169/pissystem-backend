@@ -31,6 +31,10 @@ from databaseadmin.models import Scheme
 from django.db import transaction
 from django.db.models import Avg
 import numpy as np 
+import decimal
+from decimal import Decimal
+import math
+from scipy.stats import trim_mean
 # class PaymentPostAPIView(APIView):
 #     permission_classes = (AllowAny,)
 
@@ -944,31 +948,52 @@ class AnalyteResultSubmit(APIView):
         try:
             scheme_id = kwargs.get('id')
             scheme = Scheme.objects.get(id=scheme_id)
+            organization_id = scheme.organization_id.id
             analytes = scheme.analytes.all()
 
             analyte_results = []
 
             for analyte in analytes:
                  # Filter results by scheme_id and analyte
-                results = Result.objects.filter(scheme_id=scheme_id, analyte=analyte)
+                results = Result.objects.filter(scheme_id=scheme_id, analyte=analyte, organization_id=organization_id)
 
                 # Get unique labs that have submitted results
                 lab_count = results.values('lab_id').distinct().count()
                 # lab_count = Result.objects.filter(scheme_id=scheme_id, analyte=analyte).values('lab_id').distinct().count()
                 # Calculate the mean of the 'result' field
                 mean_result = results.aggregate(mean_result=Avg('result'))['mean_result']
+                # Round mean_result to 2 decimal places
+                mean_result_rounded = round(mean_result, 2) if mean_result is not None else 0
                  # Calculate the median of the 'result' field
                 result_values = list(results.values_list('result', flat=True).exclude(result=None))
-                print("SSSSSSS",result_values )
-                median_result = np.median(result_values) if result_values else 0
-                print("median",median_result )
 
+                if result_values:
+                    sorted_results = sorted(result_values)
+                    median_result = sorted_results[len(sorted_results) // 2]
+                    variance = sum((value - mean_result_rounded) ** 2 for value in result_values) / len(result_values)
+                    std_deviation = Decimal(math.sqrt(variance))
+                    cv_percentage = round((std_deviation / mean_result_rounded) * 100, 2)
+                    uncertainty = round(std_deviation / Decimal(math.sqrt(len(result_values))), 2)
+                    # Calculate robust mean (trimmed mean, removing 10% of the smallest and largest values)
+                    trimmed_mean = trim_mean(result_values, 0.1)
+                    robust_mean = round(trimmed_mean, 2)
+                else:
+                    median_result = Decimal('0.00')
+                    std_deviation = Decimal('0.00')
+                    cv_percentage = Decimal('0.00')
+                    uncertainty = Decimal('0.00')
+                    robust_mean = Decimal('0.00')
+                    
                 analyte_results.append({
                     'analyte_id': analyte.id,
                     'analyte_name': analyte.name,
                     'lab_count': lab_count,
-                    'mean_result': mean_result if mean_result is not None else 0, # Handle case when no results are available
-                    'median_result': median_result  # Include median result
+                    'mean_result': mean_result_rounded if mean_result is not None else 0, # Handle case when no results are available
+                    'median_result': median_result,  # Include median result
+                    'std_deviation': round(std_deviation, 2),  # Round standard deviation to 2 decimal places
+                    'cv_percentage': cv_percentage,
+                    'uncertainty': uncertainty,
+                    'robust_mean': robust_mean
                 })
 
             # Use the serializer to serialize the response data
@@ -980,3 +1005,54 @@ class AnalyteResultSubmit(APIView):
 
         except Exception as e:
             return Response({'status': status.HTTP_500_INTERNAL_SERVER_ERROR, 'message': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        
+# class AnalyteResultSubmit(APIView):
+#     def get(self, request, *args, **kwargs):
+#         try:
+#             scheme_id = kwargs.get('id')
+#             scheme = Scheme.objects.get(id=scheme_id)
+#             analytes = scheme.analytes.all()
+
+#             analyte_results = []
+
+#             for analyte in analytes:
+#                  # Filter results by scheme_id and analyte
+#                 results = Result.objects.filter(scheme_id=scheme_id, analyte=analyte)
+
+#                 # Get unique labs that have submitted results
+#                 lab_count = results.values('lab_id').distinct().count()
+#                 # lab_count = Result.objects.filter(scheme_id=scheme_id, analyte=analyte).values('lab_id').distinct().count()
+#                 # Calculate the mean of the 'result' field
+#                 mean_result = results.aggregate(mean_result=Avg('result'))['mean_result']
+#                 # Round mean_result to 2 decimal places
+#                 mean_result_rounded = round(mean_result, 2) if mean_result is not None else 0
+#                  # Calculate the median of the 'result' field
+#                 result_values = list(results.values_list('result', flat=True).exclude(result=None))
+#                 median_result = np.median(result_values) if result_values else 0
+
+#                  # Calculate the standard deviation of the 'result' field
+#                 #np.std() by default calculates the population standard deviation
+#                 std_deviation = np.std(result_values) if result_values else 0
+#                 cv_percentage = (np.std(result_values) / np.mean(result_values)) * 100
+#                 # uncertainty = np.std(result_values) / np.sqrt(len(result_values))
+                
+#                 analyte_results.append({
+#                     'analyte_id': analyte.id,
+#                     'analyte_name': analyte.name,
+#                     'lab_count': lab_count,
+#                     'mean_result': mean_result_rounded if mean_result is not None else 0, # Handle case when no results are available
+#                     'median_result': median_result,  # Include median result
+#                     'std_deviation': round(std_deviation, 2),  # Round standard deviation to 2 decimal places
+#                     'cv_percentage': cv_percentage,
+#                     # 'uncertainty': uncertainty,
+#                 })
+
+#             # Use the serializer to serialize the response data
+#             serializer =AnalyteResultSubmitSerializer(analyte_results, many=True)
+#             return Response({'status': status.HTTP_200_OK, 'data': serializer.data}, status=status.HTTP_200_OK)
+
+#         except Scheme.DoesNotExist:
+#             return Response({'status': status.HTTP_404_NOT_FOUND, 'message': 'Scheme not found'}, status=status.HTTP_404_NOT_FOUND)
+
+#         except Exception as e:
+#             return Response({'status': status.HTTP_500_INTERNAL_SERVER_ERROR, 'message': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

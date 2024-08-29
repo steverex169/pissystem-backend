@@ -43,3 +43,7 @@ class AnalyteResultSubmitSerializer(serializers.Serializer):
     lab_count = serializers.IntegerField()
     mean_result = serializers.FloatField()
     median_result = serializers.FloatField()
+    std_deviation = serializers.FloatField()
+    cv_percentage = serializers.FloatField()
+    uncertainty = serializers.FloatField()
+    robust_mean = serializers.FloatField()
