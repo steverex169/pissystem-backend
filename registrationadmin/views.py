@@ -116,6 +116,14 @@ class PaymentPostAPIView(APIView):
                 # Set schemes for Payment and SelectedScheme
                 payment.scheme.set(scheme)
                 selectedscheme.scheme_id.set(scheme)
+            # Ensure 'scheme' is parsed as a list of integers
+            scheme = request.data.get('scheme', [])
+            print("scheme",scheme)
+            if isinstance(scheme, str):
+                scheme = list(map(int, scheme.split(',')))
+            
+            payment.scheme.set(scheme)  # Assuming scheme are passed as a list of IDs
+            payment.save()
 
                 # Serialize the payment instance
                 payment_serializer = PaymentSerializer(payment)
