@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Round, ActivityLogUnits,Payment, SelectedScheme
+from .models import Round, ActivityLogUnits,Payment, SelectedScheme, Statistics
 
 # Register your models here.
 
@@ -54,11 +54,16 @@ class PaymentAdmin(admin.ModelAdmin):
 
     get_schemes.short_description = 'Schemes'
 
+class StatisticsAdmin(admin.ModelAdmin):
+    list_display = ('id', 'organization_id', 'participant_id', 'scheme', 'analyte',  'mean_result', 'median_result', 'std_deviation', 'cv_percentage', 'robust_mean', 'rounds', 'result')
+    search_fields = ('id', 'organization_id', 'participant_id', 'scheme', 'analyte','mean_result', 'median_result', 'std_deviation', 'cv_percentage', 'robust_mean', 'rounds', 'result')
+
 
 
 
 admin.site.register(ActivityLogUnits, ActivityLogUnitsAdmin)
 admin.site.register(Round, RoundAdmin)
 admin.site.register(Payment, PaymentAdmin)
+admin.site.register(Statistics, StatisticsAdmin)
 # admin.site.register(SelectedScheme, SelectedSchemeAdmin)
   

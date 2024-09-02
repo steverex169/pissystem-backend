@@ -1,6 +1,6 @@
 from rest_framework import serializers
 from databaseadmin.models import Analyte, Scheme
-from registrationadmin.models import Round, ActivityLogUnits, SelectedScheme, Payment
+from registrationadmin.models import Round, ActivityLogUnits, SelectedScheme, Payment, Statistics
 
 class RoundSerializer(serializers.ModelSerializer):
     nooflabs = serializers.IntegerField(read_only=True)
@@ -35,15 +35,37 @@ class PaymentSerializer(serializers.ModelSerializer):
 class AnalyteSchemeSerializer(serializers.ModelSerializer):
     class Meta:
         model = Analyte
-        fields = ('__all__')  
+        fields = ('__all__')
 
-class AnalyteResultSubmitSerializer(serializers.Serializer):
-    analyte_id = serializers.IntegerField()
-    analyte_name = serializers.CharField(max_length=255)
-    lab_count = serializers.IntegerField()
-    mean_result = serializers.FloatField()
-    median_result = serializers.FloatField()
-    std_deviation = serializers.FloatField()
-    cv_percentage = serializers.FloatField()
-    uncertainty = serializers.FloatField()
-    robust_mean = serializers.FloatField()
+# //////////Statistics  
+class StatisticsSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Statistics
+        fields = '__all__'
+     
+# class ZScoreWithLabSerializer(serializers.Serializer):
+#     lab_id = serializers.IntegerField()
+#     z_score = serializers.FloatField()
+
+# class StatisticsSerializer(serializers.ModelSerializer):
+#     z_scores_with_lab = ZScoreWithLabSerializer(many=True)
+
+# class Meta:
+#     model = Statistics
+#     fields = ('__all__')  
+# //////////Statistics 
+
+# class ZScoreWithLabSerializer(serializers.Serializer):
+#     lab_id = serializers.IntegerField()
+#     z_score = serializers.FloatField()
+# class AnalyteResultSubmitSerializer(serializers.Serializer):
+#     analyte_id = serializers.IntegerField()
+#     analyte_name = serializers.CharField(max_length=255)
+#     lab_count = serializers.IntegerField()
+#     mean_result = serializers.FloatField()
+#     median_result = serializers.FloatField()
+#     std_deviation = serializers.FloatField()
+#     cv_percentage = serializers.FloatField()
+#     uncertainty = serializers.FloatField()
+#     robust_mean = serializers.FloatField()
+#     z_scores_with_lab = ZScoreWithLabSerializer(many=True)

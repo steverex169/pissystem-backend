@@ -10,8 +10,8 @@ from rest_framework.views import APIView
 from databaseadmin.models import Cycle, Scheme
 from labowner.models import Lab, OfferedTest, Pathologist, Result, SampleCollector
 from labowner.serializers import LabInformationSerializer,  PathologistSerializer, OfferedTestSerializer, ResultSerializer
-from registrationadmin.serializers import AnalyteResultSubmitSerializer, AnalyteSchemeSerializer, RoundSerializer, ActivityLogUnitsSerializer, PaymentSerializer,SelectedSchemeSerializer
-from registrationadmin.models import  ActivityLogUnits, Round,Payment, SelectedScheme
+from registrationadmin.serializers import AnalyteSchemeSerializer, RoundSerializer, ActivityLogUnitsSerializer, PaymentSerializer,SelectedSchemeSerializer, StatisticsSerializer
+from registrationadmin.models import  ActivityLogUnits, Round,Payment, SelectedScheme, Statistics
 
 from staff.models import Staff
 from labowner.models import Lab 
@@ -35,6 +35,8 @@ import decimal
 from decimal import Decimal
 import math
 from scipy.stats import trim_mean
+import logging
+logger = logging.getLogger(__name__)
 # class PaymentPostAPIView(APIView):
 #     permission_classes = (AllowAny,)
 
@@ -948,56 +950,69 @@ class AnalyteResultSubmit(APIView):
         try:
             scheme_id = kwargs.get('id')
             scheme = Scheme.objects.get(id=scheme_id)
-            organization_id = scheme.organization_id.id
+            organization = scheme.organization_id
             analytes = scheme.analytes.all()
 
             analyte_results = []
 
             for analyte in analytes:
-                 # Filter results by scheme_id and analyte
-                results = Result.objects.filter(scheme_id=scheme_id, analyte=analyte, organization_id=organization_id)
-
-                # Get unique labs that have submitted results
+                results = Result.objects.filter(scheme_id=scheme_id, analyte=analyte, organization_id=organization)
                 lab_count = results.values('lab_id').distinct().count()
-                # lab_count = Result.objects.filter(scheme_id=scheme_id, analyte=analyte).values('lab_id').distinct().count()
-                # Calculate the mean of the 'result' field
                 mean_result = results.aggregate(mean_result=Avg('result'))['mean_result']
-                # Round mean_result to 2 decimal places
-                mean_result_rounded = round(mean_result, 2) if mean_result is not None else 0
-                 # Calculate the median of the 'result' field
+                mean_result_rounded = round(float(mean_result), 2) if mean_result is not None else 0
                 result_values = list(results.values_list('result', flat=True).exclude(result=None))
 
                 if result_values:
                     sorted_results = sorted(result_values)
                     median_result = sorted_results[len(sorted_results) // 2]
-                    variance = sum((value - mean_result_rounded) ** 2 for value in result_values) / len(result_values)
-                    std_deviation = Decimal(math.sqrt(variance))
-                    cv_percentage = round((std_deviation / mean_result_rounded) * 100, 2)
-                    uncertainty = round(std_deviation / Decimal(math.sqrt(len(result_values))), 2)
-                    # Calculate robust mean (trimmed mean, removing 10% of the smallest and largest values)
+                    mean_result_rounded_float = float(mean_result_rounded)
+                    variance = sum((float(value) - mean_result_rounded_float) ** 2 for value in result_values) / len(result_values)
+                    std_deviation = math.sqrt(variance)
+                    cv_percentage = round((std_deviation / mean_result_rounded_float) * 100, 2)
+                    uncertainty = round(std_deviation / math.sqrt(len(result_values)), 2)
                     trimmed_mean = trim_mean(result_values, 0.1)
                     robust_mean = round(trimmed_mean, 2)
+                    z_scores_with_lab = [
+                        {
+                            'lab_id': result.lab_id.id,
+                            'z_score': round((float(result.result) - mean_result_rounded_float) / std_deviation, 4)
+                        }
+                        for result in results
+                    ]
                 else:
-                    median_result = Decimal('0.00')
-                    std_deviation = Decimal('0.00')
-                    cv_percentage = Decimal('0.00')
-                    uncertainty = Decimal('0.00')
-                    robust_mean = Decimal('0.00')
-                    
-                analyte_results.append({
-                    'analyte_id': analyte.id,
-                    'analyte_name': analyte.name,
-                    'lab_count': lab_count,
-                    'mean_result': mean_result_rounded if mean_result is not None else 0, # Handle case when no results are available
-                    'median_result': median_result,  # Include median result
-                    'std_deviation': round(std_deviation, 2),  # Round standard deviation to 2 decimal places
-                    'cv_percentage': cv_percentage,
-                    'uncertainty': uncertainty,
-                    'robust_mean': robust_mean
-                })
+                    median_result = 0.00
+                    std_deviation = 0.00
+                    cv_percentage = 0.00
+                    uncertainty = 0.00
+                    robust_mean = 0.00
+                    z_scores_with_lab = []
 
-            # Use the serializer to serialize the response data
-            serializer =AnalyteResultSubmitSerializer(analyte_results, many=True)
+                # Update or create Statistics instance
+                for result in results:
+                    # Update or create Statistics instance
+                    statistics_instance, created = Statistics.objects.update_or_create(
+                        scheme=scheme,
+                        analyte=analyte,
+                        participant_id=result.lab_id,  
+                        organization_id=organization,    
+                        defaults={
+                            'lab_count': lab_count,
+                            'mean_result': mean_result_rounded,
+                            'median_result': median_result,
+                            'std_deviation': round(std_deviation, 2),
+                            'cv_percentage': cv_percentage,
+                            'uncertainty': uncertainty,
+                            'robust_mean': robust_mean,
+                            'z_scores_with_lab': z_scores_with_lab,
+                            'rounds': result.rounds,
+                            'result': result.result
+                        }
+                    )
+
+                analyte_results.append(statistics_instance)
+            # Serialize the saved Statistics instances
+            serializer = StatisticsSerializer(analyte_results, many=True)
+            logger.info("Serializer data: %s", serializer.data)  # Using logger for better output handling
             return Response({'status': status.HTTP_200_OK, 'data': serializer.data}, status=status.HTTP_200_OK)
 
         except Scheme.DoesNotExist:
@@ -1005,19 +1020,21 @@ class AnalyteResultSubmit(APIView):
 
         except Exception as e:
             return Response({'status': status.HTTP_500_INTERNAL_SERVER_ERROR, 'message': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-        
+
+# /////////// with serailizer      
 # class AnalyteResultSubmit(APIView):
 #     def get(self, request, *args, **kwargs):
 #         try:
 #             scheme_id = kwargs.get('id')
 #             scheme = Scheme.objects.get(id=scheme_id)
+#             organization_id = scheme.organization_id.id
 #             analytes = scheme.analytes.all()
 
 #             analyte_results = []
 
 #             for analyte in analytes:
 #                  # Filter results by scheme_id and analyte
-#                 results = Result.objects.filter(scheme_id=scheme_id, analyte=analyte)
+#                 results = Result.objects.filter(scheme_id=scheme_id, analyte=analyte, organization_id=organization_id)
 
 #                 # Get unique labs that have submitted results
 #                 lab_count = results.values('lab_id').distinct().count()
@@ -1028,14 +1045,36 @@ class AnalyteResultSubmit(APIView):
 #                 mean_result_rounded = round(mean_result, 2) if mean_result is not None else 0
 #                  # Calculate the median of the 'result' field
 #                 result_values = list(results.values_list('result', flat=True).exclude(result=None))
-#                 median_result = np.median(result_values) if result_values else 0
 
-#                  # Calculate the standard deviation of the 'result' field
-#                 #np.std() by default calculates the population standard deviation
-#                 std_deviation = np.std(result_values) if result_values else 0
-#                 cv_percentage = (np.std(result_values) / np.mean(result_values)) * 100
-#                 # uncertainty = np.std(result_values) / np.sqrt(len(result_values))
-                
+#                 if result_values:
+#                     sorted_results = sorted(result_values)
+#                     median_result = sorted_results[len(sorted_results) // 2]
+#                     variance = sum((value - mean_result_rounded) ** 2 for value in result_values) / len(result_values)
+#                     std_deviation = Decimal(math.sqrt(variance))
+#                     cv_percentage = round((std_deviation / mean_result_rounded) * 100, 2)
+#                     uncertainty = round(std_deviation / Decimal(math.sqrt(len(result_values))), 2)
+#                     # Calculate robust mean (trimmed mean, removing 10% of the smallest and largest values)
+#                     trimmed_mean = trim_mean(result_values, 0.1)
+#                     robust_mean = round(trimmed_mean, 2)
+#                     # Calculate Z-scores and save lab_id with each Z-score
+#                     z_scores_with_lab = []
+#                     for result in results:
+#                         lab_id = result.lab_id
+#                         z_score = (Decimal(result.result) - mean_result_rounded) / std_deviation
+#                         z_scores_with_lab.append({
+#                             'lab_id': lab_id.id,
+#                             'z_score': round(z_score, 4)
+#                         })
+#                     print("scoreeeeeee", z_scores_with_lab )
+                  
+#                 else:
+#                     median_result = Decimal('0.00')
+#                     std_deviation = Decimal('0.00')
+#                     cv_percentage = Decimal('0.00')
+#                     uncertainty = Decimal('0.00')
+#                     robust_mean = Decimal('0.00')
+#                     z_scores_with_lab = []
+
 #                 analyte_results.append({
 #                     'analyte_id': analyte.id,
 #                     'analyte_name': analyte.name,
@@ -1044,7 +1083,9 @@ class AnalyteResultSubmit(APIView):
 #                     'median_result': median_result,  # Include median result
 #                     'std_deviation': round(std_deviation, 2),  # Round standard deviation to 2 decimal places
 #                     'cv_percentage': cv_percentage,
-#                     # 'uncertainty': uncertainty,
+#                     'uncertainty': uncertainty,
+#                     'robust_mean': robust_mean,
+#                     'z_scores_with_lab': z_scores_with_lab,
 #                 })
 
 #             # Use the serializer to serialize the response data
@@ -1056,3 +1097,4 @@ class AnalyteResultSubmit(APIView):
 
 #         except Exception as e:
 #             return Response({'status': status.HTTP_500_INTERNAL_SERVER_ERROR, 'message': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        

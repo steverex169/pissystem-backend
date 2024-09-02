@@ -131,7 +131,32 @@ class SelectedScheme(models.Model):
     def __str__(self):
         return str(self.id)
         
-
     class Meta:
         verbose_name = 'Selected Scheme'
+
+class Statistics(models.Model):
+    organization_id = models.ForeignKey(Organization, on_delete=models.CASCADE, null=True, blank=True)
+    participant_id = models.ForeignKey(
+        Lab, on_delete=models.CASCADE, null=True, blank=True)
+    analyte = models.ForeignKey(Analyte, on_delete=models.CASCADE, null=True, blank=True)
+    scheme = models.ForeignKey(Scheme, on_delete=models.CASCADE, null=True, blank=True)
+    lab_count = models.PositiveBigIntegerField(null=True, blank=True)
+    mean_result = models.FloatField(null=True, blank=True)  # Changed from DecimalField to FloatField
+    median_result = models.FloatField(null=True, blank=True)  # Changed from DecimalField to FloatField
+    robust_mean = models.FloatField(null=True, blank=True)  # Changed from DecimalField to FloatField
+    std_deviation = models.FloatField(null=True, blank=True)  # Changed from DecimalField to FloatField
+    uncertainty = models.FloatField(null=True, blank=True)  # Changed from DecimalField to FloatField
+    cv_percentage = models.FloatField(null=True, blank=True)  # Changed from DecimalField to FloatField
+    z_scores_with_lab = models.JSONField(default=list, null=True, blank=True)
+    result = models.FloatField(blank=True, null=True)  # Changed from DecimalField to FloatField
+    rounds = models.PositiveBigIntegerField(blank=True, null=True) 
+    
+    created_at = models.DateTimeField(auto_now=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = 'Statistics'
+
+    def __str__(self):
+        return f"Results for {self.analyte.name} in Scheme {self.scheme.id}"
 
