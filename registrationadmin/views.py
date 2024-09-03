@@ -9,7 +9,7 @@ from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.views import APIView
 from databaseadmin.models import Cycle, Scheme
 from registrationadmin.serializers import AnalyteSchemeSerializer,RoundSerializer, ActivityLogUnitsSerializer, PaymentSerializer,SelectedSchemeSerializer, StatisticsSerializer
-from registrationadmin.models import   ActivityLogUnits, Round, Payment, SelectedScheme
+from registrationadmin.models import   ActivityLogUnits, Round, Payment, SelectedScheme, Statistics
 from staff.models import Staff
 
 from labowner.models import Lab, OfferedTest, Pathologist, Result, SampleCollector
@@ -845,16 +845,27 @@ class AnalyteResultSubmit(APIView):
                     sorted_results = sorted(result_values)
                     median_result = sorted_results[len(sorted_results) // 2]
                     mean_result_rounded_float = float(mean_result_rounded)
-                    variance = sum((float(value) - mean_result_rounded_float) ** 2 for value in result_values) / len(result_values)
+                    variance = sum((float(value) - mean_result_rounded_float) ** 2 for value in result_values) / len(result_values) if len(result_values) > 1 else 0
                     std_deviation = math.sqrt(variance)
-                    cv_percentage = round((std_deviation / mean_result_rounded_float) * 100, 2)
-                    uncertainty = round(std_deviation / math.sqrt(len(result_values)), 2)
+                    
+                    # Check to prevent division by zero
+                    if mean_result_rounded_float != 0:
+                        cv_percentage = round((std_deviation / mean_result_rounded_float) * 100, 2)
+                    else:
+                        cv_percentage = 0.00
+
+                    if len(result_values) > 0:
+                        uncertainty = round(std_deviation / math.sqrt(len(result_values)), 2)
+                    else:
+                        uncertainty = 0.00
+                    
                     trimmed_mean = trim_mean(result_values, 0.1)
                     robust_mean = round(trimmed_mean, 2)
+                    
                     z_scores_with_lab = [
                         {
                             'lab_id': result.lab_id.id,
-                            'z_score': round((float(result.result) - mean_result_rounded_float) / std_deviation, 4)
+                            'z_score': round((float(result.result) - mean_result_rounded_float) / std_deviation, 4) if std_deviation != 0 else 0.00
                         }
                         for result in results
                     ]
@@ -867,9 +878,7 @@ class AnalyteResultSubmit(APIView):
                     z_scores_with_lab = []
 
                 # Update or create Statistics instance
-                statistics_instance = None  # Initialize before the loop
                 for result in results:
-                    # Update or create Statistics instance
                     statistics_instance, created = Statistics.objects.update_or_create(
                         scheme=scheme,
                         analyte=analyte,
@@ -890,9 +899,9 @@ class AnalyteResultSubmit(APIView):
                     )
 
                 analyte_results.append(statistics_instance)
+            
             # Serialize the saved Statistics instances
             serializer = StatisticsSerializer(analyte_results, many=True)
-            logger.info("Serializer data: %s", serializer.data)  # Using logger for better output handling
             return Response({'status': status.HTTP_200_OK, 'data': serializer.data}, status=status.HTTP_200_OK)
 
         except Scheme.DoesNotExist:
