@@ -129,7 +129,7 @@ class PaymentPostAPIView(APIView):
 
             try:
                 participant = Lab.objects.get(id=request.data.get('participant'))
-                print("lab", participant)
+                print("labbbbbb", participant)
             except Lab.DoesNotExist:
                 return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "Invalid participant name provided."})
             
@@ -988,6 +988,7 @@ class AnalyteResultSubmit(APIView):
                     z_scores_with_lab = []
 
                 # Update or create Statistics instance
+                statistics_instance = None
                 for result in results:
                     # Update or create Statistics instance
                     statistics_instance, created = Statistics.objects.update_or_create(
