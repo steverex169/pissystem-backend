@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Round, ActivityLogUnits,Payment
+from .models import Round, ActivityLogUnits,Payment, SelectedScheme, Statistics
 
 # Register your models here.
 
@@ -17,19 +17,30 @@ class RoundAdmin(admin.ModelAdmin):
 
 class PaymentAdmin(admin.ModelAdmin):
     list_display = (
-        'id', 'organization_id', 'participant_id','get_schemes',  'price',
+        'id', 'organization_id', 'participant_id', 'get_schemes', 'price',
         'discount', 'photo', 'paymentmethod', 'paydate'
     )
     search_fields = (
-        'id', 'organization_id__name', 'participant_id__name','get_schemes', 
+        'id', 'organization_id__name', 'participant_id__name', 'scheme', 
         'price', 'discount', 'paymentmethod', 'paydate'
     )
+
     def get_schemes(self, obj):
-        return ', '.join([scheme.name for scheme in obj.scheme.all()])
+        if obj.scheme:
+            scheme_ids = [int(sid) for sid in obj.scheme.split(',') if sid.isdigit()]
+            schemes = SelectedScheme.objects.filter(id__in=scheme_ids)
+            return ', '.join([scheme.id for scheme in schemes])
+        return None
 
     get_schemes.short_description = 'Schemes'
+
+class StatisticsAdmin(admin.ModelAdmin):
+    list_display = ('id', 'organization_id', 'participant_id', 'scheme', 'analyte',  'mean_result', 'median_result', 'std_deviation', 'cv_percentage', 'robust_mean', 'rounds', 'result')
+    search_fields = ('id', 'organization_id', 'participant_id', 'scheme', 'analyte','mean_result', 'median_result', 'std_deviation', 'cv_percentage', 'robust_mean', 'rounds', 'result')
+
 
 admin.site.register(ActivityLogUnits, ActivityLogUnitsAdmin)
 admin.site.register(Round, RoundAdmin)
 admin.site.register(Payment, PaymentAdmin)
+admin.site.register(Statistics, StatisticsAdmin)
   

@@ -1,5 +1,5 @@
 from django.urls import path
-from registrationadmin.views import UpdateMembershipStatusView,AllLabsView, PaymentPostAPIView,RoundAPIView,ApproveUnapproveLabView,  RoundPostAPIView, RoundUpdateAPIView, RoundDeleteAPIView,  ActivityLogRegistrationadmin, PendingLabsView, ApprovedLabsView, UnapprovedLabsView, RoundsLabsAPIView, RoundAddLabsAPIView, RoundUpdateLabsAPIView
+from registrationadmin.views import  AnalyteResultSubmit,ParticipantResultView,UpdateMembershipStatusView,AllLabsView, PaymentPostAPIView,RoundAPIView,ApproveUnapproveLabView,  RoundPostAPIView, RoundUpdateAPIView, RoundDeleteAPIView,  ActivityLogRegistrationadmin, PendingLabsView, ApprovedLabsView, UnapprovedLabsView, RoundsLabsAPIView, RoundAddLabsAPIView, RoundUpdateLabsAPIView, SelectedSchemeListAPIView, AnalyteSpecificScheme
 
 urlpatterns = [
     path('pending-labs/<id>',
@@ -31,6 +31,20 @@ urlpatterns = [
         RoundAddLabsAPIView.as_view(), name='round-add-lab'),
     path('round-update-lab/<id>',
          RoundUpdateLabsAPIView.as_view(), name='round-update-lab'),
+    
+    # selected-schemes related to participants
+    path('selectedSchemes-list/<id>',
+         SelectedSchemeListAPIView.as_view(), name='selectedSchemes-list'), 
+
+    path('analyteSpecificScheme-list/<id>',
+         AnalyteSpecificScheme.as_view(), name='analyteSpecificScheme-list'), 
+     # Participant Result page    
+    path('resultpost/<id>',
+         ParticipantResultView.as_view(), name='resultpost'), 
+    path('getResultsData/<id>',
+         ParticipantResultView.as_view(), name='getResultsData'), 
+    path('getAnalyteResultSubmit/<id>',
+         AnalyteResultSubmit.as_view(), name='getAnalyteResultSubmit'), 
 
      #adding payment
      path('add-payment',

@@ -187,6 +187,14 @@ ACTIONS= (
     ('Added', 'Added'),
     ('Deleted', 'Deleted'),
 )
+RESULT_STATUS = (
+    ('Pending', 'Pending'),
+    ('Approved', 'Approved'),
+    ('Accept', 'Accept'),
+    ('Unapproved', 'Unapproved'),
+    ('Cencel Request', 'Cencel Request'),
+    ('Submited', 'Submited'),
+)
 
 class Lab(models.Model):
     organization_id = models.ForeignKey(
@@ -484,16 +492,22 @@ class ActivityLog(models.Model):
 class Result(models.Model):
     organization_id = models.ForeignKey(
         Organization, on_delete=models.CASCADE, null=True, blank=True)
+    scheme_id = models.CharField(max_length=255, blank=True, null=True)
     lab_id = models.ForeignKey(Lab, on_delete=models.CASCADE, verbose_name='Lab', primary_key=False, null=True, blank=False)
     analyte = models.ForeignKey(Analyte, on_delete=models.CASCADE, verbose_name='Analyte', primary_key=False, null=True, blank=False)
     units = models.ForeignKey(Units, on_delete=models.CASCADE, verbose_name='Units', primary_key=False, null=True, blank=False)
     instrument = models.ForeignKey(Instrument, on_delete=models.CASCADE, verbose_name='Instrument', primary_key=False, null=True, blank=False)
     method = models.ForeignKey(Method, on_delete=models.CASCADE, verbose_name='Method', primary_key=False, null=True, blank=False)
     reagents = models.ForeignKey(Reagents, on_delete=models.CASCADE, verbose_name='Reagents', primary_key=False, null=True, blank=False)
-    result = models.CharField(max_length=255, blank=True, null=True)
-
+    # result = models.CharField(max_length=255, blank=True, null=True)
+    result = models.DecimalField(max_digits=10, decimal_places=2, blank=True, null=True)  # Updated to DecimalField
+    result_status = models.CharField(
+        max_length=50, choices=RESULT_STATUS, default='Pending')
+    updated_at = models.DateTimeField(auto_now=True)  # Automatically set to now every time the object is saved
+    rounds = models.PositiveBigIntegerField(blank=True, null=True) 
 
     def __str__(self):
-        return self.result
+        # return self.result
+        return str(self.result) if self.result is not None else 'No Result'
     class Meta:
         verbose_name = 'Result'

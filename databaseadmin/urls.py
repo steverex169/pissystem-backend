@@ -147,8 +147,8 @@ urlpatterns = [
     path('sample-update-analyte/<id>',
          SampleUpdateAnalyteAPIView.as_view(), name='sample-update-analyte'),
 
-    # path('news-list-participant/<id>',
-    #      NewsListViewParticipant.as_view(), name='news-list-participantt'),
+    path('news-list/<id>',
+         NewsListView.as_view(), name='news-list'),
     path('news-add',
          NewsAddAPIView.as_view(), name='news-add'),
 

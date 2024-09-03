@@ -2,7 +2,7 @@ from django.db import models
 from organization.models import Organization
 from django.utils import timezone
 from account.models import UserAccount
-from databaseadmin.models import Scheme
+from databaseadmin.models import Analyte, Instrument, Method, Reagents, Scheme, Units
 from labowner.models import Lab
 
 ACTIONS= (
@@ -70,23 +70,19 @@ class Round(models.Model):
 class SelectedScheme(models.Model):
     organization_id = models.ForeignKey(
         Organization, on_delete=models.CASCADE, null=True, blank=True)
-    lab_id = models.ForeignKey(
-        Lab, on_delete=models.CASCADE, verbose_name='Lab name', null=True)
-    scheme_id =models.ManyToManyField(Scheme, blank=True)
+    participant = models.CharField(max_length=255, blank=False, null=True)
+    scheme_id =models.CharField(max_length=255, blank=False, null=True)
     added_at= models.DateTimeField(
         null=True, blank=True, verbose_name="Scheme added date")
     def __str__(self):
         return self.lab_id.name + " - " + self.scheme_id.scheme_name 
 
-    class Meta:
-        verbose_name = 'Scheme'
-        
 class Payment(models.Model):
     organization_id = models.ForeignKey(
          Organization, on_delete=models.CASCADE, null=True, blank=True)
     account_id = models.ForeignKey(
         UserAccount, on_delete=models.CASCADE, null=True, blank=True)
-    scheme =models.ManyToManyField(Scheme, blank=True)
+    scheme =models.CharField(max_length=255,blank=False, null=True)
     participant_id = models.ForeignKey(
         Lab, on_delete=models.CASCADE, null=True, blank=True)
     price = models.CharField(max_length=255,blank=False, null=True)
@@ -127,3 +123,28 @@ class ActivityLogUnits(models.Model):
     class Meta:
         verbose_name = 'History'
 
+class Statistics(models.Model):
+    organization_id = models.ForeignKey(Organization, on_delete=models.CASCADE, null=True, blank=True)
+    participant_id = models.ForeignKey(
+        Lab, on_delete=models.CASCADE, null=True, blank=True)
+    analyte = models.ForeignKey(Analyte, on_delete=models.CASCADE, null=True, blank=True)
+    scheme = models.ForeignKey(Scheme, on_delete=models.CASCADE, null=True, blank=True)
+    lab_count = models.PositiveBigIntegerField(null=True, blank=True)
+    mean_result = models.FloatField(null=True, blank=True)  # Changed from DecimalField to FloatField
+    median_result = models.FloatField(null=True, blank=True)  # Changed from DecimalField to FloatField
+    robust_mean = models.FloatField(null=True, blank=True)  # Changed from DecimalField to FloatField
+    std_deviation = models.FloatField(null=True, blank=True)  # Changed from DecimalField to FloatField
+    uncertainty = models.FloatField(null=True, blank=True)  # Changed from DecimalField to FloatField
+    cv_percentage = models.FloatField(null=True, blank=True)  # Changed from DecimalField to FloatField
+    z_scores_with_lab = models.JSONField(default=list, null=True, blank=True)
+    result = models.FloatField(blank=True, null=True)  # Changed from DecimalField to FloatField
+    rounds = models.PositiveBigIntegerField(blank=True, null=True) 
+    
+    created_at = models.DateTimeField(auto_now=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = 'Statistics'
+
+    def __str__(self):
+        return f"Results for {self.analyte.name} in Scheme {self.scheme.id}"
