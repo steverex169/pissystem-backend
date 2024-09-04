@@ -24,11 +24,10 @@ from accountstatement.serializers import AccountStatementSerializer
 from financeofficer.models import PaymentIn
 from financeofficer.serializers import PaymentInSerializer
 from helpers.mail import send_mail
-from labowner.models import FINANCIAL_SETTLEMENT, Result, ActivityLog, Lab, LabCorporate, OfferedTest, Pathologist, SampleCollector
-
+from labowner.models import FINANCIAL_SETTLEMENT, Result, ActivityLog, Lab, LabCorporate, Pathologist, SampleCollector, SelectedScheme
 
 # from medicaltest.models import Test, Unit
-from labowner.serializers import ResultSerializer, ActivityLogSerializer, LabCorporateSerializer, LabInformationSerializer, LabPaymentSerializer, PathologistSerializer, SampleCollectorSerializer, OfferedTestSerializer
+from labowner.serializers import ResultSerializer, SelectedSchemeSerializer, ActivityLogSerializer, LabCorporateSerializer, LabInformationSerializer, LabPaymentSerializer, PathologistSerializer, SampleCollectorSerializer
 from django.conf import settings
 
 from staff.models import Marketer, Staff
@@ -1940,3 +1939,4 @@ class ParticipentResultView(APIView):
 
         except Lab.DoesNotExist:
             return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "No such Lab exists."})
+        

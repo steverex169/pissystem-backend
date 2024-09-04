@@ -167,32 +167,11 @@ class Scheme(models.Model):
     status = models.CharField(
         max_length=50, choices=STATUS, default='Inactive', blank=True)
     def __str__(self):
-        return self.name
+        return self.scheme_name
 
     class Meta:       
         verbose_name = 'Scheme'
         
-
-
-
-class ActivityLogUnits(models.Model):
-    organization_id = models.ForeignKey(
-        Organization, on_delete=models.CASCADE, null=True, blank=True)
-    scheme_name = models.CharField(max_length=255, blank=True, null=True)
-    cycle_no = models.PositiveBigIntegerField(blank=True, null=True)
-    rounds = models.PositiveBigIntegerField(blank=True, null=True)
-    cycle = models.CharField(
-        max_length=50, choices=CYCLE, default='Months', blank=True)  
-    start_date = models.DateTimeField(blank=True, null=True)
-    end_date = models.DateTimeField(blank=True, null=True)
-    analytes = models.ManyToManyField(Analyte, blank=True)
-    status = models.CharField(
-        max_length=50, choices=STATUS, default='Inactive', blank=True)
-    def __str__(self):
-        return self.name
-
-    class Meta:       
-        verbose_name = 'Scheme'
 
 class Sample(models.Model):
     organization_id = models.ForeignKey(

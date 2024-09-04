@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from labowner.models import LabCorporate, Result, Lab, LabPayment, ActivityLog, OfferedTest, Pathologist, SampleCollector
+from labowner.models import LabCorporate, Result, Lab, LabPayment, ActivityLog, SelectedScheme, Pathologist, SampleCollector
 
 
 
@@ -10,9 +10,9 @@ class LabInformationSerializer(serializers.ModelSerializer):
         fields = ('__all__')
 
 
-class OfferedTestSerializer(serializers.ModelSerializer):
+class SelectedSchemeSerializer(serializers.ModelSerializer):
     class Meta:
-        model = OfferedTest
+        model = SelectedScheme
         fields = ('__all__')
 
 

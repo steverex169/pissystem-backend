@@ -2,6 +2,7 @@ from rest_framework import status
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from databaseadmin.models import News,Instrument, Units, ActivityLogUnits,Reagents , Manufactural, Method, Scheme, InstrumentType, Analyte, Sample
+from labowner.serializers import SelectedSchemeSerializer
 from staff.models import Staff
 from databaseadmin.serializers import NewsSerializer,InstrumentSerializer, MethodSerializer, SchemeSerializer, AnalyteSerializer, InstrumentTypeSerializer, UnitsSerializer, ActivityLogUnitsSerializer, ReagentsSerializer, ManufacturalSerializer, SampleSerializer
 from staff.models import Staff
@@ -14,7 +15,9 @@ from rest_framework.authtoken.serializers import AuthTokenSerializer
 from django.utils import timezone
 from account.models import UserAccount
 from organization.models import Organization
+from labowner.models import Lab, SelectedScheme
 import datetime
+from django.shortcuts import get_object_or_404
 class UnitsListAPIView(APIView):
 
     def get(self, request, *args, **kwargs):
@@ -582,39 +585,99 @@ class ManufacturalListAPIView(APIView):
     
     def get(self, request, *args, **kwargs):
         try:
-            # Get the staff user's account_id
             account_id = kwargs.get('id')
             
-            # Fetch the staff user based on account_id
-            staff_user = Staff.objects.get(account_id=account_id)
+            lab = Lab.objects.get(account_id=account_id)
             
-            # Retrieve the organization associated with the staff user
-            organization = staff_user.organization_id
+            lab_id = lab.id
             
-            # Filter manufacturals based on the organization
-            manufactural_list = Manufactural.objects.filter(organization_id=organization)
+            scheme_list = SelectedScheme.objects.filter(lab_id=lab_id)
             
-            # Serialize data
             serialized_data = []
-            for manufactural in manufactural_list:
-                manufactural_data = {
-                    'id': manufactural.id,
-                    'name': manufactural.name,
-                    'city': manufactural.city,
-                    'country': manufactural.country,
-                    'telephone': manufactural.telephone,
-                    'address': manufactural.address,
+            for scheme in scheme_list:
+                scheme_data = {
+                    'id': scheme.id,
+                    'name': scheme.scheme_id.scheme_name,
+                    # 'city': scheme.city,
+                    # 'country': scheme.country,
+                    # 'telephone': scheme.telephone,
+                    # 'address': scheme.address,
                 }
-                serialized_data.append(manufactural_data)
+                serialized_data.append(scheme_data)
 
             return Response({"status": status.HTTP_200_OK, "data": serialized_data})
 
-        except Staff.DoesNotExist:
+        except Lab.DoesNotExist:
             return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "Invalid account_id."})
         
-        except Manufactural.DoesNotExist:
+        except SelectedScheme.DoesNotExist:
             return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "No Record Exist."})
         
+class SchemeAnalytesList(APIView):
+        # Get request to get data of the lab
+    def get(self, request, *args, **kwargs):
+        print("frontend id",kwargs.get('id'))
+        try:
+            # Get the selected scheme
+            selected_scheme = SelectedScheme.objects.get(id=kwargs.get('id'))
+            print("selected scheme", selected_scheme.id, selected_scheme.scheme_id.id)
+
+            # Get the related scheme
+            scheme = Scheme.objects.get(id=selected_scheme.scheme_id.id)
+            print("scheme", scheme)
+
+            # Get the analytes related to this scheme
+            analytes = scheme.analytes.all()  # Correctly access the ManyToManyField
+            print("analytes", analytes)
+
+            # Serialize the data
+            serialized_data = []
+            for analyte in analytes:
+                analyte_data = {
+                    'id': analyte.id,
+                    'name': analyte.name,
+                    # Add other analyte fields if necessary
+                }
+                serialized_data.append(analyte_data)
+            print("Serialized Data", serialized_data)
+
+            return Response({"status": status.HTTP_200_OK, "data": serialized_data})
+
+        except SelectedScheme.DoesNotExist:
+            return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "Sorry! No such Selected Scheme exists."}, status=status.HTTP_400_BAD_REQUEST)
+
+        except Scheme.DoesNotExist:
+            return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "Sorry! No such Scheme exists."}, status=status.HTTP_400_BAD_REQUEST) 
+# class SchemeAnalytesList(APIView):
+
+#     def get(self, request, *args, **kwargs):
+#         print("frontend id", kwargs.get('id'))
+#         try:
+#             # Get the selected scheme
+#             selected_scheme = SelectedScheme.objects.get(id=kwargs.get('id'))
+#             print("selected scheme", selected_scheme.id, selected_scheme.scheme_id.id)
+
+#             # Get the related scheme
+#             scheme = Scheme.objects.get(id=selected_scheme.scheme_id.id)
+#             print("scheme", scheme)
+
+#             # Get the analytes related to this scheme
+#             analytes = scheme.analytes.all()  # Correctly access the ManyToManyField
+#             print("analytes", analytes)
+
+#             # Serialize the data
+#             serializer = AnalyteSerializer(analytes, many=True)  # Use many=True to handle multiple analytes
+#             print("Serialized Data", serializer.data)
+
+#             return Response({"status": status.HTTP_200_OK, "data": serializer.data})
+
+#         except SelectedScheme.DoesNotExist:
+#             return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "Sorry! No such Selected Scheme exists."})
+
+#         except Scheme.DoesNotExist:
+#             return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "Sorry! No such Scheme exists."})
+ 
+            
 class ManufacturalPostAPIView(APIView):
     permission_classes = (AllowAny,)  # AllowAny temporarily for demonstration
 
@@ -969,7 +1032,7 @@ class SchemeUpdateAPIView(APIView):
             scheme = Scheme.objects.get(id=kwargs.get('id'))
 
             # Store old values before updating
-            old_values = {field: getattr(method, field) for field in ["scheme_name", "cycle_no", "rounds", "cycle", "status"]}
+            old_values = {field: getattr(scheme, field) for field in ["scheme_name", "cycle_no", "rounds", "cycle", "status"]}
             
             serializer = SchemeSerializer(scheme, data=request.data, partial=True)
 
@@ -1427,7 +1490,7 @@ class SampleListView(APIView):
 
     def get(self, request, *args, **kwargs):
         try:
-            sample = Sample.objects.get(account_id=kwargs.get('id'))
+            account_id=kwargs.get('id')
 
             staff_user = Staff.objects.get(id=account_id)  # Corrected the variable name
             organization = staff_user.organization_id
@@ -1480,3 +1543,4 @@ class SamplePostView(APIView):
         
         except Exception as e:
             return Response({"status": status.HTTP_400_BAD_REQUEST, "message": str(e)})
+        

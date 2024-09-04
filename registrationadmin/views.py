@@ -6,8 +6,8 @@ from rest_framework import status
 from rest_framework import parsers
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.views import APIView
-from labowner.models import Lab, OfferedTest, Pathologist, SampleCollector
-from labowner.serializers import LabInformationSerializer,  PathologistSerializer, OfferedTestSerializer
+from labowner.models import Lab,Pathologist, SampleCollector
+from labowner.serializers import LabInformationSerializer,  PathologistSerializer
 from registrationadmin.serializers import RoundSerializer, ActivityLogUnitsSerializer
 from registrationadmin.models import  ActivityLogUnits, Round
 
@@ -676,9 +676,9 @@ class RoundUpdateAPIView(APIView):
             round = Round.objects.get(id=kwargs.get('id'))
 
             # Store old values before updating
-            old_values = {field: getattr(method, field) for field in ["rounds", "scheme", "issue_date", "closing_date" "notes", "status"]}
+            old_values = {field: getattr(round, field) for field in ["rounds", "scheme", "issue_date", "closing_date" "notes", "status"]}
             
-            serializer = SchemeSerializer(round, data=request.data, partial=True)
+            serializer =RoundSerializer(round, data=request.data, partial=True)
 
             if serializer.is_valid():
                 updated_unit = serializer.save()

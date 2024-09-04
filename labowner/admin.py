@@ -1,5 +1,5 @@
 from django.contrib import admin
-from labowner.models import  Lab, Result, ActivityLog, LabPayment, Pathologist, OfferedTest, SampleCollector, Staff
+from labowner.models import  Lab, Result, ActivityLog, LabPayment, Pathologist, SelectedScheme, SampleCollector, Staff
 
 
 # Change settings for showing in Admin
@@ -27,11 +27,9 @@ class ResultAdmin(admin.ModelAdmin):
     list_display = ('id', 'lab_id', 'analyte', 'units',  'method', 'reagents', 'result',)
     search_fields = ('id', 'lab_id', 'analyte', 'units',  'method', 'reagents', 'result',)
 
-class OfferedTestAdmin(admin.ModelAdmin):
-    list_display = ('id', 'lab_id','test_type','duration_required', 'duration_type', 'shared_percentage',
-                    'sample_type', 'price', 'is_eqa_participation', 'is_home_sampling_available', 'main_lab_tests', 'is_active','status')
-    search_fields =  ('id', 'duration_required', 'test_id__name','test_type','duration_type', 'shared_percentage',
-                     'price', 'is_eqa_participation','is_home_sampling_available', 'status')
+class SelectedSchemeAdmin(admin.ModelAdmin):
+    list_display = ('id', 'lab_id','scheme_id',)
+    search_fields =  ('id', 'scheme_id', )
 
 
 # class QualityCertificateAdmin(admin.ModelAdmin):
@@ -50,10 +48,10 @@ class LabPaymentAdmin(admin.ModelAdmin):
 #     search_fields = ('id', 'name', 'type', 'certificate', 'sub_certificate_type')
 
 class ActivityLogAdmin(admin.ModelAdmin):
-    list_display = ('id', 'offered_test_id', 'field_name', 'old_value', 'new_value', 'actions', 'user', 'created_at','old_discount_by_lab',
+    list_display = ('id',  'field_name', 'old_value', 'new_value', 'actions', 'user', 'created_at','old_discount_by_lab',
     'new_discount_by_lab','start_date_by_lab','end_date_by_lab','old_discount_by_labhazir','new_discount_by_labhazir','start_date_by_labhazir',
     'end_date_by_labhazir')
-    search_fields = ('id', 'offered_test_id', 'field_name', 'old_value', 'new_value', 'actions', 'user', 'created_at','old_discount_by_lab',
+    search_fields = ('id',  'field_name', 'old_value', 'new_value', 'actions', 'user', 'created_at','old_discount_by_lab',
     'new_discount_by_lab','start_date_by_lab','end_date_by_lab','old_discount_by_labhazir','new_discount_by_labhazir','start_date_by_labhazir',
     'end_date_by_labhazir')
 
@@ -65,7 +63,7 @@ admin.site.register(Lab, LabAdmin)
 admin.site.register(Result, ResultAdmin)
 admin.site.register(Pathologist, PathologistAdmin)
 admin.site.register(SampleCollector, SampleCollectorAdmin)
-admin.site.register(OfferedTest, OfferedTestAdmin)
+admin.site.register(SelectedScheme, SelectedSchemeAdmin)
 # admin.site.register(QualityCertificate, QualityCertificateAdmin)
 admin.site.register(LabPayment, LabPaymentAdmin)
 admin.site.register(ActivityLog, ActivityLogAdmin)

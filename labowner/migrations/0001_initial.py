@@ -14,7 +14,6 @@ class Migration(migrations.Migration):
         ('organization', '0001_initial'),
         ('staff', '0001_initial'),
         migrations.swappable_dependency(settings.AUTH_USER_MODEL),
-        ('databaseadmin', '0001_initial'),
     ]
 
     operations = [

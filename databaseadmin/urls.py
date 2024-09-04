@@ -1,5 +1,5 @@
 from django.urls import path
-from databaseadmin.views import AnalyteUpdateReagentsAPIView,AnalyteAddReagentsAPIView,AnalytesReagentsAPIView,AnalyteAddReagents,AnalytesListAPIView,MethodsPostAPIView,InstrumentsPostAPIView,InstrumentTypeCreateView,UnitsListAPIView,NewsListView,InstrumentsAPIView, InstrumentsUpdateAPIView, InstrumentTypeView,AnalyteUpdateAPIView, AnalyteAPIView, MethodsAPIView, MethodsUpdateAPIView, SchemeAPIView, SchemePostAPIView, SchemeUpdateAPIView, UpdateInstrumentTypeView,   UnitsAPIView, UnitsListAPIView, UnitsUpdateAPIView, ActivityLogDatabaseadmin, ReagentsListAPIView, ReagentsPostAPIView, ReagentsPutAPIView ,ManufacturalListAPIView, ManufacturalPostAPIView, ManufacturalPutAPIView, SampleListView, SamplePostView
+from databaseadmin.views import SchemeAnalytesList, AnalyteUpdateReagentsAPIView,AnalyteAddReagentsAPIView,AnalytesReagentsAPIView,AnalyteAddReagents,AnalytesListAPIView,MethodsPostAPIView,InstrumentsPostAPIView,InstrumentTypeCreateView,UnitsListAPIView,NewsListView,InstrumentsAPIView, InstrumentsUpdateAPIView, InstrumentTypeView,AnalyteUpdateAPIView, AnalyteAPIView, MethodsAPIView, MethodsUpdateAPIView, SchemeAPIView, SchemePostAPIView, SchemeUpdateAPIView, UpdateInstrumentTypeView,   UnitsAPIView, UnitsListAPIView, UnitsUpdateAPIView, ActivityLogDatabaseadmin, ReagentsListAPIView, ReagentsPostAPIView, ReagentsPutAPIView ,ManufacturalListAPIView, ManufacturalPostAPIView, ManufacturalPutAPIView, SampleListView, SamplePostView
 
 urlpatterns = [
     path('units_update/<id>', UnitsUpdateAPIView.as_view(), name='units_update'),
@@ -13,7 +13,7 @@ urlpatterns = [
     path('manufactural_create', ManufacturalPostAPIView.as_view(), name='manufactural_create'),
     path('manufactural_list/<id>', ManufacturalListAPIView.as_view(), name='manufactural_list'),
     path('instrument-type-list/<id>',InstrumentTypeView.as_view(), name='instrument-type-list'),
-
+    path('scheme-analytes-list/<id>',SchemeAnalytesList.as_view(), name='scheme-analytes-list'),
     path('instrument-type-create-list',InstrumentTypeCreateView.as_view(), name='instrument-type-create-list'),
     path('update-instrument-type-list/<id>',
         UpdateInstrumentTypeView.as_view(), name='update-instrument-type-list'),
