@@ -109,23 +109,51 @@ class RegisterStaffView(APIView):
         except UserAccount.DoesNotExist:
             return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "No such user account exist."})
 
+    # def put(self, request, *args, **kwargs):
+    #     try:
+    #         staff = Staff.objects.get(id=kwargs.get('id'))
+
+    #         serializer = StaffSerializer(
+    #             staff, data=request.data, partial=True)
+
+    #         if serializer.is_valid():
+    #             serializer.save()
+
+    #             return Response({"status": status.HTTP_200_OK, "data": serializer.data, "message": "Updated Successfully"})
+    #         else:
+    #             return Response({"status": status.HTTP_400_BAD_REQUEST, "message": serializer._errors})
+
+    #     except Staff.DoesNotExist:
+    #         return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "Sorry! Account with this id doesn't exist. Please create account first."})
+
     def put(self, request, *args, **kwargs):
         try:
             staff = Staff.objects.get(id=kwargs.get('id'))
-
-            serializer = StaffSerializer(
-                staff, data=request.data, partial=True)
-
-            if serializer.is_valid():
-                serializer.save()
-
-                return Response({"status": status.HTTP_200_OK, "data": serializer.data, "message": "Updated Successfully"})
-            else:
-                return Response({"status": status.HTTP_400_BAD_REQUEST, "message": serializer._errors})
-
         except Staff.DoesNotExist:
             return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "Sorry! Account with this id doesn't exist. Please create account first."})
 
+        # Make the request data mutable
+        request.data._mutable = True
+
+        # Check the value of isActive from the request data and set the status field accordingly
+        is_active = request.data.get('isActive')
+        if is_active == 'false' or is_active == False:
+            request.data['status'] = 'Inactive'
+        else:
+            request.data['status'] = 'Active'
+
+        # Make the request data immutable again
+        request.data._mutable = False
+
+        serializer = StaffSerializer(staff, data=request.data, partial=True)
+
+        if serializer.is_valid():
+            serializer.save()
+            return Response({"status": status.HTTP_200_OK, "data": serializer.data, "message": "Updated Successfully"})
+        else:
+            return Response({"status": status.HTTP_400_BAD_REQUEST, "message": serializer.errors})
+
+           
     # Delete request to delete one cart item
     def delete(self, request, *args, **kwargs):
         # Here what we are passing as id from url is the cart item id
@@ -154,8 +182,8 @@ class StaffProfileView(APIView):
     
 
             staff_detail.update(serializer_class.data)
-            staff_detail['completed_audits'] = completed_audits
-            staff_detail['inprocess_audits'] = inprocess_audits  
+            # staff_detail['completed_audits'] = completed_audits
+            # staff_detail['inprocess_audits'] = inprocess_audits  
             return Response({"status": status.HTTP_200_OK, "data": staff_detail})
         except Staff.DoesNotExist:
             return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "Sorry! record doesn't exist."})
@@ -280,6 +308,7 @@ class AuditorListView(APIView):
             organization_id = organization.id
             
             # Filter staff based on organization_id
+            # auditor_list = Staff.objects.filter(organization_id=organization_id, staff_type="database-admin",status="Active")
             auditor_list = Staff.objects.filter(organization_id=organization_id, staff_type="database-admin")
             
             serializer_class = StaffSerializer(auditor_list, many=True)

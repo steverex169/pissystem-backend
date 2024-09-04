@@ -30,9 +30,10 @@ class SampleCollectorSerializer(serializers.ModelSerializer):
 
 
 class ResultSerializer(serializers.ModelSerializer):
+    lab = LabInformationSerializer(source='lab_id', read_only=True)
     class Meta:
         model = Result
-        fields = ('__all__')
+        fields = ('__all__') 
 
 
 class LabPaymentSerializer(serializers.ModelSerializer):

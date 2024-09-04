@@ -1,14 +1,45 @@
 from rest_framework import serializers
-from registrationadmin.models import Round, ActivityLogUnits
-
+from databaseadmin.models import Analyte, Scheme
+from registrationadmin.models import Round, ActivityLogUnits, Payment, SelectedScheme,Statistics
 
 class RoundSerializer(serializers.ModelSerializer):
+    nooflabs = serializers.IntegerField(read_only=True)
+    issue_date = serializers.SerializerMethodField()
+    closing_date = serializers.SerializerMethodField()
+
     class Meta:
         model = Round
-        fields = ('__all__')
+        fields = ('__all__') 
+        
+    def get_issue_date(self, obj):
+       return obj.issue_date.date() if obj.issue_date else None
 
-
+    def get_closing_date(self, obj):
+        return obj.closing_date.date() if obj.closing_date else None
+    
 class ActivityLogUnitsSerializer(serializers.ModelSerializer):
     class Meta:
         model = ActivityLogUnits
         fields = ('__all__')     
+
+class SelectedSchemeSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = SelectedScheme
+        fields = '__all__'
+        
+class PaymentSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Payment
+        fields = ('__all__')   
+  
+class AnalyteSchemeSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Analyte
+        fields = ('__all__')
+
+# //////////Statistics  
+class StatisticsSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Statistics
+        fields = '__all__'
+      

@@ -84,15 +84,14 @@ STATUS = (
     ('Cencel Request', 'Cencel Request'),
     ('Cencel', 'Cencel'),
 )
-RESULT_STATUS = (
-    ('Pending', 'Pending'),
-    ('Approved', 'Approved'),
-    ('Accept', 'Accept'),
-    ('Unapproved', 'Unapproved'),
-    ('Cencel Request', 'Cencel Request'),
-    ('Submited', 'Submited'),
+PAYMENT_STATUS = (
+    ('Paid', 'Paid'),
+    ('Unpaid', 'Unpaid'),
 )
-
+MEMBERSHIP_STATUS = (
+    ('Active', 'Active'),
+    ('Suspended', 'Suspended'),
+)
 GENDER = (
     ('Male', 'Male'),
     ('Female', 'Female')
@@ -188,16 +187,29 @@ ACTIONS= (
     ('Added', 'Added'),
     ('Deleted', 'Deleted'),
 )
+RESULT_STATUS = (
+    ('Pending', 'Pending'),
+    ('Approved', 'Approved'),
+    ('Accept', 'Accept'),
+    ('Unapproved', 'Unapproved'),
+    ('Cencel Request', 'Cencel Request'),
+    ('Submited', 'Submited'),
+)
 
 class Lab(models.Model):
     organization_id = models.ForeignKey(
         Organization, on_delete=models.CASCADE, null=True, blank=True)
+    staff_id = models.ForeignKey(
+        Staff, on_delete=models.CASCADE, null=True, blank=True)
     account_id = models.OneToOneField(
         UserAccount, on_delete=models.CASCADE, primary_key=False, null=True)
     name = models.CharField(max_length=255, blank=False,
                             null=True, verbose_name='Lab name')
     user_name = models.CharField(max_length=255, blank=False,
                             null=True, verbose_name='user name')
+    payment_status = models.CharField(max_length=50, choices=PAYMENT_STATUS, default='Unpaid')
+    membership_status = models.CharField(max_length=50, choices=MEMBERSHIP_STATUS, default='Suspended')
+    
     financial_settlement = models.CharField(
         max_length=50, choices=FINANCIAL_SETTLEMENT, default='Self', blank=True, null=True)
     logo = models.ImageField(
@@ -205,17 +217,22 @@ class Lab(models.Model):
     lab_experience = models.PositiveIntegerField(
         blank=True, null=True, verbose_name='Lab Experience (Years)')
     email = models.EmailField(max_length=70, blank=False,  null=True)
+    email_participant = models.EmailField(max_length=70, blank=False,  null=True)
     phone = models.CharField(max_length=255, blank=True, null=True,
                              verbose_name='Phone', help_text="Please use the format: +923123456789")
     landline = models.CharField(
-        max_length=13, blank=False, null=True, help_text="Please use the format: +922134552799")
+        max_length=20, blank=False, null=True, help_text="Please use the format: +922134552799")
     fax = models.CharField(
-        max_length=13, blank=False, null=True, help_text="Please use the format: + (Country Code) (City Code without the leading zero) (fax number)")
+        max_length=20, blank=False, null=True, help_text="Please use the format: + (Country Code) (City Code without the leading zero) (fax number)")
     address = models.CharField(max_length=255, blank=False, null=True, verbose_name='Address',
                                help_text='Please enter your address to automatically locate it on map.')
+    billing_address = models.CharField(max_length=255, blank=True, null=True)
+    shipping_address = models.CharField(max_length=255, blank=True, null=True)
     department = models.CharField(max_length=255, blank=True, null=True)
     city = models.CharField(max_length=255, blank=True, null=True)
+    province = models.CharField(max_length=255, blank=True, null=True)
     country = models.CharField(max_length=255, blank=True, null=True)
+    state = models.CharField(max_length=255, blank=True, null=True)
     registered_at = models.DateTimeField(null=True, blank=False)
     registered_by = models.CharField(
         max_length=50, choices=REGISTERED_BY, default='Lab')
@@ -227,14 +244,13 @@ class Lab(models.Model):
         Marketer, on_delete=models.CASCADE, primary_key=False, null=True, blank=True, verbose_name="Marketer")
     status = models.CharField(
         max_length=50, choices=STATUS, default='Pending')
-    done_by = models.ForeignKey(
-        Staff, on_delete=models.CASCADE, primary_key=False, null=True, blank=True, verbose_name="Approved/Unapproved by")
+    # done_by = models.ForeignKey(
+    #     Staff, on_delete=models.CASCADE, primary_key=False, null=True, blank=True, verbose_name="Approved/Unapproved by")
     done_at = models.DateTimeField(
         max_length=255, blank=True, null=True, verbose_name="Approved/Unapproved at")
-    # postalcode = models.CharField(
-    #     max_length=255, null=True, blank=True)
-    organization = models.CharField(
+    postalcode = models.CharField(
         max_length=255, null=True, blank=True)
+    organization = models.CharField(max_length=255, null=True, blank=True, verbose_name="organization name")
    
     is_active = models.CharField(max_length=50, choices=OPTIONS, default='Yes',
                                  null=True, verbose_name='Is lab active for the services?')
@@ -247,7 +263,7 @@ class Lab(models.Model):
     website = models.URLField(max_length=200, blank=True, null=True, verbose_name='Website')
     district = models.CharField(max_length=255, blank=True, null=True)
     landline_registered_by = models.CharField(
-        max_length=13, blank=False, null=True, help_text="Please use the format: +922134552799")
+        max_length=30, blank=False, null=True, help_text="Please use the format: +922134552799")
     def __str__(self):
         return self.name
 
@@ -445,11 +461,15 @@ class Result(models.Model):
     instrument = models.ForeignKey(Instrument, on_delete=models.CASCADE, verbose_name='Instrument', primary_key=False, null=True, blank=False)
     method = models.ForeignKey(Method, on_delete=models.CASCADE, verbose_name='Method', primary_key=False, null=True, blank=False)
     reagents = models.ForeignKey(Reagents, on_delete=models.CASCADE, verbose_name='Reagents', primary_key=False, null=True, blank=False)
-    result = models.CharField(max_length=255, blank=True, null=True)
+    # result = models.CharField(max_length=255, blank=True, null=True)
+    result = models.DecimalField(max_digits=10, decimal_places=2, blank=True, null=True)  # Updated to DecimalField
     result_status = models.CharField(
         max_length=50, choices=RESULT_STATUS, default='Pending')
+    updated_at = models.DateTimeField(auto_now=True)  # Automatically set to now every time the object is saved
+    rounds = models.PositiveBigIntegerField(blank=True, null=True) 
 
     def __str__(self):
-        return self.result
+        # return self.result
+        return str(self.result) if self.result is not None else 'No Result'
     class Meta:
         verbose_name = 'Result'
