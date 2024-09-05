@@ -49,7 +49,7 @@ class ResultAdmin(admin.ModelAdmin):
     list_display = ('id', 'organization_id', 'scheme_id', 'lab_id', 'analyte', 'units', 'instrument', 'method',
                     'reagents', 'result', 'result_status', 'updated_at')
     search_fields = ('id', ' organization_id', 'scheme_id', 'lab_id', 'analyte', 'units', 'instrument', 'method',
-                    'reagents', 'result', 'result_status', 'updated_at') 
+                    'reagents', 'result', 'result_status') 
 # class QualityCertificateAdmin(admin.ModelAdmin):
 #     list_display = ('id', 'lab_id', 'name', 'type', 'certificate', 'sub_certificate_type')
 #     search_fields = ('id', 'name', 'type', 'certificate', 'sub_certificate_type')

@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from databaseadmin.models import ParticipantProvince,ParticipantCountry, ParticipantSector,ParticipantType,Department,Designation,District,City,News,Instrument, Units, Analyte, ActivityLogUnits, Reagents, Manufactural, Method, Scheme, Cycle, Sample, InstrumentType
+from databaseadmin.models import QualitativeType,ParticipantProvince,ParticipantCountry, ParticipantSector,ParticipantType,Department,Designation,District,City,News,Instrument, Units, Analyte, ActivityLogUnits, Reagents, Manufactural, Method, Scheme, Cycle, Sample, InstrumentType
 
 
 class CitySerializer(serializers.ModelSerializer):
@@ -46,6 +46,11 @@ class UnitsSerializer(serializers.ModelSerializer):
         model = Units
         fields = ('__all__')
 
+class QualitativeTypeSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = QualitativeType
+        fields = ('__all__')
+
 class ReagentsSerializer(serializers.ModelSerializer):
     class Meta:
         model = Reagents
@@ -85,8 +90,7 @@ class SchemeSerializer(serializers.ModelSerializer):
     
 
 class CycleSerializer(serializers.ModelSerializer):
-    # noofanalytes = serializers.SerializerMethodField()
-
+    noofanalytes = serializers.IntegerField(read_only=True)
     class Meta:
         model = Cycle
         fields = ('__all__')
@@ -115,6 +119,7 @@ class NewsSerializer(serializers.ModelSerializer):
         fields = ('__all__') 
 
 class SampleSerializer(serializers.ModelSerializer):
+    noofanalytes = serializers.IntegerField(read_only=True)
     class Meta:
         model = Sample
         fields = ('__all__') 

@@ -15,12 +15,21 @@ STATUS = (
     ('Active', 'Active'),
     ('Inactive', 'Inactive'),
 )
+ANALYTETYPE=(
+    ('Quantitative', 'Quantitative'),
+    ('Qualitative', 'Qualitative'),
+)
 CYCLE = (
     ('Months', 'Months'),
     ('Year', 'Year'),
 )
+SAMPLE_STATUS =(
+        ('Created', 'Created'),
+        ('Rounded', 'Rounded'),
+)
 TYPE= (
     ('Units', 'Units'),
+    ('QualitativeType','QualitativeType'),
     ('Instruments', 'Instruments'),
     ('Reagent', 'Reagent'),
     ('Method', 'Method'),
@@ -144,6 +153,20 @@ class Units(models.Model):
     class Meta:
         verbose_name = 'Database Unit'
 
+class QualitativeType(models.Model):
+    organization_id = models.ForeignKey(
+        Organization, on_delete=models.CASCADE, null=True, blank=True)
+    name = models.CharField(max_length=255, blank=False, null=True)
+    number = models.CharField(max_length=255, blank=False, null=True)
+
+    date_of_addition = models.DateTimeField(blank=True, null=True)  # Changed to DateTimeField
+
+    def __str__(self):
+        return self.name
+
+    class Meta:
+        verbose_name = 'Database QualitativeType'
+
 class Manufactural(models.Model):
     organization_id = models.ForeignKey(
         Organization, on_delete=models.CASCADE, null=True, blank=True)
@@ -237,8 +260,11 @@ class Analyte(models.Model):
     instruments = models.ManyToManyField(Instrument, blank=True)
     reagents = models.ManyToManyField(Reagents, blank=True)
     units = models.ManyToManyField(Units, blank=True)
+    qualitativetype = models.ManyToManyField(QualitativeType, blank=True)
     status = models.CharField(
         max_length=50, choices=STATUS, default='Inactive', blank=True)
+    analytetype = models.CharField(
+        max_length=50, choices=ANALYTETYPE, default='Quantitative', blank=True)
     master_unit = models.ForeignKey(
         Units, on_delete=models.SET_NULL, related_name="master_unit", null=True, blank=True)
     
@@ -305,9 +331,14 @@ class Cycle(models.Model):
         max_length=50, choices=CYCLE, default='Months', blank=True)  
     start_date = models.DateField(blank=True, null=True)
     end_date = models.DateField(blank=True, null=True)
+    analytes = models.ManyToManyField(Analyte, blank=True)
     status = models.CharField(
-        max_length=50, choices=STATUS, default='Inactive', blank=True)
+        max_length=50, choices=STATUS, default='Active', blank=True)
     
+
+    @property
+    def noofanalytes(self):
+        return self.analytes.count()
 
     # def save(self, *args, **kwargs):
     #     # Skip status update if the instance is not yet saved (no ID)
@@ -329,21 +360,32 @@ class Sample(models.Model):
     organization_id = models.ForeignKey(
          Organization, on_delete=models.CASCADE, null=True, blank=True)
     account_id = models.OneToOneField(
-        UserAccount, on_delete=models.CASCADE, primary_key=False, null=True, blank=True)
+        UserAccount, on_delete=models.CASCADE, primary_key=False, null=True, blank=True, related_name='sample_account_id')
+    samplename = models.CharField(max_length=255, blank=False, null=True)
     sampleno = models.CharField(max_length=255, blank=False, null=True)
-    details = models.TextField()
+    scheme_id = models.ForeignKey(
+         Scheme, on_delete=models.CASCADE, null=True, blank=True)
+    detail = models.TextField(max_length=255, blank=False, null=True)
     notes = models.TextField(max_length=255, blank=False, null=True)
-    scheme = models.TextField(blank=True, null=True) 
-    # added_by = models.ForeignKey(
-    #     UserAccount, on_delete=models.CASCADE, null=True, blank=True)
+    added_by = models.ForeignKey(
+        UserAccount, on_delete=models.CASCADE, null=True, blank=True,  related_name='sample_added_by')
+    date_of_addition = models.DateTimeField(blank=True, null=True) 
+    # analytes = models.ManyToManyField(Analyte, blank=True)
+    analytes = models.ManyToManyField(Analyte, related_name='samples', blank=True)
+    # cycle_no = models.ForeignKey(Cycle, on_delete=models.CASCADE, null=True, blank=True)
+    status = models.CharField(
+        max_length=50, choices=SAMPLE_STATUS, default='Created', blank=True)  
         
-    def __str__(self):
-        return self.sampleno
-
+    @property
+    def noofanalytes(self):
+        return self.analytes.count()
+        
     class Meta:
         verbose_name = 'Sample'
 
 class ActivityLogUnits(models.Model):
+    added_by = models.ForeignKey(
+        UserAccount, on_delete=models.CASCADE, verbose_name='added by', null=True)
     organization_id = models.ForeignKey(
         Organization, on_delete=models.CASCADE, related_name='databaseadmin_activity_log_units', null=True, blank=True)
     analyte_id = models.ForeignKey(
@@ -354,6 +396,8 @@ class ActivityLogUnits(models.Model):
          Reagents, on_delete=models.CASCADE, null=True, blank=True)
     unit_id = models.ForeignKey(
         Units, on_delete=models.CASCADE, null=True, blank=True)
+    qualitativetype_id = models.ForeignKey(
+        QualitativeType, on_delete=models.CASCADE, null=True, blank=True)
     instrumenttype_id = models.ForeignKey(
         InstrumentType, on_delete=models.CASCADE, null=True, blank=True)
     instrument_id = models.ForeignKey(

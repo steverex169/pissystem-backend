@@ -559,6 +559,7 @@ class SelectedSchemeListAPIView(APIView):
             account_id = kwargs.get('id')
             # Fetch the participant (Lab) based on account_id
             participant = Lab.objects.get(account_id=account_id)
+            # print("iddddddddddd", account_id) //229
             
             # Fetch all SelectedScheme instances for the given participant
             selected_schemes = SelectedScheme.objects.filter(participant=participant.id)
@@ -576,9 +577,11 @@ class SelectedSchemeListAPIView(APIView):
                 for cycle in cycles:
                     # Fetch Scheme object associated with the Cycle
                     scheme = cycle.scheme_name
-                    
-                    # Fetch related Round data for each scheme
-                    rounds = Round.objects.filter(scheme=scheme)
+                    # Filter related Round data for each scheme based on status
+                    rounds = Round.objects.filter(
+                        scheme=scheme,
+                        status__in=['Open', 'Closed', 'Report Available']  # Filter by status
+                    )
                     
                     # Serialize round data
                     rounds_data = [
@@ -695,7 +698,11 @@ class ParticipantResultView(APIView):
         try:
             # filtering only unique analyte records
             participant_results = Result.objects.filter(scheme_id=kwargs.get('id'))  
+            participant_rounds = Round.objects.filter(scheme=kwargs.get('id'))  
             serializer = ResultSerializer(participant_results, many=True)
+            for i in range(len(participant_rounds)):
+                serializer.data[i]['round_status'] = participant_rounds[i].status
+
             return Response({"status": status.HTTP_200_OK, "data": serializer.data})
         except Result.DoesNotExist:
             return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "Sorry! No such Result exists."})
@@ -748,6 +755,7 @@ class ParticipantResultView(APIView):
                 'result': request.data.get('result'),
                 'analyte': request.data.get('analyte_id'),
                 'rounds': request.data.get('rounds'),
+                'updated_at': request.data.get('updated_at'),
             }
 
             # Check if the result already exists for the given lab, analyte, and round
@@ -966,16 +974,27 @@ class AnalyteResultSubmit(APIView):
                     sorted_results = sorted(result_values)
                     median_result = sorted_results[len(sorted_results) // 2]
                     mean_result_rounded_float = float(mean_result_rounded)
-                    variance = sum((float(value) - mean_result_rounded_float) ** 2 for value in result_values) / len(result_values)
+                    variance = sum((float(value) - mean_result_rounded_float) ** 2 for value in result_values) / len(result_values) if len(result_values) > 1 else 0
                     std_deviation = math.sqrt(variance)
-                    cv_percentage = round((std_deviation / mean_result_rounded_float) * 100, 2)
-                    uncertainty = round(std_deviation / math.sqrt(len(result_values)), 2)
+                    
+                    # Check to prevent division by zero
+                    if mean_result_rounded_float != 0:
+                        cv_percentage = round((std_deviation / mean_result_rounded_float) * 100, 2)
+                    else:
+                        cv_percentage = 0.00
+
+                    if len(result_values) > 0:
+                        uncertainty = round(std_deviation / math.sqrt(len(result_values)), 2)
+                    else:
+                        uncertainty = 0.00
+                    
                     trimmed_mean = trim_mean(result_values, 0.1)
                     robust_mean = round(trimmed_mean, 2)
+                    
                     z_scores_with_lab = [
                         {
                             'lab_id': result.lab_id.id,
-                            'z_score': round((float(result.result) - mean_result_rounded_float) / std_deviation, 4)
+                            'z_score': round((float(result.result) - mean_result_rounded_float) / std_deviation, 4) if std_deviation != 0 else 0.00
                         }
                         for result in results
                     ]
@@ -988,9 +1007,7 @@ class AnalyteResultSubmit(APIView):
                     z_scores_with_lab = []
 
                 # Update or create Statistics instance
-                statistics_instance = None
                 for result in results:
-                    # Update or create Statistics instance
                     statistics_instance, created = Statistics.objects.update_or_create(
                         scheme=scheme,
                         analyte=analyte,
@@ -1011,9 +1028,9 @@ class AnalyteResultSubmit(APIView):
                     )
 
                 analyte_results.append(statistics_instance)
+            
             # Serialize the saved Statistics instances
             serializer = StatisticsSerializer(analyte_results, many=True)
-            logger.info("Serializer data: %s", serializer.data)  # Using logger for better output handling
             return Response({'status': status.HTTP_200_OK, 'data': serializer.data}, status=status.HTTP_200_OK)
 
         except Scheme.DoesNotExist:

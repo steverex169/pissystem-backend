@@ -1,12 +1,12 @@
 from django.contrib import admin
-from databaseadmin.models import ParticipantProvince,ParticipantCountry,City,District,Department,Designation,ParticipantType,ParticipantSector, Cycle,  News, Instrument, Method, Scheme, Sample, InstrumentType,ActivityLogUnits, Units, Reagents, Manufactural, Analyte
+from databaseadmin.models import QualitativeType,ParticipantProvince,ParticipantCountry,City,District,Department,Designation,ParticipantType,ParticipantSector, Cycle,  News, Instrument, Method, Scheme, Sample, InstrumentType,ActivityLogUnits, Units, Reagents, Manufactural, Analyte
 
 # Register your models here.
 
 class ActivityLogUnitsAdmin(admin.ModelAdmin):
 
-    list_display = ('id', 'organization_id', 'reagent_id','method_id', 'scheme_id', 'cycle_id', 'sample_id',  'analyte_id', 'instrumenttype_id','unit_id', 'manufactural_id', 'type','old_value', 'new_value', 'date_of_addition','actions','status')
-    search_fields = ('id', 'organization_id', 'reagent_id','method_id',  'scheme_id', 'cycle_id',  'sample_id', 'analyte_id', 'instrumenttype_id','unit_id', 'manufactural_id', 'type','old_value', 'new_value', 'date_of_addition','actions','status')
+    list_display = ('id', 'organization_id', 'reagent_id','method_id', 'qualitativetype_id','scheme_id', 'cycle_id', 'sample_id',  'analyte_id', 'instrumenttype_id','unit_id', 'manufactural_id', 'type','old_value', 'new_value', 'date_of_addition','actions','status')
+    search_fields = ('id', 'organization_id', 'reagent_id','method_id', 'qualitativetype_id', 'scheme_id', 'cycle_id',  'sample_id', 'analyte_id', 'instrumenttype_id','unit_id', 'manufactural_id', 'type','old_value', 'new_value', 'date_of_addition','actions','status')
 
 class InstrumentTypeAdmin(admin.ModelAdmin):
     list_display = ('id', 'name', 'date_of_addition', )
@@ -15,6 +15,10 @@ class InstrumentTypeAdmin(admin.ModelAdmin):
 class UnitsTypeAdmin(admin.ModelAdmin):
     list_display = ('id', 'name', 'date_of_addition', )
     search_fields = ('id', 'name', 'date_of_addition', )
+
+class QualitativeTypeAdmin(admin.ModelAdmin):
+    list_display = ('id', 'name','number', 'date_of_addition', )
+    search_fields = ('id', 'name','number', 'date_of_addition', )
 
 class ManufacturalAdmin(admin.ModelAdmin):
     list_display = ('id', 'name',  'website', 'country', 'date_of_addition' )
@@ -25,29 +29,29 @@ class MethodAdmin(admin.ModelAdmin):
     search_fields = ('id', 'name', 'date_of_addition','code','status')
 
 class SchemeAdmin(admin.ModelAdmin):
-    list_display = ('id', 'name', 'price','noofanalytes', 'date_of_addition', 'status')
+    list_display = ('id', 'name', 'price', 'noofanalytes', 'date_of_addition', 'status')
     search_fields = ('id', 'name', 'price', 'noofanalytes', 'date_of_addition', 'status')
 
     def get_analytes(self, obj):
         return ', '.join([analytes.name for analytes in obj.analytes.all()])
 
 class CycleAdmin(admin.ModelAdmin):
-    list_display = ('id', 'organization_id', 'scheme_name', 'cycle_no', 'rounds','cycle', 'start_date', 'end_date', 'status')
-    search_fields = ('id', 'organization_id', 'scheme_name', 'cycle_no', 'rounds','cycle', 'start_date', 'end_date', 'status')
+    list_display = ('id', 'organization_id', 'scheme_name', 'cycle_no', 'rounds','cycle', 'start_date', 'end_date', 'noofanalytes', 'status')
+    search_fields = ('id', 'organization_id', 'scheme_name', 'cycle_no', 'rounds','cycle', 'start_date', 'end_date', 'noofanalytes', 'status')
 
-    # def get_analyte(self, obj):
-    #     return ', '.join([analyte.name for analyte in obj.analyte.all()])
+    def get_analytes(self, obj):
+        return ', '.join([analytes.name for analytes in obj.analytes.all()])
 
 class ReagentsAdmin(admin.ModelAdmin):
     list_display = ('id', 'name', 'date_of_addition', 'code','status')
     search_fields = ('id', 'name', 'date_of_addition', 'code','status')
 
 class AnalyteAdmin(admin.ModelAdmin):
-    list_display = ('id', 'name', 'date_of_addition', 'code', 'get_methods','noofmethods', 'get_instruments','noofinstruments', 'get_reagents', 'noofreagents','get_units', 'master_unit','status')
-    search_fields = ('id', 'name', 'date_of_addition', 'code', 'get_methods','noofmethods', 'get_instruments','noofinstruments', 'get_reagents', 'noofreagents','get_units', 'master_unit','status')
+    list_display = ('id', 'name', 'date_of_addition', 'code', 'get_methods','noofmethods', 'get_instruments','noofinstruments', 'get_reagents', 'noofreagents','get_qualitativetype','get_units', 'master_unit','analytetype','status')
+    search_fields = ('id', 'name', 'date_of_addition', 'code', 'get_methods','noofmethods', 'get_instruments','noofinstruments', 'get_reagents', 'noofreagents','get_qualitativetype','get_units', 'master_unit','analytetype','status')
 
     def get_reagents(self, obj):
-        return ', '.join([scheme.name for reagent in obj.reagents.all()])
+        return ', '.join([reagent.name for reagent in obj.reagents.all()])
 
     get_reagents.short_description = 'Reagents'
 
@@ -66,6 +70,11 @@ class AnalyteAdmin(admin.ModelAdmin):
 
     get_units.short_description = 'Units'
 
+    def get_qualitativetype(self, obj):
+        return ', '.join([qualitativetype.name for qualitativetype in obj.qualitativetype.all()])
+
+    get_qualitativetype.short_description = 'QualitativeType'
+
 class InstrumentAdmin(admin.ModelAdmin):
     list_display = ('id', 'name', 'date_of_addition', 'code','status','manufactural','instrument_type')
     search_fields = ('id', 'name', 'date_of_addition', 'code','status','manufactural','instrument_type')
@@ -75,8 +84,10 @@ class NewsAdmin(admin.ModelAdmin):
     search_fields = ('id', 'title', 'date_of_addition', 'description',)
 
 class SampleAdmin(admin.ModelAdmin):
-    list_display = ('id', 'sampleno', 'details', 'notes','scheme')
-    search_fields = ('id', 'sampleno', 'details', 'notes','scheme')
+    list_display = ('id','organization_id', 'samplename', 'noofanalytes', 'sampleno', 'scheme_id',   'detail', 'notes', 'added_by', 'status')
+    search_fields = ('id','organization_id','samplename','noofanalytes', 'sampleno', 'scheme_id', 'detail', 'notes', 'added_by', 'status')
+    def get_analytes(self, obj):
+        return ', '.join([analytes.name for analytes in obj.analytes.all()])
     
 class CityTypeAdmin(admin.ModelAdmin):
     list_display = ('id', 'name', 'date_of_addition', )
@@ -114,6 +125,7 @@ admin.site.register(Analyte, AnalyteAdmin)
 admin.site.register(Manufactural, ManufacturalAdmin)
 admin.site.register(Reagents, ReagentsAdmin)
 admin.site.register(Units, UnitsTypeAdmin)
+admin.site.register(QualitativeType, QualitativeTypeAdmin)
 admin.site.register(News, NewsAdmin)
 admin.site.register(InstrumentType, InstrumentTypeAdmin)
 admin.site.register(ActivityLogUnits, ActivityLogUnitsAdmin)

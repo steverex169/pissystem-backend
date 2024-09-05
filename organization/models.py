@@ -13,6 +13,7 @@ class Organization(models.Model):
     website = models.CharField(max_length=255, blank=False, null=True)
     registered_at = models.DateTimeField(
         max_length=255, null=True, blank=False)
+    photo = models.ImageField (upload_to='organization', verbose_name='Organization\'s', default="blank")
 
     def __str__(self):
         return self.name
