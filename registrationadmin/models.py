@@ -49,8 +49,8 @@ class Round(models.Model):
     cycle_no = models.CharField(max_length=255, blank=True, null=True)
     sample = models.CharField(max_length=255, blank=True, null=True)
     participants = models.ManyToManyField(Lab, blank=True)
-    issue_date = models.DateField(blank=True, null=True)
-    closing_date = models.DateField(blank=True, null=True)
+    issue_date = models.DateTimeField(blank=True, null=True)
+    closing_date = models.DateTimeField(blank=True, null=True)
     # notes = models.CharField(max_length=255, blank=True, null=True)
     status = models.CharField(
         max_length=50, choices=STATUS, blank=True)

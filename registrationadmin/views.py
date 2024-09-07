@@ -917,7 +917,6 @@ class AnalyteSpecificScheme(APIView):
 
             # Fetch the Round entries associated with this scheme and having status 'Ready'
             rounds = Round.objects.filter(scheme=scheme)
-
             # Serialize the round data
             round_serializer = RoundSerializer(rounds, many=True)
 
