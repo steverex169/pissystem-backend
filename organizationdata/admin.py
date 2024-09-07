@@ -1,5 +1,5 @@
 from django.contrib import admin
-from organization.models import Organization
+from organizationdata.models import Organization
 
 
 class OrganizationAdmin(admin.ModelAdmin):

@@ -3,13 +3,13 @@ from enum import unique
 from django.db import models
 from typing import Type
 from account.models import UserAccount
-from organization.models import Organization
+from organizationdata.models import Organization
 # from donor.models import DonorBank
 # from medicaltest.models import Test, Unit
 from staff.models import Marketer, Staff
 from territories.models import Territories
 from django.utils.timezone import now
-from databaseadmin.models import Analyte, Instrument, Method, Units, Reagents
+from databaseadmin.models import Analyte, Instrument, Method, Units, Reagents, Scheme
 
 # from corporate.models import Corporate
 
@@ -84,7 +84,14 @@ STATUS = (
     ('Cencel Request', 'Cencel Request'),
     ('Cencel', 'Cencel'),
 )
-
+PAYMENT_STATUS = (
+    ('Paid', 'Paid'),
+    ('Unpaid', 'Unpaid'),
+)
+MEMBERSHIP_STATUS = (
+    ('Active', 'Active'),
+    ('Suspended', 'Suspended'),
+)
 GENDER = (
     ('Male', 'Male'),
     ('Female', 'Female')
@@ -208,6 +215,9 @@ class Lab(models.Model):
                             null=True, verbose_name='Lab name')
     user_name = models.CharField(max_length=255, blank=False,
                             null=True, verbose_name='user name')
+    payment_status = models.CharField(max_length=50, choices=PAYMENT_STATUS, default='Unpaid')
+    membership_status = models.CharField(max_length=50, choices=MEMBERSHIP_STATUS, default='Suspended')
+    
     financial_settlement = models.CharField(
         max_length=50, choices=FINANCIAL_SETTLEMENT, default='Self', blank=True, null=True)
     logo = models.ImageField(
@@ -258,8 +268,6 @@ class Lab(models.Model):
     is_temporary_blocked = models.CharField(max_length=50, choices=OPTIONS, default='No',
        null=True, verbose_name='Is lab temporary blocked from using our services?')
     is_approved = models.BooleanField(default=0, blank=False, null=True)
-    Select_schemes = models.CharField(
-        max_length=255, null=True, blank=True)
     website = models.URLField(max_length=200, blank=True, null=True, verbose_name='Website')
     district = models.CharField(max_length=255, blank=True, null=True)
     landline_registered_by = models.CharField(
@@ -340,56 +348,6 @@ class LabCorporate(models.Model):
     # class Meta:
     #     verbose_name = 'Lab Corporate'
 
-class OfferedTest(models.Model):
-    lab_id = models.ForeignKey(
-        Lab, on_delete=models.CASCADE, verbose_name='Lab name', null=True)
-    # test_id = models.ForeignKey(Test, on_delete=models.CASCADE,
-    #                             primary_key=False, verbose_name='Test name', null=True)
-    # unit_id = models.ForeignKey(
-    #     Unit, on_delete=models.CASCADE, primary_key=False, verbose_name='Unit', null=True)
-    test_details = models.TextField(
-        max_length=2000, null=True, blank=True)
-    test_type = models.CharField(
-        max_length=50, null=True)
-    duration_required = models.PositiveIntegerField(blank=False, null=True)
-    duration_type = models.CharField(
-        max_length=50, choices=DURATION_TYPE, default='days', blank=True, null=True)
-    price = models.PositiveIntegerField(blank=False, null=True)
-    sample_type = models.CharField(
-        max_length=50, choices=SAMPLE_TYPE, default='days', blank=True, null=True)
-    is_eqa_participation = models.CharField(
-        max_length=50, choices=OPTIONS, default='No', blank=True, null=True, verbose_name='Is EQA Participation?')
-    is_home_sampling_available = models.CharField(
-        max_length=50, choices=OPTIONS, default='Yes', blank=True, null=True, verbose_name='Is home sampling available?')
-    extra_charges = models.PositiveIntegerField(blank=True, null=True)
-    is_test_performed = models.CharField(
-        max_length=50, choices=TEST_PERFORMING_METHOD, default='In House', blank=True, null=True, verbose_name='Is test performed?')
-    discount = models.FloatField(
-        null=True, blank=True, verbose_name="Discount Percentage", default=0)
-    start_date = models.DateTimeField(max_length=255, null=True, blank=True,verbose_name="Discount Start Date")
-    end_date = models.DateTimeField(max_length=255, null=True, blank=True,verbose_name="Discount End Date", default=datetime.now)
-    discount_by_labhazir = models.FloatField(
-        null=True, blank=True, verbose_name="Discount Percentage by LabHazir", default=0)
-    start_date_by_labhazir = models.DateTimeField(
-        null=True, blank=True, verbose_name="Discount Start Date by LabHazir")
-    end_date_by_labhazir= models.DateTimeField(
-        null=True, blank=True, verbose_name="Discount End Date by LabHazir", default=datetime.now)
-    shared_percentage = models.FloatField(
-        null=True, blank=True, verbose_name="Referral Fee Percentage", default=0)
-    status = models.CharField(
-        max_length=50, choices=STATUS, default='Pending')
-    main_lab_tests = models.BooleanField(default=0, blank=False, null=True, help_text='Do you want to add main lab offered tests?') 
-    is_active = models.CharField(max_length=50, choices=OPTIONS, default='Yes',
-                                 null=True, verbose_name='Is lab providing the facility of this test?')
-    guest_id = models.CharField(max_length=100, null=True,  blank=True)
-
-
-    def __str__(self):
-        return self.lab_id.name + " - " + self.test_id.name 
-
-    # class Meta:
-    #     verbose_name = 'Offered Test'
-
 
 # class QualityCertificate(models.Model):
 #     lab_id = models.ForeignKey(
@@ -447,7 +405,6 @@ class LabPayment(models.Model):
         verbose_name = 'Lab Payment'
 
 class ActivityLog(models.Model):
-    offered_test_id = models.ForeignKey(OfferedTest, on_delete=models.CASCADE, verbose_name='Lab', primary_key=False, null=True, blank=False)
     field_name = models.CharField(max_length=255, null= True)
     old_value = models.TextField(null= True)
     new_value = models.TextField(null= True)

@@ -1,7 +1,7 @@
 from django.db import models
 # from donor.models import Donor, DonorPayment
 
-from labowner.models import Lab, LabPayment, OfferedTest
+from labowner.models import Lab, LabPayment
 # from patient.models import Invoice, Payment, TestAppointment
 # from b2bclient.models import B2BClient, B2BPayment, B2BShares
 from financeofficer.models import PaymentIn, PaymentOut
@@ -176,8 +176,6 @@ class B2BAccountStatement(models.Model):
     #     B2BClient, on_delete=models.CASCADE, verbose_name='B2B', null=True)
     payment_out_id = models.ForeignKey(
         PaymentOut, on_delete=models.CASCADE, verbose_name='Payment In', null=True, blank=True)
-    offered_test_id = models.ForeignKey(
-        OfferedTest, on_delete=models.CASCADE, primary_key=False, null=True, blank=False)
     # test_appointment_id = models.ForeignKey(
     #     TestAppointment, on_delete=models.CASCADE, primary_key=False, null=True, verbose_name="appointment", blank=True)
     b2b_share = models.FloatField(null=True, blank=True, default=0)
