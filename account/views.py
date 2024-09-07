@@ -24,7 +24,7 @@ from datetime import datetime
 import datetime
 from django.contrib.auth.models import update_last_login
 from staff.models import Staff
-from organization.models import Organization
+from organizationdata.models import Organization
 from labowner.models import Lab
 from django.utils import timezone
 # Redirect to admin
@@ -110,6 +110,7 @@ class RegisterView(CreateAPIView):
                     user_name=request.data['username'],
                     website=request.data['website'],
                     country=request.data['country'],
+                    photo=request.data['logo'],
                     registered_at=datetime.datetime.now()
                 )
              

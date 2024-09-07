@@ -18,7 +18,7 @@ from rest_framework.authtoken.models import Token
 from rest_framework.authtoken.serializers import AuthTokenSerializer
 from django.utils import timezone
 from account.models import UserAccount
-from organization.models import Organization
+from organizationdata.models import Organization
 from django.shortcuts import get_object_or_404
 import datetime
 import pandas as pd
@@ -513,7 +513,7 @@ class ProvinceListAPIView(APIView):
 
     def get(self, request, *args, **kwargs):
         try:
-            # Get the staff user's account_id
+           # Get the staff user's account_id
             account_id = kwargs.get('id')
             
             # Fetch the staff user based on account_id

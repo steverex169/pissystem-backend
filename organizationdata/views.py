@@ -11,8 +11,8 @@ from rest_framework.authtoken.models import Token
 from django.conf import settings
 from helpers.mail import send_mail
 from django.contrib.sites.shortcuts import get_current_site
-from organization.models import Organization
-from organization.serializers import OrganizationSerializer
+from organizationdata.models import Organization
+from organizationdata.serializers import OrganizationSerializer
 from account.models import UserAccount
 from staff.models import Staff
 from django.forms.models import model_to_dict
@@ -134,10 +134,13 @@ class OrganizationListView(APIView):
             serialized_data = []
             for organization in organization_list:
                 organization_data = model_to_dict(organization)
+                if organization_data.get('photo'):
+                    organization_data['photo']= organization.photo.url
                 serialized_data.append(organization_data)
             return Response({"status": status.HTTP_200_OK, "data": serialized_data})
         except Organization.DoesNotExist:
             return Response({"status": status.  HTTP_400_BAD_REQUEST, "message": "No Record Exist."})
+
 class OrganizationListUpdateAPIView(APIView):
     def put(self, request, *args, **kwargs):
         try:

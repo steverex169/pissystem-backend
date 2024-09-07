@@ -1,7 +1,7 @@
 # urls.py
 
 from django.urls import path
-from organization.views import RegisterOrganizationView, OrganizationListView, OrganizationListUpdateAPIView, OrganizationListDeleteAPIView
+from organizationdata.views import RegisterOrganizationView, OrganizationListView, OrganizationListUpdateAPIView, OrganizationListDeleteAPIView
 
 urlpatterns = [
     path('register-organization', RegisterOrganizationView.as_view(), name='register-organization'),

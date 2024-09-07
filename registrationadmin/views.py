@@ -1,5 +1,6 @@
 import ast
 from datetime import datetime
+import datetime
 from django.forms.models import model_to_dict
 import requests
 from rest_framework.response import Response
@@ -8,27 +9,25 @@ from rest_framework import parsers
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.views import APIView
 from databaseadmin.models import Cycle, Scheme
-from labowner.models import Lab, OfferedTest, Pathologist, Result, SampleCollector
-from labowner.serializers import LabInformationSerializer,  PathologistSerializer, OfferedTestSerializer, ResultSerializer
+from labowner.models import Lab, Pathologist, Result, SampleCollector
+from labowner.serializers import LabInformationSerializer,  PathologistSerializer, ResultSerializer
 from registrationadmin.serializers import AnalyteSchemeSerializer, RoundSerializer, ActivityLogUnitsSerializer, PaymentSerializer,SelectedSchemeSerializer, StatisticsSerializer
 from registrationadmin.models import  ActivityLogUnits, Round,Payment, SelectedScheme, Statistics
-
 from staff.models import Staff
-from labowner.models import Lab 
 
-from registrationadmin.serializers import RoundSerializer, ActivityLogUnitsSerializer
-from registrationadmin.models import  ActivityLogUnits, Round
+from labowner.models import Lab, Pathologist, Result, SampleCollector
+from labowner.serializers import LabInformationSerializer,  PathologistSerializer, ResultSerializer
 from django.shortcuts import get_object_or_404
 from django.forms.models import model_to_dict
 from django.http import JsonResponse
 from django.db.models import Count
 from django.db.models import Q
 from account.models import UserAccount
-from organization.models import Organization
-import datetime
+from organizationdata.models import Organization
 from django.shortcuts import get_object_or_404
 from databaseadmin.models import Scheme 
 from django.db import transaction
+
 from django.db.models import Avg
 import numpy as np 
 import decimal
@@ -116,6 +115,41 @@ logger = logging.getLogger(__name__)
 
 #         except Exception as e:
 #             return Response({"status": status.HTTP_400_BAD_REQUEST, "message": str(e)})
+import ast
+
+
+class UpdateMembershipStatusView(APIView):
+    permission_classes = (AllowAny,)
+
+    def put(self, request, *args, **kwargs):
+        try:
+            # Fetch the staff user based on account_id
+            account_id = request.data.get('added_by')
+            staff_user = Staff.objects.get(account_id=account_id)
+
+            # Retrieve the organization associated with the staff user
+            organization = staff_user.organization_id
+
+            # Retrieve the existing status object
+            membership_status = Lab.objects.get(id=kwargs.get('id'), organization_id=organization)
+
+            serializer = LabInformationSerializer(membership_status, data=request.data, partial=True)
+            
+            if serializer.is_valid():
+                serializer.save()
+                return Response(serializer.data)
+            else:
+                return Response({"status": status.HTTP_400_BAD_REQUEST, "message": serializer.errors})
+                
+        except Staff.DoesNotExist:
+            return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "Invalid account_id."})
+
+        except Lab.DoesNotExist:
+            return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "No such record exists."})
+
+        except Exception as e:
+            return Response({"status": status.HTTP_400_BAD_REQUEST, "message": str(e)})
+
 
 class PaymentPostAPIView(APIView):
     permission_classes = (AllowAny,)
@@ -204,6 +238,30 @@ class PendingLabsView(APIView):
         except Lab.DoesNotExist:
             return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "Sorry! No pending labs exist."})
 
+class AllLabsView(APIView):
+    permission_classes = (IsAuthenticated,)
+
+    def get(self, request, *args, **kwargs):
+        try:
+            staff = Staff.objects.get(account_id=kwargs.get('id'))
+            organization = staff.organization_id
+            pending_labs = Lab.objects.filter(organization_id=organization)
+            
+            serializer = LabInformationSerializer(pending_labs, many=True)
+            data = serializer.data
+
+            for i, lab in enumerate(pending_labs):
+                if lab.marketer_id is not None:
+                    data[i]['marketer_name'] = lab.marketer_id.name
+                    data[i]['marketer_phone'] = lab.marketer_id.phone
+
+            return Response({"status": status.HTTP_200_OK, "data": data})
+
+        except Staff.DoesNotExist:
+            return Response({"status": status.HTTP_404_NOT_FOUND, "message": "Staff not found."})
+        except Lab.DoesNotExist:
+            return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "Sorry! No pending labs exist."})
+
 class ApproveUnapproveLabView(APIView):
     permission_classes = (AllowAny,)
     parser_classes = (parsers.MultiPartParser, parsers.FormParser,)
@@ -249,15 +307,20 @@ class UnapprovedLabsView(APIView):
         try:
             staff = Staff.objects.get(account_id=kwargs.get('id'))
             organization = staff.organization_id
+            pending_labs = Lab.objects.filter(organization_id=organization, status="Pending")
             
-            unapproved_labs = Lab.objects.filter(Q(organization_id=organization, status="Unapproved") or Q(is_active="No"))
-            serializer_class = LabInformationSerializer(
-                unapproved_labs, many=True)
-            for i in range(len(unapproved_labs)):
-                serializer_class.data[i]['lab_phone'] = unapproved_labs[i].landline
+            serializer = LabInformationSerializer(pending_labs, many=True)
+            data = serializer.data
 
-            return Response({"status": status.HTTP_200_OK, "data": serializer_class.data})
+            for i, lab in enumerate(pending_labs):
+                if lab.marketer_id is not None:
+                    data[i]['marketer_name'] = lab.marketer_id.name
+                    data[i]['marketer_phone'] = lab.marketer_id.phone
 
+            return Response({"status": status.HTTP_200_OK, "data": data})
+
+        except Staff.DoesNotExist:
+            return Response({"status": status.HTTP_404_NOT_FOUND, "message": "Staff not found."})
         except Lab.DoesNotExist:
             return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "Sorry! No pending labs exist."})
 
@@ -356,14 +419,31 @@ class RoundAPIView(APIView):
             # Serialize rounds data including scheme name
             serialized_data = []
             for round_obj in round_list:
-                round_data = model_to_dict(round_obj)
-                 # Convert participants field to a list of participant IDs
-                round_data['participants'] = list(round_obj.participants.values_list('id', flat=True))
+                # Split the participants field if it's a comma-separated string of participant IDs
+                participants = round_obj.participants.split(',') if round_obj.participants else []
+                participant_count = len(participants)  # Count the number of participants
+
+                round_data = {
+                    "id": round_obj.id,
+                    "rounds": round_obj.rounds,
+                    "cycle_no": round_obj.cycle_no,
+                    "sample": round_obj.sample,
+                    "issue_date": round_obj.issue_date,
+                    "closing_date": round_obj.closing_date,
+                    "status": round_obj.status,
+                    "account_id": round_obj.account_id_id if round_obj.account_id else None,
+                    "organization_id": round_obj.organization_id_id if round_obj.organization_id else None,
+                    "scheme": round_obj.scheme.id if round_obj.scheme else None,
+                    "participant_count": participant_count,  # Use the participant count
+                    "nooflabs": participant_count,  # Assuming nooflabs is the same as participant count
+                }
+
                 scheme = round_obj.scheme
                 if scheme:
                     round_data['scheme_name'] = scheme.name
                 else:
                     round_data['scheme_name'] = None  # Handle case where scheme is None
+
                 serialized_data.append(round_data)
 
             return Response({"status": status.HTTP_200_OK, "data": serialized_data})
@@ -373,6 +453,10 @@ class RoundAPIView(APIView):
         
         except Round.DoesNotExist:
             return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "No Round records found."})
+        
+        except Exception as e:
+            return Response({"status": status.HTTP_500_INTERNAL_SERVER_ERROR, "message": str(e)})
+
 
 class RoundPostAPIView(APIView):
     permission_classes = (AllowAny,)
@@ -427,15 +511,15 @@ class RoundUpdateAPIView(APIView):
             round = Round.objects.get(id=kwargs.get('id'))
 
             # Store old values before updating
-            old_values = {field: getattr(round, field) for field in ["rounds", "scheme", "cycle_no", "sample", "participants", "issue_date", "closing_date", "status"]}
+            old_values = {field: getattr(round, field) for field in ["rounds", "scheme", "cycle_no", "sample", "issue_date", "closing_date", "status"]}
             
             serializer = RoundSerializer(round, data=request.data, partial=True)
 
             if serializer.is_valid():
-                updated_unit = serializer.save()
+                updated_round = serializer.save()
                 
                 # Retrieve new values after updating
-                new_values = {field: getattr(updated_unit, field) for field in ["rounds", "scheme", "cycle_no", "sample", "participants", "issue_date", "closing_date", "status"]}
+                new_values = {field: getattr(updated_round, field) for field in ["rounds", "scheme", "cycle_no", "sample", "issue_date", "closing_date", "status"]}
 
                 # Find the fields that have changed
                 changed_fields = {field: new_values[field] for field in new_values if new_values[field] != old_values[field]}
@@ -451,9 +535,9 @@ class RoundUpdateAPIView(APIView):
                     field_name="Changes",
                     old_value= ", ".join([f"{field}: {old_values[field]}" for field in changed_fields]),
                     new_value=changes_string,
-                    added_by=request.user,
+                    # added_by=request.user,
                     actions="Updated",
-                    type="Round",
+                    # type="Round",
                 )
 
                 return Response({
@@ -471,8 +555,15 @@ class RoundDeleteAPIView(APIView):
     permission_classes = (AllowAny,)
 
     def delete(self, request, *args, **kwargs):
+        round_id = kwargs.get('id')
         try:
-            Round.objects.get(id=kwargs.get('id')).delete()
+            round_instance = Round.objects.get(id=round_id)
+            
+            # Check if the round's status is 'Open'
+            if round_instance.status == 'Open':
+                return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "Cannot delete round. It is currently open."})
+            
+            round_instance.delete()
             return Response({"status": status.HTTP_200_OK, "message": "Deleted successfully"})
 
         except Round.DoesNotExist:
@@ -538,76 +629,71 @@ class RoundUpdateLabsAPIView(APIView):
 
     def put(self, request, id, *args, **kwargs):
         try:
+            # Fetch the round based on the id
             round = Round.objects.get(id=id)
-            participants = request.data.get('participants', [])
-            if isinstance(participants, str):
-                participants = list(map(int, participants.split(',')))
-            
-            round.participants.set(participants)  # Assuming participants are passed as a list of IDs
+
+            # Fetch participants from the request data
+            new_participants = request.data.get('participants', [])
+
+            # If participants are provided as a string (comma-separated list), convert it to a list
+            if isinstance(new_participants, str):
+                new_participants = new_participants.split(',')
+
+            # Ensure the new participants are a list of strings
+            new_participants = list(map(str, new_participants))
+
+            # Fetch the existing participants from the round (comma-separated string)
+            existing_participants = round.participants.split(',') if round.participants else []
+
+            # Combine existing and new participants, ensuring no duplicates
+            combined_participants = list(set(existing_participants + new_participants))
+
+            # Convert the combined participants back to a comma-separated string
+            participants_str = ','.join(combined_participants)
+
+            # Update the 'participants' CharField
+            round.participants = participants_str
             round.save()
+
+            # Serialize the updated round data
             serialized_data = RoundSerializer(round).data
-            return Response({"status": status.HTTP_200_OK, "analyte_data": serialized_data, "message": "Labs updated for Round successfully."})
+            return Response({
+                "status": status.HTTP_200_OK, 
+                "analyte_data": serialized_data, 
+                "message": "Labs updated for Round successfully."
+            })
+
         except Round.DoesNotExist:
             return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "Round does not exist."})
+        
         except Exception as e:
             return Response({"status": status.HTTP_400_BAD_REQUEST, "message": str(e)})
-        
 # Participants Dashboard Rounds API      
 class SelectedSchemeListAPIView(APIView):
-      def get(self, request, *args, **kwargs):
+    def get(self, request, *args, **kwargs):
         try:
+            # Get the account_id from the URL parameters
             account_id = kwargs.get('id')
+            print("Account ID:", account_id)
+            
             # Fetch the participant (Lab) based on account_id
             participant = Lab.objects.get(account_id=account_id)
-            # print("iddddddddddd", account_id) //229
+            print("Lab ID:", participant.id)
             
-            # Fetch all SelectedScheme instances for the given participant
-            selected_schemes = SelectedScheme.objects.filter(participant=participant.id)
+            # Fetch all Round instances where the participant (Lab ID) is in the participants array
+            selected_schemes = Round.objects.filter(participants__contains=participant.id, 
+                                                    status__in=["Ready", "Open", "Closed", "Report Available"])
+            print("Selected Schemes:", selected_schemes)
             
-            # List to hold serialized data
-            serialized_data = []
-            
-            for selected_scheme in selected_schemes:
-                # Assuming selected_scheme.scheme_id is a string representation of a list
-                scheme_ids = ast.literal_eval(selected_scheme.scheme_id)
-                
-                # Filter Cycle objects based on the scheme_ids (which correspond to Cycle ids)
-                cycles = Cycle.objects.filter(id__in=scheme_ids)
-                
-                for cycle in cycles:
-                    # Fetch Scheme object associated with the Cycle
-                    scheme = cycle.scheme_name
-                    # Filter related Round data for each scheme based on status
-                    rounds = Round.objects.filter(
-                        scheme=scheme,
-                        status__in=['Open', 'Closed', 'Report Available']  # Filter by status
-                    )
-                    
-                    # Serialize round data
-                    rounds_data = [
-                        {
-                            'rounds': round.rounds,
-                            'cycle_no': round.cycle_no,
-                            'sample': round.sample,
-                            'issue_date': round.issue_date,
-                            'closing_date': round.closing_date,
-                            'status': round.status,
-                        }
-                        for round in rounds
-                    ]
-                    
-                    # Serialize the scheme data along with rounds data
-                    scheme_data = {
-                        'id': scheme.id,
-                        'name': scheme.name,
-                        'status': scheme.status,
-                        'price': scheme.price,
-                        'rounds': rounds_data  # Include rounds data here
-                    }
-                    serialized_data.append(scheme_data)
+            # Serialize the data
+            serializer = RoundSerializer(selected_schemes, many=True)
 
-            # Return the serialized data as JSON response
-            return Response({"status": status.HTTP_200_OK, "data": serialized_data})
+            for i in range(0, len(selected_schemes)):
+                serializer.data[i]['scheme_name'] = selected_schemes[i].scheme.name    
+                print("sample name", serializer.data[i]['scheme_name'])            
+
+            # Return the serialized data as a JSON response
+            return Response({"status": status.HTTP_200_OK, "data": serializer.data})
 
         except Lab.DoesNotExist:
             return Response({"status": status.HTTP_404_NOT_FOUND, "message": "Participant not found."})
@@ -615,8 +701,11 @@ class SelectedSchemeListAPIView(APIView):
         except ValueError as ve:
             return Response({"status": status.HTTP_400_BAD_REQUEST, "message": str(ve)})
         
-        except SelectedScheme.DoesNotExist:
-            return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "No Record Exist."})
+        except Round.DoesNotExist:
+            return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "No record exists."})
+        
+        except Exception as e:
+            return Response({"status": status.HTTP_500_INTERNAL_SERVER_ERROR, "message": str(e)})
         
     # def get(self, request, *args, **kwargs):
     #     try:
@@ -674,22 +763,6 @@ class SelectedSchemeListAPIView(APIView):
     #     except SelectedScheme.DoesNotExist:
     #         return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "No Record Exist."})
 
-# ££££££££££££££££££££££££££££££££££££££££££££££££££££££££££££££££££££££
-
-# Results API Participants Dashboard
-# class ParticipantResultView(APIView):
-#     permission_classes = (AllowAny,)
-
-#     # Get request to get data of the lab
-#     def get(self, request, *args, **kwargs):
-#         # print("Fetching data for scheme_id:", kwargs.get('id'))
-#         try:
-#             participant_results = Result.objects.filter(scheme_id=kwargs.get('id'))
-#             print("idddddddd",kwargs.get('id') )
-#             serializer = ResultSerializer(participant_results, many=True)  # many=True to serialize multiple objects
-#             return Response({"status": status.HTTP_200_OK, "data": serializer.data})
-#         except Result.DoesNotExist:
-#             return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "Sorry! No such Result exists."})
 
 class ParticipantResultView(APIView):
     permission_classes = (AllowAny,)
@@ -800,106 +873,7 @@ class ParticipantResultView(APIView):
                 "message": str(e)
             })
 
-    # def post(self, request, *args, **kwargs):
-    #     try:
-    #         lab = Lab.objects.get(account_id=kwargs.get('id'))
-    #         print("idddddddddd", kwargs.get('id'))
-    #         # result = Result.objects.filter(lab_id=lab.id)
-            
-    #         # Retrieve the organization associated with the staff user
-    #         organization = lab.organization_id
-
-    #         # Make request.data mutable to modify it
-    #         request.data._mutable = True
-    #         data = {
-    #         'scheme_id': request.data.get('scheme_id'),
-    #         'lab_id': lab.id,
-    #         'organization_id': organization.id if organization else None,
-    #         'units': request.data.get('unit_name'),
-    #         'instrument': request.data.get('instrument_name'),
-    #         'method': request.data.get('method_name'),
-    #         'reagents': request.data.get('reagent_name'),
-    #         'result': request.data.get('result'),
-    #         'analyte': request.data.get('analyte_id'),
-    #         'rounds' : request.data.get('rounds'),
-    #         }
-
-    #          # Set request.data to the prepared data
-    #         request.data.update(data)
-    #         request.data._mutable = False
-
-    #          # Initialize serializer with the provided data
-    #         serializer_class = ResultSerializer(data=request.data)
-
-    #         if serializer_class.is_valid():
-    #             serializer_class.save()
-    #             return Response({"status": status.HTTP_200_OK, "data": serializer_class.data, "message": "Participent Result added successfully."})
-    #         else:
-    #             return Response({"status": status.HTTP_400_BAD_REQUEST, "message": serializer_class.errors})
-
-    #     except Lab.DoesNotExist:
-    #         return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "No such Lab exists."})
-        
-#All Analytes related to selected_schemes on participant dashboard
-# class SelectedSchemeAnalytesList(APIView):
-#     def get(self, request, *args, **kwargs):
-#         try:
-#             account_id = kwargs.get('id')
-#             participant_id = Lab.objects.get(account_id=account_id)
-
-#             # Fetch all SelectedScheme instances for the given participant
-#             selected_schemes = SelectedScheme.objects.filter(participant=participant_id.id)
-#             analytes_set = set()
-            
-#             for selected_scheme in selected_schemes:
-#                 # Convert scheme_id string representation back into a list
-#                 scheme_ids = ast.literal_eval(selected_scheme.scheme_id)
-                
-#                 # Fetch Scheme objects corresponding to each scheme_id
-#                 schemes = Scheme.objects.filter(id__in=scheme_ids)
-                
-#                 for scheme in schemes:
-#                     # Fetch Analyte objects related to the current Scheme
-#                     analytes = scheme.analytes.all()
-#                     analytes_set.update(analytes)
-            
-#             analyte_data = []
-#             for analyte in analytes_set:
-#                 analyte_data.append({
-#                     'name': analyte.name,
-#                     'code': analyte.code,
-#                     'status': analyte.status,
-#                     'date_of_addition': analyte.date_of_addition,
-#                 })
-
-#             return JsonResponse({'analytes': analyte_data}, status=200)
-        
-#         except Lab.DoesNotExist:
-#             return JsonResponse({'error': 'Participant not found'}, status=404)
-#         except Exception as e:
-#             return JsonResponse({'error': str(e)}, status=500)
-
-# Analytes related to single scheme
-# class AnalyteSpecificScheme(APIView):
-#      def get(self, request, *args, **kwargs):
-#         try:
-#             scheme_id = kwargs.get('id')
-#             # Fetch the Scheme object
-#             scheme = Scheme.objects.get(id=scheme_id)
-            
-#             # Get all analytes associated with this scheme
-#             analytes = scheme.analytes.all()
-            
-#             # Serialize the analytes data
-#             analyte_serializer = AnalyteSchemeSerializer(analytes, many=True)
-
-#             return Response({'status': status.HTTP_200_OK, 'data': analyte_serializer.data}, status=status.HTTP_200_OK)
-        
-#         except Scheme.DoesNotExist:
-#             return Response({'status': status.HTTP_404_NOT_FOUND, 'message': 'Scheme not found'}, status=status.HTTP_404_NOT_FOUND)
-        
-#         except Exception as e:
-#             return Response({'status': status.HTTP_500_INTERNAL_SERVER_ERROR, 'message': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    
 
 # Analytes related to single scheme        
 class AnalyteSpecificScheme(APIView):
@@ -907,18 +881,21 @@ class AnalyteSpecificScheme(APIView):
         try:
             scheme_id = kwargs.get('id')
             # Fetch the Scheme object
-            scheme = Scheme.objects.get(id=scheme_id)
+            round = Round.objects.get(id=scheme_id)
+            print("schemeeeeeeeeeeeeee", round, scheme_id)
             
             # Get all analytes associated with this scheme
-            analytes = scheme.analytes.all()
+            analytes = round.scheme.analytes.all()
+            print("analytesss", analytes)
             
             # Serialize the analytes data
             analyte_serializer = AnalyteSchemeSerializer(analytes, many=True)
 
             # Fetch the Round entries associated with this scheme and having status 'Ready'
-            rounds = Round.objects.filter(scheme=scheme)
+            # rounds = Round.objects.filter(scheme=scheme)
+
             # Serialize the round data
-            round_serializer = RoundSerializer(rounds, many=True)
+            round_serializer = RoundSerializer(round)
 
            # Fetch all Result entries associated with this scheme
             results = Result.objects.filter(scheme_id=scheme_id)
@@ -929,13 +906,16 @@ class AnalyteSpecificScheme(APIView):
 
             # Iterate through each Result to fetch the corresponding lab's account_id
             for result in results:
-                lab = result.lab_id  # Fetch the related Lab object
+                lab = result.lab_id  # Fetch the related Lab 
                 participant_id = lab.account_id_id # Get the account_id from the Lab object
                 participant_ids.append(participant_id)  # Add to the list
 
             # Include the scheme name, round data, and participant IDs in the response
             response_data = {
-                'scheme_name': scheme.name,
+                'scheme_name': round.scheme.name,
+                'round_no': round.rounds,
+                'round_closingdate': round.closing_date,
+                'round_issuedate': round.issue_date,
                 'analytes': analyte_serializer.data,
                 'rounds': round_serializer.data,
                 'participant_ids': participant_ids  # Include all participant IDs
@@ -1030,6 +1010,9 @@ class AnalyteResultSubmit(APIView):
             
             # Serialize the saved Statistics instances
             serializer = StatisticsSerializer(analyte_results, many=True)
+
+            # rount = Round.objects.filter(scheme=kwargs.get('id'), id=result.rounds).update(status=)
+
             return Response({'status': status.HTTP_200_OK, 'data': serializer.data}, status=status.HTTP_200_OK)
 
         except Scheme.DoesNotExist:
@@ -1037,81 +1020,34 @@ class AnalyteResultSubmit(APIView):
 
         except Exception as e:
             return Response({'status': status.HTTP_500_INTERNAL_SERVER_ERROR, 'message': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
-# /////////// with serailizer      
-# class AnalyteResultSubmit(APIView):
-#     def get(self, request, *args, **kwargs):
-#         try:
-#             scheme_id = kwargs.get('id')
-#             scheme = Scheme.objects.get(id=scheme_id)
-#             organization_id = scheme.organization_id.id
-#             analytes = scheme.analytes.all()
-
-#             analyte_results = []
-
-#             for analyte in analytes:
-#                  # Filter results by scheme_id and analyte
-#                 results = Result.objects.filter(scheme_id=scheme_id, analyte=analyte, organization_id=organization_id)
-
-#                 # Get unique labs that have submitted results
-#                 lab_count = results.values('lab_id').distinct().count()
-#                 # lab_count = Result.objects.filter(scheme_id=scheme_id, analyte=analyte).values('lab_id').distinct().count()
-#                 # Calculate the mean of the 'result' field
-#                 mean_result = results.aggregate(mean_result=Avg('result'))['mean_result']
-#                 # Round mean_result to 2 decimal places
-#                 mean_result_rounded = round(mean_result, 2) if mean_result is not None else 0
-#                  # Calculate the median of the 'result' field
-#                 result_values = list(results.values_list('result', flat=True).exclude(result=None))
-
-#                 if result_values:
-#                     sorted_results = sorted(result_values)
-#                     median_result = sorted_results[len(sorted_results) // 2]
-#                     variance = sum((value - mean_result_rounded) ** 2 for value in result_values) / len(result_values)
-#                     std_deviation = Decimal(math.sqrt(variance))
-#                     cv_percentage = round((std_deviation / mean_result_rounded) * 100, 2)
-#                     uncertainty = round(std_deviation / Decimal(math.sqrt(len(result_values))), 2)
-#                     # Calculate robust mean (trimmed mean, removing 10% of the smallest and largest values)
-#                     trimmed_mean = trim_mean(result_values, 0.1)
-#                     robust_mean = round(trimmed_mean, 2)
-#                     # Calculate Z-scores and save lab_id with each Z-score
-#                     z_scores_with_lab = []
-#                     for result in results:
-#                         lab_id = result.lab_id
-#                         z_score = (Decimal(result.result) - mean_result_rounded) / std_deviation
-#                         z_scores_with_lab.append({
-#                             'lab_id': lab_id.id,
-#                             'z_score': round(z_score, 4)
-#                         })
-#                     print("scoreeeeeee", z_scores_with_lab )
-                  
-#                 else:
-#                     median_result = Decimal('0.00')
-#                     std_deviation = Decimal('0.00')
-#                     cv_percentage = Decimal('0.00')
-#                     uncertainty = Decimal('0.00')
-#                     robust_mean = Decimal('0.00')
-#                     z_scores_with_lab = []
-
-#                 analyte_results.append({
-#                     'analyte_id': analyte.id,
-#                     'analyte_name': analyte.name,
-#                     'lab_count': lab_count,
-#                     'mean_result': mean_result_rounded if mean_result is not None else 0, # Handle case when no results are available
-#                     'median_result': median_result,  # Include median result
-#                     'std_deviation': round(std_deviation, 2),  # Round standard deviation to 2 decimal places
-#                     'cv_percentage': cv_percentage,
-#                     'uncertainty': uncertainty,
-#                     'robust_mean': robust_mean,
-#                     'z_scores_with_lab': z_scores_with_lab,
-#                 })
-
-#             # Use the serializer to serialize the response data
-#             serializer =AnalyteResultSubmitSerializer(analyte_results, many=True)
-#             return Response({'status': status.HTTP_200_OK, 'data': serializer.data}, status=status.HTTP_200_OK)
-
-#         except Scheme.DoesNotExist:
-#             return Response({'status': status.HTTP_404_NOT_FOUND, 'message': 'Scheme not found'}, status=status.HTTP_404_NOT_FOUND)
-
-#         except Exception as e:
-#             return Response({'status': status.HTTP_500_INTERNAL_SERVER_ERROR, 'message': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
         
+
+class ParticipentsfromRound(APIView):
+    def get(self, request, *args, **kwargs):
+        try:
+            # Get the round ID from the request
+            round_id = kwargs.get('id')
+            print("url id", round_id)
+            # Fetch the Round object using the round ID
+            round_obj = Round.objects.get(id=round_id)
+            print("round here", round_obj)
+            
+            # Get the participants from the round (assuming it's a comma-separated list of lab IDs)
+            participant_ids = round_obj.participants.split(',') if round_obj.participants else []
+
+            # Convert participant IDs to integers
+            participant_ids = [int(pid) for pid in participant_ids]
+
+            # Fetch all labs excluding those in the participants list
+            labs = Lab.objects.exclude(id__in=participant_ids)
+
+            # Serialize the lab data
+            lab_serializer = LabInformationSerializer(labs, many=True)
+
+            return Response({'status': status.HTTP_200_OK, 'data': lab_serializer.data}, status=status.HTTP_200_OK)
+        
+        except Round.DoesNotExist:
+            return Response({'status': status.HTTP_404_NOT_FOUND, 'message': 'Round not found'}, status=status.HTTP_404_NOT_FOUND)
+        
+        except Exception as e:
+            return Response({'status': status.HTTP_500_INTERNAL_SERVER_ERROR, 'message': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

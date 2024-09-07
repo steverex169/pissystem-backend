@@ -1,7 +1,7 @@
 
 from account.models import UserAccount
 from django.db import models
-from organization.models import Organization
+from organizationdata.models import Organization
 from django.utils import timezone
 from account.models import UserAccount
 
@@ -380,6 +380,8 @@ class Sample(models.Model):
     def noofanalytes(self):
         return self.analytes.count()
         
+        return self.sampleno
+
     class Meta:
         verbose_name = 'Sample'
 

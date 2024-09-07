@@ -3,10 +3,10 @@ import datetime
 import re
 from ssl import CertificateError
 from sys import audit
-from pytz import timezone
-import pytz
+
+
 import shortuuid
-import requests
+
 from django.db.models import Max
 from django.db.models import Min
 from django.db.models import Avg
@@ -25,12 +25,12 @@ from accountstatement.serializers import AccountStatementSerializer
 from financeofficer.models import PaymentIn
 from financeofficer.serializers import PaymentInSerializer
 from helpers.mail import send_mail
-from labowner.models import FINANCIAL_SETTLEMENT, Result, ActivityLog, Lab, LabCorporate, OfferedTest, Pathologist, SampleCollector
-from organization.models import Organization
+from labowner.models import FINANCIAL_SETTLEMENT, Result, ActivityLog, Lab, LabCorporate, Pathologist, SampleCollector
+from organizationdata.models import Organization
 
 
 # from medicaltest.models import Test, Unit
-from labowner.serializers import ResultSerializer, ActivityLogSerializer, LabCorporateSerializer, LabInformationSerializer, LabPaymentSerializer, PathologistSerializer, SampleCollectorSerializer, OfferedTestSerializer
+from labowner.serializers import ResultSerializer, ActivityLogSerializer, LabCorporateSerializer, LabInformationSerializer, LabPaymentSerializer, PathologistSerializer, SampleCollectorSerializer
 from django.conf import settings
 
 from staff.models import Marketer, Staff
@@ -2017,3 +2017,72 @@ class ForChartCalculationView(APIView):
             }
 
             return Response(response_data, status=status.HTTP_200_OK)
+
+class ParticipentResultView(APIView):
+    permission_classes = (AllowAny,)
+
+    # Get request to get data of the lab
+    def get(self, request, *args, **kwargs):
+        print(kwargs.get('id'))
+        try:
+            ParticipentResult = Result.objects.filter(scheme_id=kwargs.get('id'))
+            serializer_class = ResultSerializer(
+                ParticipentResult, many=False)
+            return Response({"status": status.HTTP_200_OK, "data": serializer_class.data})
+        except Result.DoesNotExist:
+            return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "Sorry! No such Result exist."})
+
+    # Delete request to delete data of the sample collactor
+    def delete(self, request, *args, **kwargs):
+            try:
+                result_id = kwargs.get('id')
+
+                Result.objects.get(id=result_id).delete()
+
+                return Response({"status": status.HTTP_200_OK, "message": "Deleted successfully"})
+
+            except Result.DoesNotExist:
+                return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "Sorry! No such record to delete."})
+            except Result.DoesNotExist:
+                return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "No such Result exists."})
+    # Put request to update data of the sample collactor
+    def put(self, request, *args, **kwargs):
+        try:
+            # Here what we are getting as id is the id of offered test record to be updated
+            ParticipentResult = Result.objects.get(id=kwargs.get('id'))
+
+            serializer = ResultSerializer(
+                ParticipentResult, data=request.data, partial=False)
+
+            if serializer.is_valid():
+                serializer.save()
+                return Response({"status": status.HTTP_200_OK, "data": serializer.data, "message": "Result updated successfully."})
+            else:
+                return Response({"status": status.HTTP_400_BAD_REQUEST, "message": serializer._errors})
+
+        except Result.DoesNotExist:
+            return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "No such record exists."})
+
+    # Post request to store data of the sample collector
+    def post(self, request, *args, **kwargs):
+        try:
+            lab = Lab.objects.get(account_id=kwargs.get('id'))
+            # result = Result.objects.filter(lab_id=lab.id)
+
+            request.data._mutable = True  # Make data mutable first
+            request.data['scheme_id'] = request.data['scheme_id']
+            request.data['lab_id'] = lab.id
+            # request.data['organization_id'] = request.data['organization_id']
+            request.data._mutable = False  # Immute after making changes
+
+            serializer_class = ResultSerializer(data=request.data)
+
+            if serializer_class.is_valid():
+                serializer_class.save()
+                return Response({"status": status.HTTP_200_OK, "data": serializer_class.data, "message": "Participent Result added successfully."})
+            else:
+                return Response({"status": status.HTTP_400_BAD_REQUEST, "message": serializer_class.errors})
+
+        except Lab.DoesNotExist:
+            return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "No such Lab exists."})
+        
