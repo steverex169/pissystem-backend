@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from organization.models import Organization
+from organizationdata.models import Organization
 
 
 # Serializer for storing lab's information

@@ -1,5 +1,5 @@
 from django.urls import path
-from registrationadmin.views import  AnalyteResultSubmit,ParticipantResultView,UpdateMembershipStatusView,AllLabsView, PaymentPostAPIView,RoundAPIView,ApproveUnapproveLabView,  RoundPostAPIView, RoundUpdateAPIView, RoundDeleteAPIView,  ActivityLogRegistrationadmin, PendingLabsView, ApprovedLabsView, UnapprovedLabsView, RoundsLabsAPIView, RoundAddLabsAPIView, RoundUpdateLabsAPIView, SelectedSchemeListAPIView, AnalyteSpecificScheme
+from registrationadmin.views import  ParticipentsfromRound, AnalyteResultSubmit,ParticipantResultView,UpdateMembershipStatusView,AllLabsView, PaymentPostAPIView,RoundAPIView,ApproveUnapproveLabView,  RoundPostAPIView, RoundUpdateAPIView, RoundDeleteAPIView,  ActivityLogRegistrationadmin, PendingLabsView, ApprovedLabsView, UnapprovedLabsView, RoundsLabsAPIView, RoundAddLabsAPIView, RoundUpdateLabsAPIView, SelectedSchemeListAPIView, AnalyteSpecificScheme
 
 urlpatterns = [
     path('pending-labs/<id>',
@@ -49,6 +49,8 @@ urlpatterns = [
      #adding payment
      path('add-payment',
          PaymentPostAPIView.as_view(), name='add-payment'),
-
+     # Participant getting from round    
+     path('participent-rount/<id>',
+         ParticipentsfromRound.as_view(), name='participent-rount'), 
         
 ]

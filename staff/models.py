@@ -1,6 +1,6 @@
 from datetime import datetime
 from django.db import models
-from organization.models import Organization
+from organizationdata.models import Organization
 from account.models import UserAccount
 
 # Create your models here.

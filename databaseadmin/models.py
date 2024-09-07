@@ -1,7 +1,7 @@
 
 from account.models import UserAccount
 from django.db import models
-from organization.models import Organization
+from organizationdata.models import Organization
 from django.utils import timezone
 from account.models import UserAccount
 
@@ -315,7 +315,7 @@ class Scheme(models.Model):
         super(Scheme, self).save(*args, **kwargs)
 
     def __str__(self):
-        return self.scheme_name
+        return self.name
 
     class Meta:       
         verbose_name = 'Scheme'

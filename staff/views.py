@@ -18,7 +18,7 @@ from django.db.models import Q
 from accountstatement.models import AccountStatement, B2BAccountStatement
 from accountstatement.serializers import AccountStatementSerializer, B2BAccountStatementSerializer
 
-from organization.models import Organization
+from organizationdata.models import Organization
 from labowner.models import Lab, SampleCollector
 
 from staff.models import Staff

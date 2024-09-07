@@ -1,5 +1,5 @@
 from django.db import models
-from organization.models import Organization
+from organizationdata.models import Organization
 from django.utils import timezone
 from account.models import UserAccount
 from databaseadmin.models import Analyte, Instrument, Method, Reagents, Scheme, Units
@@ -39,16 +39,12 @@ class Round(models.Model):
         Scheme, on_delete=models.CASCADE, null=True, blank=True)
     cycle_no = models.CharField(max_length=255, blank=True, null=True)
     sample = models.CharField(max_length=255, blank=True, null=True)
-    participants = models.ManyToManyField(Lab, blank=True)
+    participants = models.CharField(max_length=255, blank=True, null=True)
     issue_date = models.DateField(blank=True, null=True)
     closing_date = models.DateField(blank=True, null=True)
     # notes = models.CharField(max_length=255, blank=True, null=True)
     status = models.CharField(
         max_length=50, choices=STATUS, blank=True)
-
-    @property
-    def nooflabs(self):
-        return self.participants.count()
 
     def __str__(self):
         return self.status
@@ -75,7 +71,7 @@ class SelectedScheme(models.Model):
     added_at= models.DateTimeField(
         null=True, blank=True, verbose_name="Scheme added date")
     def __str__(self):
-        return self.lab_id.name + " - " + self.scheme_id.scheme_name 
+        return self.scheme_id
 
 class Payment(models.Model):
     organization_id = models.ForeignKey(

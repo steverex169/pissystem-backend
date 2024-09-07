@@ -11,8 +11,8 @@ from rest_framework.authtoken.models import Token
 from django.conf import settings
 from helpers.mail import send_mail
 from django.contrib.sites.shortcuts import get_current_site
-from organization.models import Organization
-from organization.serializers import OrganizationSerializer
+from organizationdata.models import Organization
+from organizationdata.serializers import OrganizationSerializer
 from account.models import UserAccount
 from staff.models import Staff
 from django.forms.models import model_to_dict

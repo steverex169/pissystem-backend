@@ -15,6 +15,7 @@ class Organization(models.Model):
         max_length=255, null=True, blank=False)
     photo = models.ImageField(
         upload_to='organization', verbose_name='Organization\'s Photo', default="blank")
+    
     def __str__(self):
         return self.name
 

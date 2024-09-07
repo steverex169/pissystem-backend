@@ -25,12 +25,12 @@ from accountstatement.serializers import AccountStatementSerializer
 from financeofficer.models import PaymentIn
 from financeofficer.serializers import PaymentInSerializer
 from helpers.mail import send_mail
-from labowner.models import FINANCIAL_SETTLEMENT, Result, ActivityLog, Lab, LabCorporate, OfferedTest, Pathologist, SampleCollector
-from organization.models import Organization
+from labowner.models import FINANCIAL_SETTLEMENT, Result, ActivityLog, Lab, LabCorporate, Pathologist, SampleCollector
+from organizationdata.models import Organization
 
 
 # from medicaltest.models import Test, Unit
-from labowner.serializers import ResultSerializer, SelectedSchemeSerializer, ActivityLogSerializer, LabCorporateSerializer, LabInformationSerializer, LabPaymentSerializer, PathologistSerializer, SampleCollectorSerializer
+from labowner.serializers import ResultSerializer, ActivityLogSerializer, LabCorporateSerializer, LabInformationSerializer, LabPaymentSerializer, PathologistSerializer, SampleCollectorSerializer
 from django.conf import settings
 
 from staff.models import Marketer, Staff

@@ -1,5 +1,5 @@
 from django.contrib import admin
-from labowner.models import  Lab, Result, ActivityLog, LabPayment, Pathologist, SelectedScheme, SampleCollector, Staff
+from labowner.models import  Lab, Result, ActivityLog, LabPayment, Pathologist, SampleCollector, Staff
 
 
 # Change settings for showing in Admin
@@ -26,10 +26,6 @@ class SampleCollectorAdmin(admin.ModelAdmin):
 class ResultAdmin(admin.ModelAdmin):
     list_display = ('id', 'lab_id', 'analyte', 'units',  'method', 'reagents', 'result',)
     search_fields = ('id', 'lab_id', 'analyte', 'units',  'method', 'reagents', 'result',)
-
-class SelectedSchemeAdmin(admin.ModelAdmin):
-    list_display = ('id', 'lab_id','scheme_id',)
-    search_fields =  ('id', 'scheme_id', )
 
 
 # class QualityCertificateAdmin(admin.ModelAdmin):
@@ -63,7 +59,6 @@ admin.site.register(Lab, LabAdmin)
 admin.site.register(Result, ResultAdmin)
 admin.site.register(Pathologist, PathologistAdmin)
 admin.site.register(SampleCollector, SampleCollectorAdmin)
-admin.site.register(SelectedScheme, SelectedSchemeAdmin)
 # admin.site.register(QualityCertificate, QualityCertificateAdmin)
 admin.site.register(LabPayment, LabPaymentAdmin)
 admin.site.register(ActivityLog, ActivityLogAdmin)

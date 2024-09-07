@@ -3,7 +3,7 @@ from enum import unique
 from django.db import models
 from typing import Type
 from account.models import UserAccount
-from organization.models import Organization
+from organizationdata.models import Organization
 # from donor.models import DonorBank
 # from medicaltest.models import Test, Unit
 from staff.models import Marketer, Staff
@@ -337,21 +337,6 @@ class LabCorporate(models.Model):
 
     # class Meta:
     #     verbose_name = 'Lab Corporate'
-
-class SelectedScheme(models.Model):
-    organization_id = models.ForeignKey(
-        Organization, on_delete=models.CASCADE, null=True, blank=True)
-    lab_id = models.ForeignKey(
-        Lab, on_delete=models.CASCADE, verbose_name='Lab name', null=True)
-    scheme_id = models.ForeignKey(Scheme, on_delete=models.CASCADE,
-                                primary_key=False, verbose_name='Scheme name', null=True)
-    added_at= models.DateTimeField(
-        null=True, blank=True, verbose_name="Scheme added date", default=datetime.now)
-    def __str__(self):
-        return self.lab_id.name + " - " + self.scheme_id.scheme_name 
-
-    class Meta:
-        verbose_name = 'Scheme'
 
 
 # class QualityCertificate(models.Model):
