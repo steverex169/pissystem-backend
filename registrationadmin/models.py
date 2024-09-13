@@ -2,7 +2,7 @@ from django.db import models
 from organizationdata.models import Organization
 from django.utils import timezone
 from account.models import UserAccount
-from databaseadmin.models import Analyte, Instrument, Method, Reagents, Scheme, Units
+from databaseadmin.models import Analyte, Instrument, Method, Reagents, Scheme, Units, Cycle
 from labowner.models import Lab
 
 ACTIONS= (
@@ -16,6 +16,10 @@ STATUS = (
     ('Open', 'Open'),
     ('Closed', 'Closed'),
     ('Report Available', 'Report Available'),
+)
+PAYMENT_STATUS = (
+    ('Paid', 'Paid'),
+    ('Unpaid', 'Unpaid'),
 )
 # Option = (
 #     ('Created', 'Created'),
@@ -40,8 +44,8 @@ class Round(models.Model):
     cycle_no = models.CharField(max_length=255, blank=True, null=True)
     sample = models.CharField(max_length=255, blank=True, null=True)
     participants = models.CharField(max_length=255, blank=True, null=True)
-    issue_date = models.DateField(blank=True, null=True)
-    closing_date = models.DateField(blank=True, null=True)
+    issue_date = models.DateTimeField(blank=True, null=True)
+    closing_date = models.DateTimeField(blank=True, null=True)
     # notes = models.CharField(max_length=255, blank=True, null=True)
     status = models.CharField(
         max_length=50, choices=STATUS, blank=True)
@@ -67,7 +71,9 @@ class SelectedScheme(models.Model):
     organization_id = models.ForeignKey(
         Organization, on_delete=models.CASCADE, null=True, blank=True)
     participant = models.CharField(max_length=255, blank=False, null=True)
-    scheme_id =models.CharField(max_length=255, blank=False, null=True)
+    cycle_id = models.ForeignKey(
+        Cycle, on_delete=models.CASCADE, null=True, blank=True)
+    # scheme_id =models.CharField(max_length=255, blank=False, null=True)
     added_at= models.DateTimeField(
         null=True, blank=True, verbose_name="Scheme added date")
     def __str__(self):
@@ -78,7 +84,8 @@ class Payment(models.Model):
          Organization, on_delete=models.CASCADE, null=True, blank=True)
     account_id = models.ForeignKey(
         UserAccount, on_delete=models.CASCADE, null=True, blank=True)
-    scheme =models.CharField(max_length=255,blank=False, null=True)
+    cycle_id = models.ForeignKey(
+        Cycle, on_delete=models.CASCADE, null=True, blank=True)
     participant_id = models.ForeignKey(
         Lab, on_delete=models.CASCADE, null=True, blank=True)
     price = models.CharField(max_length=255,blank=False, null=True)
@@ -86,6 +93,8 @@ class Payment(models.Model):
     photo = models.CharField(max_length=255, blank=False, null=True)
     paymentmethod = models.CharField(max_length=255,blank=True, null=True) 
     paydate = models.DateField(null=True, blank=True)
+    payment_status = models.CharField(max_length=50, choices=PAYMENT_STATUS, default='Unpaid')
+
     def __str__(self):
         return self.price
 

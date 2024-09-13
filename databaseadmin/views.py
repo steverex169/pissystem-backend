@@ -5,8 +5,8 @@ from rest_framework.views import APIView
 
 from databaseadmin.models import QualitativeType,ParticipantProvince,ParticipantCountry, ParticipantType,ParticipantSector,Department,Designation,District,City,News,Instrument, Units, ActivityLogUnits,Reagents , Manufactural, Method,InstrumentType, Analyte
 
-from databaseadmin.serializers import QualitativeTypeSerializer,CountrySerializer,NewsSerializer,InstrumentSerializer, MethodSerializer,AnalyteSerializer, InstrumentTypeSerializer, UnitsSerializer, ActivityLogUnitsSerializer, ReagentsSerializer, ManufacturalSerializer, Scheme, Cycle,Sample,ParticipantTypeSerializer, ParticipantSectorSerializer,DepartmentSerializer,DesignationSerializer,DistrictSerializer,CitySerializer,SchemeSerializer, CycleSerializer,  SampleSerializer, ProvinceSerializer
-from registrationadmin.models import Round
+from databaseadmin.serializers import CycleSerializer, QualitativeTypeSerializer,CountrySerializer,NewsSerializer,InstrumentSerializer, MethodSerializer,AnalyteSerializer, InstrumentTypeSerializer, UnitsSerializer, ActivityLogUnitsSerializer, ReagentsSerializer, ManufacturalSerializer, Scheme, Cycle,Sample,ParticipantTypeSerializer, ParticipantSectorSerializer,DepartmentSerializer,DesignationSerializer,DistrictSerializer,CitySerializer,SchemeSerializer, CycleSerializer,  SampleSerializer, ProvinceSerializer
+from registrationadmin.models import Round, SelectedScheme
 from labowner.models import Lab
 from staff.models import Staff
 
@@ -20,7 +20,7 @@ from django.utils import timezone
 from account.models import UserAccount
 from organizationdata.models import Organization
 from django.shortcuts import get_object_or_404
-import datetime
+from datetime import datetime
 import pandas as pd
 
 class InstrumentTypefileView(APIView):
@@ -2581,47 +2581,38 @@ class CycleAPIView(APIView):
             # Retrieve the organization associated with the staff user
             organization = staff_user.organization_id
 
-            # Filter cycles based on the organization
-            cycle_list = Cycle.objects.filter(organization_id=organization)
+            # Get all cycles for the organization
+            cycle_list = Cycle.objects.filter(organization_id=organization, status="Active")
+            cycle_ids = cycle_list.values_list('id', flat=True)  # Extract IDs of cycles
+            print("cycle list", cycle_ids, organization)
 
-            serialized_data = []
-            for cycle in cycle_list:
-                # Initialize cycle_data dictionary
-                cycle_data = model_to_dict(cycle)
+            # Exclude the cycles that are already in SelectedScheme
+            selected_cycle_ids = SelectedScheme.objects.filter(organization_id=organization, cycle_id__in=cycle_ids).values_list('cycle_id', flat=True)
+            print("in the selected cycle list", selected_cycle_ids, organization)
 
-                # Retrieve the scheme associated with the cycle
-                scheme = cycle.scheme_name
-                
-                if scheme:
-                    analytes_count = scheme.analytes.count()
-                    
-                    # Serialize scheme data excluding analytes
-                    scheme_data = model_to_dict(scheme, exclude=['analytes'])  
-                    
-                    # Convert analytes to a list of dictionaries
-                    analytes = list(scheme.analytes.values('id', 'name', 'code', 'status'))  
-                    scheme_data['analytes'] = analytes
-                    scheme_data['noofanalytes'] = analytes_count
+            # Get available cycles
+            available_cycles = cycle_list.exclude(id__in=selected_cycle_ids)
 
-                    cycle_data['scheme_name'] = scheme.name
-                    cycle_data['price'] = scheme.price
-                    cycle_data['scheme_id'] = scheme.id
-                    print("scheme id",  cycle_data['scheme_id'])
-                    cycle_data['noofanalytes'] = analytes_count  # Ensure noofanalytes is added to cycle_data
-                else:
-                    cycle_data['scheme_name'] = None
-                    cycle_data['scheme_id'] = None  # Handle case where scheme is None
-                    cycle_data['noofanalytes'] = 0  # or None, depending on your preference
+            # Serialize the available cycles
+            cycle_serializer = CycleSerializer(available_cycles, many=True)
 
-                serialized_data.append(cycle_data)
+            # Manually add the price to the serialized data
+            for i, cycle in enumerate(available_cycles):
+                analytes_count = cycle.scheme_name.analytes.count()
+                print("analytes", analytes_count)
+                # Serialize scheme data excluding analytes
+                # scheme_data = model_to_dict(scheme, exclude=['analytes'])  
+                analytes = list(cycle.scheme_name.analytes.values('id', 'name', 'code', 'status'))  
+                cycle_serializer.data[i]['analytes'] = analytes
+                cycle_serializer.data[i]['noofanalytes'] = analytes_count
+                cycle_serializer.data[i]['price'] = cycle.scheme_name.price  # Assuming each cycle has a 'price' field
+                cycle_serializer.data[i]['scheme_name'] = cycle.scheme_name.name
+                cycle_serializer.data[i]['scheme_id'] = cycle.scheme_name.id
 
-            return Response({"status": status.HTTP_200_OK, "data": serialized_data})
-        
+            return Response({'status': status.HTTP_200_OK, 'data': cycle_serializer.data}, status=status.HTTP_200_OK)
+
         except Staff.DoesNotExist:
             return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "Invalid account_id."})
-        
-        except Cycle.DoesNotExist:
-            return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "No cycle records found."})
         
         except Exception as e:
             return Response({"status": status.HTTP_500_INTERNAL_SERVER_ERROR, "message": str(e)})
@@ -2644,12 +2635,36 @@ class CyclePostAPIView(APIView):
             scheme_id = request.data.get('scheme_name')  # Assuming 'scheme' is sent in the request data
             scheme = get_object_or_404(Scheme, pk=scheme_id)
 
+            # Parse start_date and end_date from request data
+            start_date = datetime.strptime(request.data['start_date'], '%Y-%m-%d').date()  # Convert string to date
+            end_date = datetime.strptime(request.data['end_date'], '%Y-%m-%d').date()  # Convert string to date
+
+            print("start and end date ", start_date, end_date)
+
+            # Calculate the difference in months
+            total_months = (end_date.year - start_date.year) * 12 + (end_date.month - start_date.month)
+
+            # Convert the total months into years and months
+            years_duration = total_months // 12
+            months_duration = total_months % 12
+
+            # Determine the message based on the calculated duration
+            if years_duration > 0 and months_duration > 0:
+                duration_message = f"{years_duration} year(s) and {months_duration} month(s)"
+            elif years_duration > 0:
+                duration_message = f"{years_duration} year(s)"
+            else:
+                duration_message = f"{months_duration} month(s)"
+
+            print("calculation with start and end date", duration_message)
+
+
             # Create a new Analyte
             cycle = Cycle.objects.create(
                 organization_id= organization,
                 scheme_name=scheme,
                 cycle_no=request.data['cycle_no'],
-                cycle=request.data['cycle'],
+                cycle=duration_message,
                 start_date=request.data['start_date'],
                 end_date=request.data['end_date'],
                 rounds=request.data['rounds'],

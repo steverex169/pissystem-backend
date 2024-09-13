@@ -27,7 +27,6 @@ class Migration(migrations.Migration):
                 ('is_staff', models.BooleanField(default=False, help_text='Designates whether the user can log into this admin site.', verbose_name='staff status')),
                 ('date_joined', models.DateTimeField(default=django.utils.timezone.now, verbose_name='date joined')),
                 ('email', models.EmailField(max_length=70)),
-                ('email_participant', models.EmailField(default='default@example.com', max_length=70)),
                 ('account_type', models.CharField(blank=True, choices=[('admin', 'Admin'), ('organizationdata', 'Organization'), ('database-admin', 'Database Admin'), ('hr-admin', 'HR Admin'), ('CSR', 'CSR'), ('registration-admin', 'Registration Admin'), ('labowner', 'Lab'), ('finance-officer', 'Finance Officer'), ('organizationdata', 'Organization'), ('superadmin', 'Superadmin')], default='admin', max_length=100)),
                 ('is_active', models.BooleanField(default=0, null=True)),
                 ('last_login', models.DateTimeField(blank=True, null=True, verbose_name='last login')),

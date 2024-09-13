@@ -39,8 +39,6 @@ class RegisterOrganizationView(APIView):
                 
                     organization_account = Organization.objects.filter(
                         account_id=account.id).count()
-              
-
 
                     # Check if this account id is asssociated with any of the user and if so return error message
                     if  organization_account == 0 :
@@ -52,10 +50,8 @@ class RegisterOrganizationView(APIView):
                         request.data['staff_type'] = account.account_type
                         request.data['registered_at'] = datetime.datetime.now()
                         request.data._mutable = False
-
                         organization_serializer = OrganizationSerializer(
                             data=request.data)
-
                         if organization_serializer.is_valid():
                             organization_serializer.save()
                             user = UserAccount.objects.get(username=request.data['user_name'])
@@ -65,31 +61,24 @@ class RegisterOrganizationView(APIView):
                             current_site = get_current_site(request).domain
                             relativeLink = reverse('email-verify')
                             print(current_site, relativeLink)
-
                             token, _ = Token.objects.get_or_create(user=user)
                             print(token)
-
                             absurl = 'http://' + current_site + \
                                 relativeLink + "?token=" + str(token)
                             print(absurl)
-
                             subject, from_email, to = 'Verify your Email', settings.EMAIL_HOST_USER, request.data['email']
-
                             data = {
                                 'user': user.username,
                                 'terms_conditions': 'http://' + current_site + "/media/public/labhazir_terms_conditions.pdf",
                                 'verification_link': absurl,
                                 'account_type': user.account_type,
                             }
-
                             send_mail(subject, "registration-mail.html", from_email, to, data)
                             return Response({"status": status.HTTP_200_OK, "data": organization_serializer.data, "message": "Organization registered successfully."})
                         else:
                             return Response({"status": status.HTTP_400_BAD_REQUEST, "message": organization_serializer.errors})
-
                     else:
                         return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "Sorry! Account with this id already exists."})
-
                 else:
                  return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "Sorry! Admin can't have other accounts."})
 
@@ -132,14 +121,33 @@ class OrganizationListView(APIView):
         try:
             organization_list = Organization.objects.all()
             serialized_data = []
+            
             for organization in organization_list:
+                # Convert model instance to a dictionary
                 organization_data = model_to_dict(organization)
-                if organization_data.get('photo'):
-                    organization_data['photo']= organization.photo.url
+                
+                # Check if the organization has a photo and it's accessible
+                if organization.photo:
+                    # Safely try to access the URL of the image
+                    try:
+                        organization_data['photo'] = organization.photo.url
+                    except ValueError:
+                        organization_data['photo'] = None  # Handle cases where photo URL is invalid
+                if organization.payment_proof:
+                    # Safely try to access the URL of the image
+                    try:
+                        organization_data['payment_proof'] = organization.payment_proof.url
+                    except ValueError:
+                        organization_data['payment_proof'] = None  # Handle cases where payment_proof URL is invalid
+                
                 serialized_data.append(organization_data)
+            
             return Response({"status": status.HTTP_200_OK, "data": serialized_data})
-        except Organization.DoesNotExist:
-            return Response({"status": status.  HTTP_400_BAD_REQUEST, "message": "No Record Exist."})
+        
+        except Exception as e:
+            return Response(
+                {"status": status.HTTP_500_INTERNAL_SERVER_ERROR, "message": str(e)}
+            )
 
 class OrganizationListUpdateAPIView(APIView):
     def put(self, request, *args, **kwargs):

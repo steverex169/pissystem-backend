@@ -27,6 +27,7 @@ from staff.models import Staff
 from organizationdata.models import Organization
 from labowner.models import Lab
 from django.utils import timezone
+from registrationadmin.models import Payment
 # Redirect to admin
 
 
@@ -74,6 +75,8 @@ class RegisterView(CreateAPIView):
                    account_id=user,
                     # organization_id=request.data['added_by'],
                     user_name=request.data['username'],
+                    email=request.data['email'],
+                    email_participant=request.data['email_participant'],
                     city=request.data['city'],
                     name=request.data['name'],
                     department=request.data['department'],
@@ -88,31 +91,71 @@ class RegisterView(CreateAPIView):
                     # state = request.data['state'],
                     billing_address = request.data['billing_address'],
                     shipping_address = request.data['shipping_address'],
-                    email=request.data['email'],   
-                    email_participant=request.data['email_participant'],
                     lab_staff_name=request.data['lab_staff_name'],
                     # lab_staff_designation=request.data['lab_staff_designation'],
                     landline_registered_by=request.data['landline_registered_by'],
                     website=request.data['website'],
-                   
                 )
-            
-            
-           
             # Additional logic for creating Organization instance
             if request.data['account_type'] == "organization":
                 user.email = request.data['email']
                 user.save()
                 print("djd emial", request.data['email'])
-                Organization.objects.create(
-                    account_id=user,
-                    name=request.data['name'],
-                    user_name=request.data['username'],
-                    website=request.data['website'],
-                    country=request.data['country'],
-                    photo=request.data['logo'],
-                    registered_at=datetime.datetime.now()
-                )
+                if (request.data['currency'] and request.data['amount'] and 
+                    request.data['payment_proof'] and request.data['issue_date'] and 
+                    request.data['closing_date']):
+                    
+                    # Create the organization with 'Approved' status and 'Paid' payment status
+                    Organization.objects.create(
+                        account_id=user,
+                        name=request.data['name'],
+                        email=request.data['email'],
+                        amount=request.data['amount'],
+                        currency=request.data['currency'],
+                        payment_proof=request.data['payment_proof'],
+                        issue_date=request.data['issue_date'],
+                        closing_date=request.data['closing_date'],
+                        user_name=request.data['username'],
+                        website=request.data['website'],
+                        country=request.data['country'],
+                        photo=request.data['logo'],
+                        registered_at=datetime.datetime.now(),
+                        status="Approved",
+                        payment_status="Paid"
+                    )
+                else:
+                    # If some required fields are missing, create the organization with default status
+                    Organization.objects.create(
+                        account_id=user,
+                        name=request.data['name'],
+                        email=request.data['email'],
+                        user_name=request.data['username'],
+                        website=request.data['website'],
+                        country=request.data['country'],
+                        photo=request.data['logo'],
+                        registered_at=datetime.datetime.now(),
+                        status="Pending",
+                        payment_status="Unpaid"
+                    )
+                # Organization.objects.create(
+                #     account_id=user,
+                #     name=request.data['name'],
+                #     email=request.data['email'],
+                #     amount=request.data['amount'],
+                #     currency=request.data['currency'],
+                #     payment_proof=request.data['payment_proof'],
+                #     issue_date=request.data['issue_date'],
+                #     closing_date=request.data['closing_date'],
+                #     user_name=request.data['username'],
+                #     website=request.data['website'],
+                #     country=request.data['country'],
+                #     photo=request.data['logo'],
+                #     registered_at=datetime.datetime.now()
+                #     if request.data['currency'] and request.data['amount'] and request.data['payment_proof'] and request.data['issue_date'] and request.data['closing_date']:
+                #         status= "Approved",
+                #         payment_status= "Paid",
+
+                # )
              
             # Activate user and set password_foradmins for 'patient' or 'samplecollector' accounts
             if request.data['account_type'] == "database-admin" or request.data['account_type'] == "registration-admin" or request.data['account_type'] == "CSR":
@@ -125,10 +168,10 @@ class RegisterView(CreateAPIView):
                     account_id=user,
                     organization_id=organization,
                     name=request.data['name'],
+                    email=request.data['email'],
                     cnic=request.data['cnic'],
                     photo=request.data['photo'],
                     user_name=request.data['username'],
-                    email=request.data['email'],
                     staff_type=request.data['account_type'],
                     phone=request.data['phone'],
                     city=request.data['city'],
@@ -192,11 +235,28 @@ class LoginView(APIView):
                 if user_account.account_type == "labowner":
                     try:
                         lab = Lab.objects.get(account_id=user_account.id)
-
                         data['lab_name'] = lab.name
+                        labpayment = Payment.objects.filter(participant_id=lab.id).last()
+                        print("lab in payments", labpayment.cycle_id.id)
+                        cycleclosingdate = labpayment.cycle_id.end_date
+                        print("cycleclosingdate", cycleclosingdate)
 
-                        if lab.is_blocked == "Yes":
+                        date_today = datetime.datetime.now().date()
+                        orgclosingdate = lab.organization_id.closing_date.date()
+                        print("today date", date_today, orgclosingdate)
+                        if cycleclosingdate <= date_today:
+                            lab = Lab.objects.filter(id=lab.id).update(membership_status = "Suspended")
+                            # lab.status == "Org Suspended"
+                            # lab.save()  # Save the updated status
+                            return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "Your account is not active Membership. Please contact Organization for membership activation."})
+                        elif orgclosingdate <= date_today:
+                            # lab.status == "Org Suspended"
+                            # lab.save()  # Save the updated status
+                            return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "We are unable to login to your account, please contact your Organization."})
+                        elif lab.is_blocked == "Yes":
                             return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "Your lab is blocked by the admins. Please contact them for further details."})
+                        elif lab.membership_status == "Suspended":
+                            return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "Your account is not active Membership. Please contact Organization for membership activation."})
                         elif lab.status == "Pending":
                             return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "Your lab is pending for approval. Please contact admins for further details."})
                         elif lab.status == "Unapproved":
@@ -204,7 +264,30 @@ class LoginView(APIView):
                     except:
                         UserAccount.objects.get(id=user_account.id).delete()
                         return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "Sorry! Your registration was not completed properly. Please register again."})
+                if user_account.account_type == "organization":
+                    try:
+                        organization = Organization.objects.get(account_id=user_account.id)
+                        print("organization user id", user_account.id, organization, organization.closing_date)
 
+                        data['organization_name'] = organization.name
+                        date_today = datetime.datetime.now().date()
+                        orgclosingdate = organization.closing_date.date()
+                        print("today date", date_today, orgclosingdate)
+
+                        if orgclosingdate <= date_today:
+                            print("if case m ata hai yah nahi")
+                            lab = Organization.objects.filter(account_id=user_account.id).update(status= "Suspend", payment_status = "Unpaid")
+                           
+                            return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "Your organization account is not active Membership. Please contact admins for membership activation."})
+                        elif organization.status == "Block":
+                            return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "Your organization is blocked by the admins. Please contact them for further details."})
+                        elif organization.status == "Pending":
+                            return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "Your organization is pending for approval. Please contact admins for further details."})
+                        elif organization.payment_status == "Unpaid":
+                            return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "Your organization account is not active Membership. Please contact admins for membership activation."})
+                    except:
+                        # UserAccount.objects.get(id=user_account.id).delete()
+                        return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "Sorry! Your registration was not completed properly. Please register again."})
             
         except:
             return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "Sorry! No account found. Please provide correct Username or Register First."})

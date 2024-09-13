@@ -19,16 +19,14 @@ OPTIONS = (
     ('registration-admin', 'Registration Admin'),
     ('labowner', 'Lab'),
     ('finance-officer', 'Finance Officer'),
-    ('organizationdata', 'Organization'),
+    ('organization', 'Organization'),
     ('superadmin', 'Superadmin'),
 
 )
 
 
-
 class UserAccount(AbstractUser):
     email = models.EmailField(max_length=70, blank=False, unique=False)
-    email_participant = models.EmailField(max_length=70, blank=False, default='default@example.com', unique=False)
     account_type = models.CharField(
     max_length=100, choices=OPTIONS, default='admin', blank=True, null=False)
     is_active = models.BooleanField(default=0, blank=False, null=True)

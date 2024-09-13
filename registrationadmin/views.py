@@ -77,6 +77,7 @@ class PaymentPostAPIView(APIView):
             account_id = request.data['added_by']
             staff_user = Staff.objects.get(account_id=account_id)
             organization = staff_user.organization_id
+            print("cycle id have or not", request.data['scheme'])
 
             try:
                 participant = Lab.objects.get(id=request.data.get('participant'))
@@ -84,9 +85,12 @@ class PaymentPostAPIView(APIView):
             except Lab.DoesNotExist:
                 return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "Invalid participant name provided."})
             
-            scheme_ids_str = request.data.get('scheme', '')
-            scheme_ids = [int(sid) for sid in scheme_ids_str.split(',') if sid.isdigit()]
+            # scheme_ids_str = request.data.get('scheme', '')
+            # scheme_ids = [int(sid) for sid in scheme_ids_str.split(',') if sid.isdigit()]
             # print("schemeeee", scheme_ids)
+            cycle_id = request.data['scheme']
+            cycle_instance = Cycle.objects.get(id=cycle_id)
+
 
             with transaction.atomic():
 
@@ -94,21 +98,21 @@ class PaymentPostAPIView(APIView):
                     organization_id=organization,
                     participant_id=participant,
                     price=request.data['price'],
-                    scheme=scheme_ids,
+                    cycle_id=cycle_instance,
                     discount=request.data['discount'],
                     photo=request.data['photo'],
                     paymentmethod=request.data['paymentmethod'],
-                    paydate=request.data['paydate']
+                    paydate=request.data['paydate'],
+                    payment_status = "Paid"
                 )
 
-                participant.payment_status = 'Paid'
+                participant.membership_status = 'Active'
                 participant.save()
 
                 selected_scheme = SelectedScheme.objects.create(
                     organization_id=organization,
-                    scheme_id=scheme_ids,
+                    cycle_id=cycle_instance,
                     added_at=datetime.datetime.now()
-
                 )
                 selected_scheme.participant = participant.id
                 selected_scheme.save()
@@ -537,7 +541,14 @@ class RoundUpdateLabsAPIView(APIView):
     def put(self, request, id, *args, **kwargs):
         try:
             # Fetch the round based on the id
+            # round_id = id
+            # print("url id", round_id)
+            # round_obj = Staff.objects.get(account_id=round_id)
+            # print("round here in staff", round_obj.organization_id.id)
+            # Fetch the Round object using the round ID
             round = Round.objects.get(id=id)
+
+            # round = Round.objects.get(id=id)
 
             # Fetch participants from the request data
             new_participants = request.data.get('participants', [])
@@ -571,7 +582,7 @@ class RoundUpdateLabsAPIView(APIView):
             })
 
         except Round.DoesNotExist:
-            return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "Round does not exist."})
+            return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "Round does not Exit."})
         
         except Exception as e:
             return Response({"status": status.HTTP_400_BAD_REQUEST, "message": str(e)})
@@ -931,6 +942,8 @@ class ParticipentsfromRound(APIView):
             # Get the round ID from the request
             round_id = kwargs.get('id')
             print("url id", round_id)
+            # round_obj = Staff.objects.get(account_id=round_id)
+            # print("round here in staff", round_obj.organization_id.id)
             # Fetch the Round object using the round ID
             round_obj = Round.objects.get(id=round_id)
             print("round here", round_obj)

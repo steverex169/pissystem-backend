@@ -328,7 +328,7 @@ class Cycle(models.Model):
     cycle_no = models.CharField(max_length=255, blank=True, null=True)
     rounds = models.PositiveBigIntegerField(blank=True, null=True)
     cycle = models.CharField(
-        max_length=50, choices=CYCLE, default='Months', blank=True)  
+        max_length=50, blank=False, null=False)  
     start_date = models.DateField(blank=True, null=True)
     end_date = models.DateField(blank=True, null=True)
     analytes = models.ManyToManyField(Analyte, blank=True)

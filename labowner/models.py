@@ -83,10 +83,7 @@ STATUS = (
     ('Unapproved', 'Unapproved'),
     ('Cencel Request', 'Cencel Request'),
     ('Cencel', 'Cencel'),
-)
-PAYMENT_STATUS = (
-    ('Paid', 'Paid'),
-    ('Unpaid', 'Unpaid'),
+    ('Org Suspended', 'Org Suspended'),
 )
 MEMBERSHIP_STATUS = (
     ('Active', 'Active'),
@@ -207,7 +204,6 @@ class Lab(models.Model):
                             null=True, verbose_name='Lab name')
     user_name = models.CharField(max_length=255, blank=False,
                             null=True, verbose_name='user name')
-    payment_status = models.CharField(max_length=50, choices=PAYMENT_STATUS, default='Unpaid')
     membership_status = models.CharField(max_length=50, choices=MEMBERSHIP_STATUS, default='Suspended')
     
     financial_settlement = models.CharField(
