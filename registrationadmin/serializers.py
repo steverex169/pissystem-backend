@@ -1,6 +1,7 @@
 from rest_framework import serializers
 from databaseadmin.models import Analyte, Scheme
-from registrationadmin.models import Round, ActivityLogUnits, Payment, SelectedScheme,Statistics
+from labowner.serializers import LabInformationSerializer
+from registrationadmin.models import Round, ActivityLogUnits, SelectedScheme, Payment, Statistics
 
 class RoundSerializer(serializers.ModelSerializer):
     nooflabs = serializers.IntegerField(read_only=True)
@@ -21,7 +22,7 @@ class ActivityLogUnitsSerializer(serializers.ModelSerializer):
     class Meta:
         model = ActivityLogUnits
         fields = ('__all__')     
-
+        
 class SelectedSchemeSerializer(serializers.ModelSerializer):
     class Meta:
         model = SelectedScheme
@@ -39,7 +40,34 @@ class AnalyteSchemeSerializer(serializers.ModelSerializer):
 
 # //////////Statistics  
 class StatisticsSerializer(serializers.ModelSerializer):
+    lab_info = LabInformationSerializer(source='participant_id', read_only=True)  # Include lab info
     class Meta:
         model = Statistics
         fields = '__all__'
-      
+     
+# class ZScoreWithLabSerializer(serializers.Serializer):
+#     lab_id = serializers.IntegerField()
+#     z_score = serializers.FloatField()
+
+# class StatisticsSerializer(serializers.ModelSerializer):
+#     z_scores_with_lab = ZScoreWithLabSerializer(many=True)
+
+# class Meta:
+#     model = Statistics
+#     fields = ('__all__')  
+# //////////Statistics 
+
+# class ZScoreWithLabSerializer(serializers.Serializer):
+#     lab_id = serializers.IntegerField()
+#     z_score = serializers.FloatField()
+# class AnalyteResultSubmitSerializer(serializers.Serializer):
+#     analyte_id = serializers.IntegerField()
+#     analyte_name = serializers.CharField(max_length=255)
+#     lab_count = serializers.IntegerField()
+#     mean_result = serializers.FloatField()
+#     median_result = serializers.FloatField()
+#     std_deviation = serializers.FloatField()
+#     cv_percentage = serializers.FloatField()
+#     uncertainty = serializers.FloatField()
+#     robust_mean = serializers.FloatField()
+#     z_scores_with_lab = ZScoreWithLabSerializer(many=True)

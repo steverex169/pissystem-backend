@@ -29,8 +29,8 @@ class MethodAdmin(admin.ModelAdmin):
     search_fields = ('id', 'name', 'date_of_addition','code','status')
 
 class SchemeAdmin(admin.ModelAdmin):
-    list_display = ('id', 'name', 'price', 'noofanalytes', 'date_of_addition', 'status')
-    search_fields = ('id', 'name', 'price', 'noofanalytes', 'date_of_addition', 'status')
+    list_display = ('id', 'name', 'price',  'date_of_addition', 'status')
+    search_fields = ('id', 'name', 'price',  'date_of_addition', 'status')
 
     def get_analytes(self, obj):
         return ', '.join([analytes.name for analytes in obj.analytes.all()])

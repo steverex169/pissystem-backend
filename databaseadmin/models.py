@@ -296,19 +296,23 @@ class Scheme(models.Model):
     added_by= models.ForeignKey(
         UserAccount, on_delete=models.CASCADE, null=True, blank=True) 
     date_of_addition = models.DateTimeField(blank=True, null=True) 
-    analytes = models.ManyToManyField(Analyte, blank=True)
+    analytes = models.CharField(max_length=255, blank=True, null=True)
     status = models.CharField(
         max_length=50, choices=STATUS, default='Inactive', blank=True)
 
 
-    @property
     def noofanalytes(self):
-        return self.analytes.count()
+    # Split the analytes string by commas and filter out empty strings
+        if self.analytes:
+            analytes_list = self.analytes.split(',')
+            # Return the count of non-empty analytes
+            return len([a for a in analytes_list if a.strip()])
+        return 0
 
     def save(self, *args, **kwargs):
         # Skip status update if the instance is not yet saved (no ID)
         if self.pk is not None:
-            if self.noofanalytes > 0:
+            if self.noofanalytes() > 0:
                 self.status = 'Active'
             else:
                 self.status = 'Inactive'

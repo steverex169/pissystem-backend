@@ -46,9 +46,14 @@ urlpatterns = [
     path('getAnalyteResultSubmit/<id>',
          AnalyteResultSubmit.as_view(), name='getAnalyteResultSubmit'), 
 
+
+#     path('selectedSchemesAnalytes-list/<id>',
+#          SelectedSchemeAnalytesList.as_view(), name='selectedSchemesAnalytes-list'), 
+ 
      #adding payment
      path('add-payment',
          PaymentPostAPIView.as_view(), name='add-payment'),
+     
      # Participant getting from round    
      path('participent-rount/<id>',
          ParticipentsfromRound.as_view(), name='participent-rount'), 

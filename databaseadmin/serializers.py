@@ -76,18 +76,24 @@ class MethodSerializer(serializers.ModelSerializer):
         model = Method
         fields = ('__all__')     
 
+# class SchemeSerializer(serializers.ModelSerializer):
+#     noofanalytes = serializers.IntegerField(read_only=True)
+#     class Meta:
+#         model = Scheme
+#         fields = ('__all__')
 class SchemeSerializer(serializers.ModelSerializer):
-    noofanalytes = serializers.IntegerField(read_only=True)
+    noofanalytes = serializers.SerializerMethodField()  # Dynamically calculate number of analytes
+
     class Meta:
         model = Scheme
-        fields = ('__all__')
-    #     fields = (
-    #         'id', 'organization_id', 'name', 'added_by', 'status', ' date_of_addition', 'analytes', 'noofanalytes'
-    #     )
+        fields = '__all__'  # Include all fields, or list them explicitly if needed
 
-    # def get_noofanalytes(self, obj):
-    #     return obj.noofanalytes  
-    
+    # Custom method to calculate noofanalytes
+    def get_noofanalytes(self, obj):
+        # Assuming analytes is a CharField containing comma-separated IDs or names
+        if obj.analytes:
+            return len(obj.analytes.split(','))
+        return 0
 
 class CycleSerializer(serializers.ModelSerializer):
     noofanalytes = serializers.IntegerField(read_only=True)

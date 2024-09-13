@@ -184,15 +184,24 @@ ACTIONS= (
     ('Added', 'Added'),
     ('Deleted', 'Deleted'),
 )
-RESULT_STATUS = (
-    ('Pending', 'Pending'),
-    ('Approved', 'Approved'),
-    ('Accept', 'Accept'),
-    ('Unapproved', 'Unapproved'),
-    ('Cencel Request', 'Cencel Request'),
-    ('Submited', 'Submited'),
+PAYMENT_STATUS=(
+    ('Paid', 'Paid'),
+    ('Unpaid', 'Unpaid')
+)
+MEMBERSHIP_STATUS=(
+    ('Active', 'Active'),
+    ('Suspended', 'Suspended')
 )
 
+RESULT_STATUS = (
+    # ('Pending', 'Pending'),
+    # ('Approved', 'Approved'),
+    # ('Accept', 'Accept'),
+    # ('Unapproved', 'Unapproved'),
+    # ('Cencel Request', 'Cencel Request'),
+    ('Submitted', 'Submitted'),
+    ('Created', 'Created'),
+)
 class Lab(models.Model):
     organization_id = models.ForeignKey(
         Organization, on_delete=models.CASCADE, null=True, blank=True)
@@ -260,6 +269,8 @@ class Lab(models.Model):
     district = models.CharField(max_length=255, blank=True, null=True)
     landline_registered_by = models.CharField(
         max_length=30, blank=False, null=True, help_text="Please use the format: +922134552799")
+    payment_status = models.CharField(max_length=50, choices=PAYMENT_STATUS, default='Unpaid')
+    membership_status = models.CharField(max_length=50, choices=MEMBERSHIP_STATUS, default='Suspended')
     def __str__(self):
         return self.name
 
@@ -435,6 +446,7 @@ class ActivityLog(models.Model):
 class Result(models.Model):
     organization_id = models.ForeignKey(
         Organization, on_delete=models.CASCADE, null=True, blank=True)
+    round_id = models.CharField(max_length=255, blank=True, null=True)
     scheme_id = models.CharField(max_length=255, blank=True, null=True)
     lab_id = models.ForeignKey(Lab, on_delete=models.CASCADE, verbose_name='Lab', primary_key=False, null=True, blank=False)
     analyte = models.ForeignKey(Analyte, on_delete=models.CASCADE, verbose_name='Analyte', primary_key=False, null=True, blank=False)
@@ -445,9 +457,11 @@ class Result(models.Model):
     # result = models.CharField(max_length=255, blank=True, null=True)
     result = models.DecimalField(max_digits=10, decimal_places=2, blank=True, null=True)  # Updated to DecimalField
     result_status = models.CharField(
-        max_length=50, choices=RESULT_STATUS, default='Pending')
-    updated_at = models.DateTimeField(auto_now=True)  # Automatically set to now every time the object is saved
+        max_length=50,  choices=RESULT_STATUS)
+    updated_at = models.DateTimeField(auto_now=True, blank=True, null=True ) # Automatically set to now every time the object is saved
+    # updated_at= models.DateTimeField(null=True, blank=True, default=datetime.now)
     rounds = models.PositiveBigIntegerField(blank=True, null=True) 
+    round_status = models.CharField( max_length=50 ,blank=True, null=True)
 
     def __str__(self):
         # return self.result

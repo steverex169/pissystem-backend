@@ -14,6 +14,26 @@ class RoundAdmin(admin.ModelAdmin):
 
     def get_lab(self, obj):
         return ', '.join([lab.name for lab in obj.lab.all()])
+    
+# class SelectedSchemeAdmin(admin.ModelAdmin):
+#     list_display = ('id', 'organization_id', 'lab_id', 'scheme_id', 'added_at')
+#     search_fields = ('id', 'organization_id', 'lab_id', 'scheme_id', 'added_at')
+
+  
+
+# class PaymentAdmin(admin.ModelAdmin):
+#     list_display = (
+#         'id', 'organization_id', 'participant_id','get_schemes',  'price',
+#         'discount', 'photo', 'paymentmethod', 'paydate'
+#     )
+#     search_fields = (
+#         'id', 'organization_id__name', 'participant_id__name','get_schemes', 
+#         'price', 'discount', 'paymentmethod', 'paydate'
+#     )
+#     def get_schemes(self, obj):
+#         return ', '.join([scheme.name for scheme in obj.scheme.all()])
+
+#     get_schemes.short_description = 'Schemes'
 
 class PaymentAdmin(admin.ModelAdmin):
     list_display = (
@@ -39,8 +59,11 @@ class StatisticsAdmin(admin.ModelAdmin):
     search_fields = ('id', 'organization_id', 'participant_id', 'scheme', 'analyte','mean_result', 'median_result', 'std_deviation', 'cv_percentage', 'robust_mean', 'rounds', 'result')
 
 
+
+
 admin.site.register(ActivityLogUnits, ActivityLogUnitsAdmin)
 admin.site.register(Round, RoundAdmin)
 admin.site.register(Payment, PaymentAdmin)
 admin.site.register(Statistics, StatisticsAdmin)
+# admin.site.register(SelectedScheme, SelectedSchemeAdmin)
   
