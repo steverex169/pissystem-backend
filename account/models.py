@@ -19,7 +19,7 @@ OPTIONS = (
     ('registration-admin', 'Registration Admin'),
     ('labowner', 'Lab'),
     ('finance-officer', 'Finance Officer'),
-    ('organizationdata', 'Organization'),
+    ('organization', 'Organization'),
     ('superadmin', 'Superadmin'),
 
 )

@@ -24,7 +24,7 @@ RESULT_STATUS = (
     ('Accept', 'Accept'),
     ('Unapproved', 'Unapproved'),
     ('Cencel Request', 'Cencel Request'),
-    ('Submited', 'Submited'),
+    ('Submitted', 'Submitted'),
 )
 # Option = (
 #     ('Created', 'Created'),
@@ -73,16 +73,7 @@ class Round(models.Model):
 
     class Meta:       
         verbose_name = 'Round'
-        
-class SelectedScheme(models.Model):
-    organization_id = models.ForeignKey(
-        Organization, on_delete=models.CASCADE, null=True, blank=True)
-    participant = models.CharField(max_length=255, blank=False, null=True)
-    scheme_id =models.CharField(max_length=255, blank=False, null=True)
-    added_at= models.DateTimeField(
-        null=True, blank=True, verbose_name="Scheme added date")
-    def __str__(self):
-        return self.scheme_id
+
 
 class Payment(models.Model):
     organization_id = models.ForeignKey(
@@ -149,16 +140,21 @@ class Statistics(models.Model):
     analyte = models.ForeignKey(Analyte, on_delete=models.CASCADE, null=True, blank=True)
     scheme = models.ForeignKey(Scheme, on_delete=models.CASCADE, null=True, blank=True)
     lab_count = models.PositiveBigIntegerField(null=True, blank=True)
-    mean_result = models.FloatField(null=True, blank=True)  # Changed from DecimalField to FloatField
-    median_result = models.FloatField(null=True, blank=True)  # Changed from DecimalField to FloatField
-    robust_mean = models.FloatField(null=True, blank=True)  # Changed from DecimalField to FloatField
-    std_deviation = models.FloatField(null=True, blank=True)  # Changed from DecimalField to FloatField
-    uncertainty = models.FloatField(null=True, blank=True)  # Changed from DecimalField to FloatField
-    cv_percentage = models.FloatField(null=True, blank=True)  # Changed from DecimalField to FloatField
+    mean_result = models.FloatField(null=True, blank=True)  
+    median_result = models.FloatField(null=True, blank=True)  
+    robust_mean = models.FloatField(null=True, blank=True)  
+    std_deviation = models.FloatField(null=True, blank=True)  
+    uncertainty = models.FloatField(null=True, blank=True)  
+    cv_percentage = models.FloatField(null=True, blank=True)  
     z_scores_with_lab = models.JSONField(default=list, null=True, blank=True)
-    result = models.FloatField(blank=True, null=True)  # Changed from DecimalField to FloatField
+    z_scores_with_robust_mean = models.JSONField(default=list, null=True, blank=True)
+    result = models.FloatField(blank=True, null=True)  
     rounds = models.PositiveBigIntegerField(blank=True, null=True) 
-    
+    unit_id = models.PositiveBigIntegerField(null=True, blank=True)
+    instrument_id = models.PositiveBigIntegerField(null=True, blank=True)
+    reagent_id = models.PositiveBigIntegerField(null=True, blank=True)
+    method_id = models.PositiveBigIntegerField(null=True, blank=True)
+    round_id = models.PositiveBigIntegerField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now=True)
     updated_at = models.DateTimeField(auto_now=True)
 

@@ -2406,39 +2406,39 @@ class SchemeAPIView(APIView):
                         "status": status.HTTP_404_NOT_FOUND,
                         "message": "Staff member not found."
                     }, status=status.HTTP_404_NOT_FOUND)
+              
+                serialized_data = []
+                for scheme in schemelist:
+                    # Ensure the scheme is saved to get an ID before accessing the analytes field
+                    if scheme.pk is None:
+                        scheme.save()
+                    # analytes_count = scheme.analytes.count()
+                    # Handle analytes as a CharField
+                    analytes_list = scheme.analytes.split(',') if scheme.analytes else []
+                    analytes_count = len(analytes_list)
+                    # Serialize scheme data
+                    scheme_data = model_to_dict(scheme, exclude=['analytes'])  # Exclude non-serializable fields
 
-            serialized_data = []
-            for scheme in schemelist:
-                # Ensure the scheme is saved to get an ID before accessing the analytes field
-                if scheme.pk is None:
-                    scheme.save()
+                    # Convert analytes to a list of dictionaries (if analyte IDs or names are stored)
+                    analytes = [{"id": analyte_id} for analyte_id in analytes_list]  
+                    scheme_data['analytes'] = analytes
+                    scheme_data['noofanalytes'] = analytes_count
 
-                analytes_count = scheme.analytes.count()
-                
-                # Serialize scheme data
-                scheme_data = model_to_dict(scheme, exclude=['analytes'])  # Exclude non-serializable fields
-                
-                # Convert analytes to a list of dictionaries
-                analytes = list(scheme.analytes.values('id', 'name', 'code', 'status'))  
-                scheme_data['analytes'] = analytes
-                scheme_data['noofanalytes'] = analytes_count
+                    # Update status based on number of analytes
+                    
+                    if analytes_count != 0 and scheme.status != 'Active':
+                        scheme= Scheme.objects.filter(id=scheme.id).update(status="Active")
+                        print("scheme", scheme)
+                    elif analytes_count == 0 and scheme.status != 'Inactive':
+                        scheme=Scheme.objects.filter(id=scheme.id).update(status="Inactive")
 
-                # Update status based on number of analytes
-                if analytes_count > 0 and scheme.status != 'Active':
-                    scheme.status = 'Active'
-                    scheme.save()
-                elif analytes_count == 0 and scheme.status != 'Inactive':
-                    scheme.status = 'Inactive'
-                    scheme.save()
-
-                if scheme.added_by_id:  # Check if added_by_id is not None
-                    user_account = UserAccount.objects.get(id=scheme.added_by_id)
-                    scheme_data['added_by'] = user_account.username
-                else:
-                    scheme_data['added_by'] = None
-                
-                serialized_data.append(scheme_data)
-            
+                    if scheme.added_by.id:  # Check if added_by_id is not None
+                        user_account = UserAccount.objects.get(id=scheme.added_by.id)
+                        scheme_data['added_by'] = user_account.username
+                    else:
+                        scheme_data['added_by'] = None
+                    
+                    serialized_data.append(scheme_data)
             return Response({
                 "status": status.HTTP_200_OK,
                 "data": serialized_data
@@ -2481,10 +2481,8 @@ class SchemePostAPIView(APIView):
                 added_by=user_account,  # Use the UserAccount object
                 # status=request.data['status'],
             )
-
             # Concatenate all changes into a single string
             changes_string = ", ".join([f"{field}: {request.data[field]}" for field in ["name", "price"]])
-
             # Save data in activity log as a single field
             ActivityLogUnits.objects.create(
                 scheme=scheme,
@@ -2498,7 +2496,6 @@ class SchemePostAPIView(APIView):
             )
 
             scheme_serializer = SchemeSerializer(scheme)
-
             return Response({"status": status.HTTP_201_CREATED, "unit_data": scheme_serializer.data,
                              "message": "Scheme added successfully."})
 
@@ -2593,15 +2590,23 @@ class CycleAPIView(APIView):
                 scheme = cycle.scheme_name
                 
                 if scheme:
-                    analytes_count = scheme.analytes.count()
+                    # analytes_count = scheme.analytes.count()
+                    analytes_list = scheme.analytes.split(',') if scheme.analytes else []
+                    analytes_count = len(analytes_list)
                     
                     # Serialize scheme data excluding analytes
-                    scheme_data = model_to_dict(scheme, exclude=['analytes'])  
+                    scheme_data = model_to_dict(scheme, exclude=['analytes']) 
+
+                    # Convert analytes to a list of dictionaries (assuming analyte IDs are stored as the string values)
+                    # Here, we're assuming only analyte IDs are stored. You may customize the dictionary fields as needed.
+                    analytes = [{"id": analyte_id.strip()} for analyte_id in analytes_list]  # Stripping spaces for safety
+                    scheme_data['analytes'] = analytes  # Include the analytes in the response
+                    scheme_data['noofanalytes'] = analytes_count  # Include the number of analytes 
                     
-                    # Convert analytes to a list of dictionaries
-                    analytes = list(scheme.analytes.values('id', 'name', 'code', 'status'))  
-                    scheme_data['analytes'] = analytes
-                    scheme_data['noofanalytes'] = analytes_count
+                    # # Convert analytes to a list of dictionaries
+                    # analytes = list(scheme.analytes.values('id', 'name', 'code', 'status'))  
+                    # scheme_data['analytes'] = analytes
+                    # scheme_data['noofanalytes'] = analytes_count
 
                     cycle_data['scheme_name'] = scheme.name
                     cycle_data['price'] = scheme.price
@@ -3058,7 +3063,7 @@ class SchemeAnalyteAPIView(APIView):
     def get(self, request, id, *args, **kwargs):
         try:
             scheme = Scheme.objects.get(id=id)
-            analytes = scheme.analytes.all()  # Fetch all reagents associated with the analyte
+            analytes = scheme.analytes.all()  
             analyte_ids = [analyte.id for analyte in analytes]
             
             # Serialize data
@@ -3075,6 +3080,7 @@ class SchemeAnalyteAPIView(APIView):
         except Exception as e:
             return Response({"status": status.HTTP_400_BAD_REQUEST, "message": str(e)})
 
+
 class SchemeAddAnalyteAPIView(APIView):
     permission_classes = (AllowAny,)
     def post(self, request, id, *args, **kwargs):
@@ -3084,12 +3090,10 @@ class SchemeAddAnalyteAPIView(APIView):
             analyte = Scheme.objects.get(id=id)
             print("amnalut", analyte) 
             # Ensure 'instruments' is parsed as a list of integers
-            analytes = request.data.get('analytes', [])
-            print("analytes2", analytes)
-            if isinstance(analytes, str):
-                analytes = list(map(int, analytes.split(',')))
-            
-            analyte.analytes.set(analytes)  # Assuming instruments are passed as a list of IDs
+            analytes_ids_str = request.data.get('analytes', '')
+            analytes_ids= [int(sid) for sid in analytes_ids_str.split(',') if sid.isdigit()]
+            # print("analytes", analytes_ids),
+            analyte.analytes = analytes_ids,
             analyte.save()
 
             return Response({"status": status.HTTP_200_OK, "message": "Equipments added to analyte successfully."})
@@ -3098,51 +3102,56 @@ class SchemeAddAnalyteAPIView(APIView):
         except Exception as e:
             return Response({"status": status.HTTP_400_BAD_REQUEST, "message": str(e)})
 
-    # def post(self, request, id, *args, **kwargs):
-       
-    #     try:
-    #         scheme = Scheme.objects.get(id=id)
-    #         print("id", scheme)
-    #         # Ensure 'analytes' is parsed as a list of integers
-    #         analytes = request.data.get('analytes', [])
-    #         if isinstance(analytes, str):
-    #             analytes = analytes.split(',')
-    #         if not isinstance(analytes, list):
-    #             raise ValueError("analytes must be a list of integers.")
-
-    #         # Convert all elements to integers and handle possible conversion errors
-    #         analytes = [int(r) for r in analytes if r.strip().isdigit()]
-
-    #         scheme.analytes.set(analytes)  # Assuming analytes are passed as a list of IDs
-    #         scheme.save()
-
-    #         return Response({"status": status.HTTP_200_OK, "message": "analytes added to scheme successfully."})
-    #     except Scheme.DoesNotExist:
-    #         return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "Scheme not found."})
-    #     except ValueError as ve:
-    #         return Response({"status": status.HTTP_400_BAD_REQUEST, "message": str(ve)})
-    #     except Exception as e:
-    #         return Response({"status": status.HTTP_400_BAD_REQUEST, "message": str(e)})
-
 class SchemeUpdateAnalyteAPIView(APIView):
     permission_classes = (AllowAny,)
 
     def put(self, request, id, *args, **kwargs):
-       
         try:
+            # Retrieve the Scheme object by ID
             scheme = Scheme.objects.get(id=id)
-            analytes = request.data.get('analytes', [])
-            if isinstance(analytes, str):
-                analytes = list(map(int, analytes.split(',')))
-            
-            scheme.analytes.set(analytes)  # Assuming reagents are passed as a list of IDs
+
+            # Get 'analytes' from the request data
+            analytes_data = request.data.get('analytes', '')
+            # Handle if the frontend sends a comma-separated string
+            if isinstance(analytes_data, str):
+                # Split the string into a list of integers (IDs)
+                analytes_ids = [int(aid) for aid in analytes_data.split(',') if aid.isdigit()]
+            # Handle if the frontend sends an array of IDs
+            elif isinstance(analytes_data, list):
+                # Ensure all elements in the list are integers
+                analytes_ids = [int(aid) for aid in analytes_data if isinstance(aid, int)]
+            else:
+                return Response({
+                    "status": status.HTTP_400_BAD_REQUEST, 
+                    "message": "Invalid format for analytes data."
+                })
+
+            # Store the list of IDs as a comma-separated string in the 'analytes' CharField
+            scheme.analytes = ','.join(map(str, analytes_ids))
+            # Save the updated scheme object
             scheme.save()
+
+            # Optionally serialize the updated scheme
             serialized_data = SchemeSerializer(scheme).data
-            return Response({"status": status.HTTP_200_OK, "analyte_data": serialized_data, "message": "Reagents updated for Analyte successfully."})
+
+            return Response({
+                "status": status.HTTP_200_OK, 
+                "analyte_data": serialized_data, 
+                "message": "Analytes updated successfully."
+            })
+
         except Scheme.DoesNotExist:
-            return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "Scheme does not exist."})
+            return Response({
+                "status": status.HTTP_400_BAD_REQUEST, 
+                "message": "Scheme does not exist."
+            })
         except Exception as e:
-            return Response({"status": status.HTTP_400_BAD_REQUEST, "message": str(e)})
+            return Response({
+                "status": status.HTTP_400_BAD_REQUEST, 
+                "message": str(e)
+            })
+
+
 
 
 # Analytes Assocaited With Cycle

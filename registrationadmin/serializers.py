@@ -1,5 +1,6 @@
 from rest_framework import serializers
 from databaseadmin.models import Analyte, Scheme
+from labowner.serializers import LabInformationSerializer
 from registrationadmin.models import Round, ActivityLogUnits, SelectedScheme, Payment, Statistics
 
 class RoundSerializer(serializers.ModelSerializer):
@@ -39,6 +40,7 @@ class AnalyteSchemeSerializer(serializers.ModelSerializer):
 
 # //////////Statistics  
 class StatisticsSerializer(serializers.ModelSerializer):
+    lab_info = LabInformationSerializer(source='participant_id', read_only=True)  # Include lab info
     class Meta:
         model = Statistics
         fields = '__all__'

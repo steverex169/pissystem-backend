@@ -46,22 +46,10 @@ urlpatterns = [
     path('getAnalyteResultSubmit/<id>',
          AnalyteResultSubmit.as_view(), name='getAnalyteResultSubmit'), 
 
-     # selected-schemes related to participants
-    path('selectedSchemes-list/<id>',
-         SelectedSchemeListAPIView.as_view(), name='selectedSchemes-list'), 
+
 #     path('selectedSchemesAnalytes-list/<id>',
 #          SelectedSchemeAnalytesList.as_view(), name='selectedSchemesAnalytes-list'), 
-
-    path('analyteSpecificScheme-list/<id>',
-         AnalyteSpecificScheme.as_view(), name='analyteSpecificScheme-list'), 
-     # Participant Result page    
-    path('resultpost/<id>',
-         ParticipantResultView.as_view(), name='resultpost'), 
-    path('getResultsData/<id>',
-         ParticipantResultView.as_view(), name='getResultsData'), 
-    path('getAnalyteResultSubmit/<id>',
-         AnalyteResultSubmit.as_view(), name='getAnalyteResultSubmit'), 
-     
+ 
      #adding payment
      path('add-payment',
          PaymentPostAPIView.as_view(), name='add-payment'),

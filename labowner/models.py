@@ -197,12 +197,13 @@ MEMBERSHIP_STATUS=(
 )
 
 RESULT_STATUS = (
-    ('Pending', 'Pending'),
-    ('Approved', 'Approved'),
-    ('Accept', 'Accept'),
-    ('Unapproved', 'Unapproved'),
-    ('Cencel Request', 'Cencel Request'),
-    ('Submited', 'Submited'),
+    # ('Pending', 'Pending'),
+    # ('Approved', 'Approved'),
+    # ('Accept', 'Accept'),
+    # ('Unapproved', 'Unapproved'),
+    # ('Cencel Request', 'Cencel Request'),
+    ('Submitted', 'Submitted'),
+    ('Created', 'Created'),
 )
 class Lab(models.Model):
     organization_id = models.ForeignKey(
@@ -449,6 +450,7 @@ class ActivityLog(models.Model):
 class Result(models.Model):
     organization_id = models.ForeignKey(
         Organization, on_delete=models.CASCADE, null=True, blank=True)
+    round_id = models.CharField(max_length=255, blank=True, null=True)
     scheme_id = models.CharField(max_length=255, blank=True, null=True)
     lab_id = models.ForeignKey(Lab, on_delete=models.CASCADE, verbose_name='Lab', primary_key=False, null=True, blank=False)
     analyte = models.ForeignKey(Analyte, on_delete=models.CASCADE, verbose_name='Analyte', primary_key=False, null=True, blank=False)
@@ -459,10 +461,11 @@ class Result(models.Model):
     # result = models.CharField(max_length=255, blank=True, null=True)
     result = models.DecimalField(max_digits=10, decimal_places=2, blank=True, null=True)  # Updated to DecimalField
     result_status = models.CharField(
-        max_length=50, choices=RESULT_STATUS, default='Pending')
+        max_length=50,  choices=RESULT_STATUS)
     updated_at = models.DateTimeField(auto_now=True, blank=True, null=True ) # Automatically set to now every time the object is saved
     # updated_at= models.DateTimeField(null=True, blank=True, default=datetime.now)
     rounds = models.PositiveBigIntegerField(blank=True, null=True) 
+    round_status = models.CharField( max_length=50 ,blank=True, null=True)
 
     def __str__(self):
         # return self.result
