@@ -34,6 +34,7 @@ import decimal
 from decimal import Decimal
 import math
 from scipy.stats import trim_mean
+import numpy as np
 import logging
 logger = logging.getLogger(__name__)
 # class PaymentPostAPIView(APIView):
@@ -786,6 +787,7 @@ class ParticipantResultView(APIView):
             print("scheme_iddffssssssssssssssss", scheme_id)
             # Filtering results by the scheme ID associated with the round
             results = Result.objects.filter(scheme_id=scheme_id)
+            print("results", results)
             
             # Serializing the filtered results
             serializer = ResultSerializer(results, many=True)
@@ -968,63 +970,120 @@ class AnalyteSpecificScheme(APIView):
 
 # API for calculating number of labs who has submitted the results against specific analyte 
 class AnalyteResultSubmit(APIView):
+    
+    def remove_outliers_iqr(self, data):
+        """
+        Remove outliers from the data using the Interquartile Range (IQR) method.
+        """
+        q1 = np.percentile(data, 25)
+        q3 = np.percentile(data, 75)
+        iqr = q3 - q1
+        lower_bound = q1 - 1.5 * iqr
+        upper_bound = q3 + 1.5 * iqr
+        filtered_data = [x for x in data if lower_bound <= x <= upper_bound]
+        return filtered_data
+
     def get(self, request, *args, **kwargs):
         try:
+            round_id = kwargs.get('id')  # Retrieve 'id' from kwargs
+            if not round_id:
+                return Response({'status': status.HTTP_400_BAD_REQUEST, 'message': 'Round ID is required'}, status=status.HTTP_400_BAD_REQUEST)
             
-            round_id = kwargs.get('id')
-            round_instance  = Round.objects.get(id=round_id)
-           
-            scheme = round_instance .scheme 
+            print("print data", round_id)
+            round_instance = Round.objects.get(id=round_id)
+            scheme = round_instance.scheme
             scheme_id = scheme.id
             organization = scheme.organization_id
-            # analytes = scheme.analytes.all()
+            print("print data", round_id, round_instance, scheme, scheme_id, organization)
 
-             # Get analytes associated with the scheme as a comma-separated string
+            # Get analytes associated with the scheme as a comma-separated string
             analytes_str = scheme.analytes
-            # Split the string into a list of analyte IDs (assuming IDs are stored)
             analytes_list = analytes_str.split(',') if analytes_str else []
-            # Optionally, fetch the actual analyte objects from the database using their IDs
             analytes = Analyte.objects.filter(id__in=analytes_list)
-
             analyte_results = []
 
             for analyte in analytes:
                 results = Result.objects.filter(scheme_id=scheme_id, analyte=analyte, organization_id=organization)
                 lab_count = results.values('lab_id').distinct().count()
-                mean_result = results.aggregate(mean_result=Avg('result'))['mean_result']
-                mean_result_rounded = round(float(mean_result), 2) if mean_result is not None else 0
-                result_values = list(results.values_list('result', flat=True).exclude(result=None))
 
+                # Convert result to float before performing operations
+                result_values = [float(value) for value in results.values_list('result', flat=True).exclude(result=None)]
+
+                # Remove outliers using IQR
                 if result_values:
-                    sorted_results = sorted(result_values)
-                    median_result = sorted_results[len(sorted_results) // 2]
-                    mean_result_rounded_float = float(mean_result_rounded)
-                    variance = sum((float(value) - mean_result_rounded_float) ** 2 for value in result_values) / len(result_values) if len(result_values) > 1 else 0
-                    std_deviation = math.sqrt(variance)
-                    
-                    # Check to prevent division by zero
-                    if mean_result_rounded_float != 0:
-                        cv_percentage = round((std_deviation / mean_result_rounded_float) * 100, 2)
-                    else:
-                        cv_percentage = 0.00
+                    ###################  Results Before Removing Outliers  #################
+                    print("result_values............", result_values)
 
-                    if len(result_values) > 0:
-                        uncertainty = round(std_deviation / math.sqrt(len(result_values)), 2)
-                    else:
-                        uncertainty = 0.00
-                    
-                    trimmed_mean = trim_mean(result_values, 0.1)
-                    robust_mean = round(trimmed_mean, 2)
-                    
-                    z_scores_with_lab = [
+                    # Calculate mean and z-scores on raw result_values
+                    mean_result_raw = sum(result_values) / len(result_values)
+                    mean_result_raw_rounded = round(mean_result_raw, 2)
+                    print("mean_result_raw_rounded..................", mean_result_raw_rounded, mean_result_raw)
+
+                    variance_raw = sum((value - mean_result_raw) ** 2 for value in result_values) / len(result_values) if len(result_values) > 1 else 0
+                    std_deviation_raw = math.sqrt(variance_raw)
+                    print("variance raw... stander deviation", variance_raw, std_deviation_raw)
+
+
+                    z_scores_raw = [
                         {
                             'lab_id': result.lab_id.id,
                             'result_value': float(result.result),
-                            'z_score': round((float(result.result) - mean_result_rounded_float) / std_deviation, 4) if std_deviation != 0 else 0.00
+                            'z_score': round((float(result.result) - mean_result_raw) / std_deviation_raw, 4) if std_deviation_raw != 0 else 0.00
                         }
                         for result in results
                     ]
+                    print("z_scores_raw", z_scores_raw)
+
+                    ###################  Results After Removing Outliers  #################
+
+                    # Sort and filter results to remove outliers
+                    sorted_results = sorted(result_values)
+                    filtered_results = self.remove_outliers_iqr(sorted_results)  # Call remove_outliers_iqr here
+                    print("filtered_results", filtered_results)
+
+                    if filtered_results:
+                        # Step 1: Calculate mean from filtered data
+                        mean_result = sum(filtered_results) / len(filtered_results)
+                        mean_result_rounded = round(float(mean_result), 2)
+                        print("mean_result_rounded", mean_result_rounded)
+
+                        # Step 2: Calculate median from filtered data
+                        median_result = sorted(filtered_results)[len(filtered_results) // 2]
+
+                        # Step 3: Calculate variance and standard deviation
+                        variance = sum((float(value) - mean_result_rounded) ** 2 for value in filtered_results) / len(filtered_results) if len(filtered_results) > 1 else 0
+                        std_deviation = math.sqrt(variance)
+
+                        # Step 4: Calculate CV percentage
+                        cv_percentage = round((std_deviation / mean_result_rounded) * 100, 2) if mean_result_rounded != 0 else 0.00
+
+                        # Step 5: Calculate uncertainty
+                        uncertainty = round(std_deviation / math.sqrt(len(filtered_results)), 2) if len(filtered_results) > 0 else 0.00
+
+                        # Step 6: Trimmed mean and robust mean
+                        trimmed_mean = trim_mean(filtered_results, 0.1)
+                        robust_mean = round(trimmed_mean, 2)
+
+                        # Step 7: Z-scores with lab details
+                        z_scores_with_lab = [
+                            {
+                                'lab_id': result.lab_id.id,
+                                'result_value': float(result.result),
+                                'z_score': round((float(result.result) - mean_result_rounded) / std_deviation, 4) if std_deviation != 0 else 0.00
+                            }
+                            for result in results
+                        ]
+                        print("z_scores_with_lab", z_scores_with_lab)
+                    else:
+                        mean_result_rounded = 0.00
+                        median_result = 0.00
+                        std_deviation = 0.00
+                        cv_percentage = 0.00
+                        uncertainty = 0.00
+                        robust_mean = 0.00
+                        z_scores_with_lab = []
                 else:
+                    mean_result_rounded = 0.00
                     median_result = 0.00
                     std_deviation = 0.00
                     cv_percentage = 0.00
@@ -1032,15 +1091,13 @@ class AnalyteResultSubmit(APIView):
                     robust_mean = 0.00
                     z_scores_with_lab = []
 
-                statistics_instance = None
                 # Update or create Statistics instance
                 for result in results:
                     statistics_instance, created = Statistics.objects.update_or_create(
                         scheme=scheme,
-                        analyte=analyte, 
-                        round_id = round_id,
-                        organization_id=organization,     
-                        
+                        analyte=analyte,
+                        round_id=round_id,
+                        organization_id=organization,
                         defaults={
                             'lab_count': lab_count,
                             'mean_result': mean_result_rounded,
@@ -1052,28 +1109,24 @@ class AnalyteResultSubmit(APIView):
                             'z_scores_with_lab': z_scores_with_lab,
                             'rounds': result.rounds,
                             'result': result.result,
-                            'unit_id': result.units.id if result.units else None, 
+                            'unit_id': result.units.id if result.units else None,
                             'instrument_id': result.instrument.id if result.instrument else None,
                             'method_id': result.method.id if result.method else None,
                             'reagent_id': result.reagents.id if result.reagents else None,
-                            'participant_id':result.lab_id,
+                            'participant_id': result.lab_id,
                         }
                     )
                 analyte_results.append(statistics_instance)
-            
+
             # Serialize the saved Statistics instances
             serializer = StatisticsSerializer(analyte_results, many=True)
-
-            # rount = Round.objects.filter(scheme=kwargs.get('id'), id=result.rounds).update(status=)
-
             return Response({'status': status.HTTP_200_OK, 'data': serializer.data}, status=status.HTTP_200_OK)
 
-        except Scheme.DoesNotExist:
-            return Response({'status': status.HTTP_404_NOT_FOUND, 'message': 'Scheme not found'}, status=status.HTTP_404_NOT_FOUND)
+        except Round.DoesNotExist:
+            return Response({'status': status.HTTP_404_NOT_FOUND, 'message': 'Round not found'}, status=status.HTTP_404_NOT_FOUND)
 
         except Exception as e:
             return Response({'status': status.HTTP_500_INTERNAL_SERVER_ERROR, 'message': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
 # class AnalyteResultSubmit(APIView):
 #     def get(self, request, *args, **kwargs):
 #         try:

@@ -2589,18 +2589,39 @@ class CycleAPIView(APIView):
 
             # Get available cycles
             available_cycles = cycle_list.exclude(id__in=selected_cycle_ids)
+            print("available_cycles", available_cycles)
 
             # Serialize the available cycles
             cycle_serializer = CycleSerializer(available_cycles, many=True)
 
             # Manually add the price to the serialized data
+            # for i, cycle in enumerate(available_cycles):
+            #     analytes_count = cycle.scheme_name.analytes
+            #     print("analytes", analytes_count)
+            #     # Serialize scheme data excluding analytes
+            #     # scheme_data = model_to_dict(scheme, exclude=['analytes'])  
+            #     analytes = list(cycle.scheme_name.analytes.values('id', 'name', 'code', 'status'))  
+            #     cycle_serializer.data[i]['analytes'] = analytes
+            #     cycle_serializer.data[i]['noofanalytes'] = analytes_count
+            #     cycle_serializer.data[i]['price'] = cycle.scheme_name.price  # Assuming each cycle has a 'price' field
+            #     cycle_serializer.data[i]['scheme_name'] = cycle.scheme_name.name
+            #     cycle_serializer.data[i]['scheme_id'] = cycle.scheme_name.id
+            # Manually add the price to the serialized data
             for i, cycle in enumerate(available_cycles):
-                analytes_count = cycle.scheme_name.analytes.count()
-                print("analytes", analytes_count)
-                # Serialize scheme data excluding analytes
-                # scheme_data = model_to_dict(scheme, exclude=['analytes'])  
-                analytes = list(cycle.scheme_name.analytes.values('id', 'name', 'code', 'status'))  
-                cycle_serializer.data[i]['analytes'] = analytes
+                analytes = cycle.scheme_name.analytes  # Get analytes related to the scheme
+                
+                # Check if analytes is a string, and if so, split it into a list
+                if isinstance(analytes, str):
+                    analytes_list = analytes.split(',')  # Split the string into a list based on commas
+                    analytes_count = len(analytes_list)  # Count the number of analytes
+                else:
+                    analytes_list = []  # Default to empty list if it's not a string
+                    analytes_count = 0  # Set count to 0
+
+                print("analytes count", analytes_count)
+
+                # Adding data to the serialized cycle object
+                cycle_serializer.data[i]['analytes'] = analytes_list
                 cycle_serializer.data[i]['noofanalytes'] = analytes_count
                 cycle_serializer.data[i]['price'] = cycle.scheme_name.price  # Assuming each cycle has a 'price' field
                 cycle_serializer.data[i]['scheme_name'] = cycle.scheme_name.name

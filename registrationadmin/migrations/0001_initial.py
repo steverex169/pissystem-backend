@@ -78,7 +78,6 @@ class Migration(migrations.Migration):
             name='Payment',
             fields=[
                 ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('scheme', models.CharField(max_length=255, null=True)),
                 ('price', models.CharField(max_length=255, null=True)),
                 ('discount', models.CharField(max_length=255, null=True)),
                 ('photo', models.CharField(max_length=255, null=True)),

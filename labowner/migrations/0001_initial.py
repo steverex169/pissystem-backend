@@ -55,7 +55,6 @@ class Migration(migrations.Migration):
                 ('website', models.URLField(blank=True, null=True, verbose_name='Website')),
                 ('district', models.CharField(blank=True, max_length=255, null=True)),
                 ('landline_registered_by', models.CharField(help_text='Please use the format: +922134552799', max_length=30, null=True)),
-                ('payment_status', models.CharField(choices=[('Paid', 'Paid'), ('Unpaid', 'Unpaid')], default='Unpaid', max_length=50)),
                 ('membership_status', models.CharField(choices=[('Active', 'Active'), ('Suspended', 'Suspended')], default='Suspended', max_length=50)),
                 ('account_id', models.OneToOneField(null=True, on_delete=django.db.models.deletion.CASCADE, to=settings.AUTH_USER_MODEL)),
                 ('marketer_id', models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.CASCADE, to='staff.marketer', verbose_name='Marketer')),

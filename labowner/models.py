@@ -269,7 +269,6 @@ class Lab(models.Model):
     district = models.CharField(max_length=255, blank=True, null=True)
     landline_registered_by = models.CharField(
         max_length=30, blank=False, null=True, help_text="Please use the format: +922134552799")
-    payment_status = models.CharField(max_length=50, choices=PAYMENT_STATUS, default='Unpaid')
     membership_status = models.CharField(max_length=50, choices=MEMBERSHIP_STATUS, default='Suspended')
     def __str__(self):
         return self.name

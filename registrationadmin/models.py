@@ -87,7 +87,7 @@ class SelectedScheme(models.Model):
     added_at= models.DateTimeField(
         null=True, blank=True, verbose_name="Scheme added date")
     def __str__(self):
-        return self.scheme_id
+        return self.cycle_id
 
 class Payment(models.Model):
     organization_id = models.ForeignKey(
@@ -137,18 +137,6 @@ class ActivityLogUnits(models.Model):
 
     class Meta:
         verbose_name = 'History'
-
-class SelectedScheme(models.Model):
-    organization_id = models.ForeignKey(Organization, on_delete=models.CASCADE, null=True, blank=True)
-    participant = models.CharField(max_length=255,blank=False, null=True)   
-    scheme_id = models.CharField(max_length=255,blank=False, null=True)
-    added_at = models.DateTimeField(null=True, blank=True, verbose_name="Scheme added date")
-
-    def __str__(self):
-        return str(self.id)
-        
-    class Meta:
-        verbose_name = 'Selected Scheme'
 
 class Statistics(models.Model):
     organization_id = models.ForeignKey(Organization, on_delete=models.CASCADE, null=True, blank=True)
