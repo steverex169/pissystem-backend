@@ -8,7 +8,7 @@ from rest_framework import status
 from rest_framework import parsers
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.views import APIView
-from databaseadmin.models import Analyte, Cycle, Scheme
+from databaseadmin.models import Analyte, Cycle, Scheme, Sample
 from labowner.models import Lab, Pathologist, Result, SampleCollector
 from labowner.serializers import LabInformationSerializer,  PathologistSerializer, ResultSerializer
 from registrationadmin.serializers import AnalyteSchemeSerializer, RoundSerializer, ActivityLogUnitsSerializer, PaymentSerializer,SelectedSchemeSerializer, StatisticsSerializer
@@ -475,18 +475,19 @@ class RoundPostAPIView(APIView):
             # Retrieve the organization associated with the staff user
             organization = staff_user.organization_id
 
-            # Fetch the Scheme object based on the provided ID
-            scheme_id = request.data.get('scheme')  # Assuming 'scheme' is sent in the request data
-            scheme = get_object_or_404(Scheme, pk=scheme_id)
+            print("request issue and clocing date", request.data['issue_date'], request.data['closing_date'])
 
+            # Fetch the Scheme object based on the provided ID
+            sample = Sample.objects.get(samplename=request.data['sample'])
+            print("which is sample here", sample.Cycle_id.id, request.data['participants'])
             # Create a new Round instance with the fetched Scheme object
             round = Round.objects.create(
                 organization_id=organization,
                 rounds=request.data['rounds'],
-                scheme=scheme,  # Assign the fetched Scheme object
-                cycle_no=request.data['cycle_no'],
+                scheme=sample.scheme_id,  # Assign the fetched Scheme object
+                cycle_no=sample.Cycle_id.id,
                 sample=request.data['sample'],
-                # participants=request.data['participants'],
+                participants=request.data['participants'],
                 issue_date=request.data['issue_date'],
                 closing_date=request.data['closing_date'],
                 # notes=request.data['notes'],
@@ -582,8 +583,12 @@ class RoundsLabsAPIView(APIView):
     def get(self, request, id, *args, **kwargs):
         try:
             round = Round.objects.get(id=id)
-            participants = round.participants.all()  # Fetch all participants associated with the round
-            participant_ids = [participant.id for participant in participants]
+            round_str = round.participants or ""  # This assumes 'analytes' is a char field
+
+            # Split the comma-separated string into a list of strings, then convert to integers
+            participant_ids = [int(round) for round in round_str.split(',') if round.strip()]
+            # participants = round.participants.all()  # Fetch all participants associated with the round
+            # participant_ids = [participant.id for participant in participants]
             
             # Serialize data
             serialized_data = {
@@ -947,6 +952,7 @@ class AnalyteSpecificScheme(APIView):
             # Include the scheme name, round data, and participant IDs in the response
             response_data = {
                 'scheme_name': round.scheme.name,
+                'scheme_type': round.scheme.analytetype,
                 'round_no': round.rounds,
                 'round_closingdate': round.closing_date,
                 'round_issuedate': round.issue_date,
@@ -1245,7 +1251,39 @@ class AnalyteResultSubmit(APIView):
 
 
 
+# class ParticipentsfromRound(APIView):
+#     def get(self, request, args, *kwargs):
+#         try:
+#             # Get the round ID from the request
+#             round_id = kwargs.get('id')
+#             # print("url id", round_id)
+#             # round_obj = Staff.objects.get(account_id=round_id)
+#             # print("round here in staff", round_obj.organization_id.id)
+#             # Fetch the Round object using the round ID
+#             round_obj = Round.objects.get(id=round_id)
+#             # print("round here", round_obj)
+            
+#             # Get the participants from the round (assuming it's a comma-separated list of lab IDs)
+#             participant_ids = round_obj.participants.split(',') if round_obj.participants else []
+
+#             # Convert participant IDs to integers
+#             participant_ids = [int(pid) for pid in participant_ids]
+
+#             payments = Payment.objects.filter(participant_id__in=participant_ids)
+
+#             # Fetch all labs excluding those in the participants list
+#             labs = Lab.objects.exclude(id__in=payments.participant_id)
+
+#             # Serialize the lab data
+#             lab_serializer = LabInformationSerializer(labs, many=True)
+
+#             return Response({'status': status.HTTP_200_OK, 'data': lab_serializer.data}, status=status.HTTP_200_OK)
         
+#         except Round.DoesNotExist:
+#             return Response({'status': status.HTTP_404_NOT_FOUND, 'message': 'Round not found'}, status=status.HTTP_404_NOT_FOUND)
+        
+#         except Exception as e:
+#             return Response({'status': status.HTTP_500_INTERNAL_SERVER_ERROR, 'message': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)         
 
 class ParticipentsfromRound(APIView):
     def get(self, request, *args, **kwargs):
@@ -1253,28 +1291,38 @@ class ParticipentsfromRound(APIView):
             # Get the round ID from the request
             round_id = kwargs.get('id')
             print("url id", round_id)
-            # round_obj = Staff.objects.get(account_id=round_id)
-            # print("round here in staff", round_obj.organization_id.id)
+
             # Fetch the Round object using the round ID
             round_obj = Round.objects.get(id=round_id)
-            print("round here", round_obj)
-            
+            print("round here", round_obj.cycle_no)
+
             # Get the participants from the round (assuming it's a comma-separated list of lab IDs)
-            participant_ids = round_obj.participants.split(',') if round_obj.participants else []
+            participant_idss = round_obj.participants.split(',') if round_obj.participants else []
+            print("participants from round", participant_idss)
 
             # Convert participant IDs to integers
-            participant_ids = [int(pid) for pid in participant_ids]
+            participant_idss = [int(pid) for pid in participant_idss]
+            print("converted participant IDs", participant_idss)
 
-            # Fetch all labs excluding those in the participants list
-            labs = Lab.objects.exclude(id__in=participant_ids)
+            # Fetch payments for participants NOT in the round
+            payments = Payment.objects.exclude(participant_id__in=participant_idss).filter(cycle_id=round_obj.cycle_no, payment_status="Paid")
+            print("payments excluding round participants", payments)
+            for payment in payments:
+                print("Participant ID in Payment Table:", payment.participant_id.id)
 
-            # Serialize the lab data
-            lab_serializer = LabInformationSerializer(labs, many=True)
+            # Serialize the payment data
+            payment_serializer = PaymentSerializer(payments, many=True)
 
-            return Response({'status': status.HTTP_200_OK, 'data': lab_serializer.data}, status=status.HTTP_200_OK)
-        
+            # Add participant names to serialized data
+            for i in range(len(payments)):
+                payment_serializer.data[i]['name'] = payments[i].participant_id.name
+                payment_serializer.data[i]['id'] = payments[i].participant_id.id
+
+
+            return Response({'status': status.HTTP_200_OK, 'data': payment_serializer.data}, status=status.HTTP_200_OK)
+
         except Round.DoesNotExist:
             return Response({'status': status.HTTP_404_NOT_FOUND, 'message': 'Round not found'}, status=status.HTTP_404_NOT_FOUND)
-        
+
         except Exception as e:
             return Response({'status': status.HTTP_500_INTERNAL_SERVER_ERROR, 'message': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

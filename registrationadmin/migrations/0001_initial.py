@@ -47,7 +47,7 @@ class Migration(migrations.Migration):
             fields=[
                 ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
                 ('participant', models.CharField(max_length=255, null=True)),
-                ('scheme_id', models.CharField(max_length=255, null=True)),
+                ('cycle_id', models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.CASCADE, to='databaseadmin.cycle')),
                 ('added_at', models.DateTimeField(blank=True, null=True, verbose_name='Scheme added date')),
                 ('organization_id', models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.CASCADE, to='organizationdata.organization')),
             ],

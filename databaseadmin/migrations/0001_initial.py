@@ -23,7 +23,6 @@ class Migration(migrations.Migration):
                 ('code', models.PositiveBigIntegerField(blank=True, null=True)),
                 ('date_of_addition', models.DateTimeField(blank=True, null=True)),
                 ('status', models.CharField(blank=True, choices=[('Active', 'Active'), ('Inactive', 'Inactive')], default='Inactive', max_length=50)),
-                ('analytetype', models.CharField(blank=True, choices=[('Quantitative', 'Quantitative'), ('Qualitative', 'Qualitative')], default='Quantitative', max_length=50)),
             ],
             options={
                 'verbose_name': 'Analyte',

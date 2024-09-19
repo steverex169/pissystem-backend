@@ -25,6 +25,12 @@ APPOINTMENTSOPTIONS = (
     ('Collection', 'Collection'),
     ('Both', 'Both')
 )
+RESULT_TYPE = (
+    ('Positive', 'Positive'),
+    ('Negative', 'Negative'),
+    ('Equivocal', 'Equivocal')
+
+)
 DAYS_OF_WEEK = (
         ('Monday', 'Monday'),
         ('Tuesday', 'Tuesday'),
@@ -449,12 +455,14 @@ class Result(models.Model):
     scheme_id = models.CharField(max_length=255, blank=True, null=True)
     lab_id = models.ForeignKey(Lab, on_delete=models.CASCADE, verbose_name='Lab', primary_key=False, null=True, blank=False)
     analyte = models.ForeignKey(Analyte, on_delete=models.CASCADE, verbose_name='Analyte', primary_key=False, null=True, blank=False)
-    units = models.ForeignKey(Units, on_delete=models.CASCADE, verbose_name='Units', primary_key=False, null=True, blank=False)
+    units = models.ForeignKey(Units, on_delete=models.CASCADE, verbose_name='Units', primary_key=False, null=False, blank=False)
     instrument = models.ForeignKey(Instrument, on_delete=models.CASCADE, verbose_name='Instrument', primary_key=False, null=True, blank=False)
     method = models.ForeignKey(Method, on_delete=models.CASCADE, verbose_name='Method', primary_key=False, null=True, blank=False)
     reagents = models.ForeignKey(Reagents, on_delete=models.CASCADE, verbose_name='Reagents', primary_key=False, null=True, blank=False)
     # result = models.CharField(max_length=255, blank=True, null=True)
     result = models.DecimalField(max_digits=10, decimal_places=2, blank=True, null=True)  # Updated to DecimalField
+    result_type = models.CharField(
+        max_length=50, choices=RESULT_TYPE, default= 'Positive')
     result_status = models.CharField(
         max_length=50,  choices=RESULT_STATUS)
     updated_at = models.DateTimeField(auto_now=True, blank=True, null=True ) # Automatically set to now every time the object is saved

@@ -4,19 +4,19 @@ from labowner.serializers import LabInformationSerializer
 from registrationadmin.models import Round, ActivityLogUnits, SelectedScheme, Payment, Statistics
 
 class RoundSerializer(serializers.ModelSerializer):
-    nooflabs = serializers.IntegerField(read_only=True)
-    issue_date = serializers.SerializerMethodField()
-    closing_date = serializers.SerializerMethodField()
+    # nooflabs = serializers.IntegerField(read_only=True)
+    # issue_date = serializers.SerializerMethodField()
+    # closing_date = serializers.SerializerMethodField()
 
     class Meta:
         model = Round
         fields = ('__all__') 
         
-    def get_issue_date(self, obj):
-       return obj.issue_date.date() if obj.issue_date else None
+    # def get_issue_date(self, obj):
+    #    return obj.issue_date.date() if obj.issue_date else None
 
-    def get_closing_date(self, obj):
-        return obj.closing_date.date() if obj.closing_date else None
+    # def get_closing_date(self, obj):
+    #     return obj.closing_date.date() if obj.closing_date else None
     
 class ActivityLogUnitsSerializer(serializers.ModelSerializer):
     class Meta:

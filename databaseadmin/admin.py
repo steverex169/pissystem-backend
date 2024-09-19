@@ -47,8 +47,8 @@ class ReagentsAdmin(admin.ModelAdmin):
     search_fields = ('id', 'name', 'date_of_addition', 'code','status')
 
 class AnalyteAdmin(admin.ModelAdmin):
-    list_display = ('id', 'name', 'date_of_addition', 'code', 'get_methods','noofmethods', 'get_instruments','noofinstruments', 'get_reagents', 'noofreagents','get_qualitativetype','get_units', 'master_unit','analytetype','status')
-    search_fields = ('id', 'name', 'date_of_addition', 'code', 'get_methods','noofmethods', 'get_instruments','noofinstruments', 'get_reagents', 'noofreagents','get_qualitativetype','get_units', 'master_unit','analytetype','status')
+    list_display = ('id', 'name', 'date_of_addition', 'code', 'get_methods','noofmethods', 'get_instruments','noofinstruments', 'get_reagents', 'noofreagents','get_qualitativetype','get_units', 'master_unit','status')
+    search_fields = ('id', 'name', 'date_of_addition', 'code', 'get_methods','noofmethods', 'get_instruments','noofinstruments', 'get_reagents', 'noofreagents','get_qualitativetype','get_units', 'master_unit','status')
 
     def get_reagents(self, obj):
         return ', '.join([reagent.name for reagent in obj.reagents.all()])

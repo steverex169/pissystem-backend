@@ -262,7 +262,7 @@ class LoginView(APIView):
                         elif lab.status == "Unapproved":
                             return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "Your lab account is not approved by Lab Hazir. Please contact our customer care for further details."})
                     except:
-                        UserAccount.objects.get(id=user_account.id).delete()
+                        # UserAccount.objects.get(id=user_account.id).delete()
                         return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "Sorry! Your registration was not completed properly. Please register again."})
                 if user_account.account_type == "organization":
                     try:

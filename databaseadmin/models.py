@@ -263,8 +263,6 @@ class Analyte(models.Model):
     qualitativetype = models.ManyToManyField(QualitativeType, blank=True)
     status = models.CharField(
         max_length=50, choices=STATUS, default='Inactive', blank=True)
-    analytetype = models.CharField(
-        max_length=50, choices=ANALYTETYPE, default='Quantitative', blank=True)
     master_unit = models.ForeignKey(
         Units, on_delete=models.SET_NULL, related_name="master_unit", null=True, blank=True)
     
@@ -298,8 +296,9 @@ class Scheme(models.Model):
     date_of_addition = models.DateTimeField(blank=True, null=True) 
     analytes = models.CharField(max_length=255, blank=True, null=True)
     status = models.CharField(
-        max_length=50, choices=STATUS, default='Inactive', blank=True)
-
+        max_length=50, choices=STATUS, blank=True)
+    analytetype = models.CharField(
+        max_length=50, choices=ANALYTETYPE, blank=True)
 
     def noofanalytes(self):
     # Split the analytes string by commas and filter out empty strings
@@ -354,7 +353,7 @@ class Cycle(models.Model):
     #     super(Cycle, self).save(*args, **kwargs)
 
     def __str__(self):
-        return self.status
+        return str(self.id)
 
     class Meta:       
         verbose_name = 'Cycle'
@@ -379,6 +378,8 @@ class Sample(models.Model):
     # cycle_no = models.ForeignKey(Cycle, on_delete=models.CASCADE, null=True, blank=True)
     status = models.CharField(
         max_length=50, choices=SAMPLE_STATUS, default='Created', blank=True)  
+    Cycle_id = models.ForeignKey(
+         Cycle, on_delete=models.CASCADE, null=True, blank=True)
         
     @property
     def noofanalytes(self):

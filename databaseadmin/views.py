@@ -2426,15 +2426,16 @@ class SchemeAPIView(APIView):
 
                     # Update status based on number of analytes
                     
-                    if analytes_count != 0 and scheme.status != 'Active':
-                        scheme= Scheme.objects.filter(id=scheme.id).update(status="Active")
-                        print("scheme", scheme)
-                    elif analytes_count == 0 and scheme.status != 'Inactive':
-                        scheme=Scheme.objects.filter(id=scheme.id).update(status="Inactive")
+                    # if analytes_count != 0 and scheme.status != 'Active':
+                    #     scheme= Scheme.objects.filter(id=scheme.id).update(status="Active")
+                    #     print("scheme", scheme)
+                    # elif analytes_count == 0 and scheme.status != 'Inactive':
+                    #     scheme=Scheme.objects.filter(id=scheme.id).update(status="Inactive")
 
-                    if scheme.added_by.id:  # Check if added_by_id is not None
-                        user_account = UserAccount.objects.get(id=scheme.added_by.id)
-                        scheme_data['added_by'] = user_account.username
+                    if scheme.added_by:  # Check if added_by_id is not None
+                        print("added", scheme.added_by)
+                        # user_account = UserAccount.objects.get(id=scheme.added_by.id)
+                        scheme_data['added_by'] = scheme.added_by.username
                     else:
                         scheme_data['added_by'] = None
                     
@@ -2471,6 +2472,7 @@ class SchemePostAPIView(APIView):
             # Fetch the UserAccount object for the added_by field
             user_account = UserAccount.objects.get(id=account_id)
             user_name = user_account.username
+            print("status in request", request.data['status'])
 
             # Create a new Scheme
             scheme = Scheme.objects.create(
@@ -2478,14 +2480,15 @@ class SchemePostAPIView(APIView):
                 name=request.data['name'],
                 price=request.data['price'],
                 date_of_addition=timezone.now(),
+                analytetype=request.data['analytetype'],
                 added_by=user_account,  # Use the UserAccount object
-                # status=request.data['status'],
+                status=request.data['status'],
             )
             # Concatenate all changes into a single string
             changes_string = ", ".join([f"{field}: {request.data[field]}" for field in ["name", "price"]])
             # Save data in activity log as a single field
             ActivityLogUnits.objects.create(
-                scheme=scheme,
+                scheme_id=scheme,
                 date_of_addition=timezone.now(),
                 field_name="Changes",
                 old_value=None,  # No old value during creation
@@ -3078,12 +3081,6 @@ class AnalyteUpdateReagentsAPIView(APIView):
         except Exception as e:
             return Response({"status": status.HTTP_400_BAD_REQUEST, "message": str(e)})
 
-
-#analytes
-        
-
-
-
 # Scheme add Analytes
 class SchemeAnalyteAPIView(APIView):
     permission_classes = (AllowAny,)  # Adjust permission classes as needed
@@ -3091,19 +3088,25 @@ class SchemeAnalyteAPIView(APIView):
     def get(self, request, id, *args, **kwargs):
         try:
             scheme = Scheme.objects.get(id=id)
-            analytes = scheme.analytes.all()  
-            analyte_ids = [analyte.id for analyte in analytes]
+            
+            # Get the analytes field, default to an empty string if None
+            analytes_str = scheme.analytes or ""  # This assumes 'analytes' is a char field
+
+            # Split the comma-separated string into a list of strings, then convert to integers
+            analytes = [int(analyte_id) for analyte_id in analytes_str.split(',') if analyte_id.strip()]
             
             # Serialize data
             serialized_data = {
-                #"scheme": SchemeSerializer(scheme).data,
-                "analytes": analyte_ids  # Send list of reagent IDs
+                "analytes": analytes  # Send list of analyte IDs as integers
             }
             
             return Response({"status": status.HTTP_200_OK, "data": serialized_data})
         
         except Scheme.DoesNotExist:
             return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "Scheme not found."})
+        
+        except ValueError:
+            return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "Error parsing analytes."})
         
         except Exception as e:
             return Response({"status": status.HTTP_400_BAD_REQUEST, "message": str(e)})
@@ -3262,12 +3265,11 @@ class AnalyteAPIView(APIView):
                 name=request.data['name'],
                 code=request.data['code'],
                 status=request.data['status'],
-                analytetype=request.data['analytetype'],
                 date_of_addition=timezone.now(),
             )
 
             # Concatenate all changes into a single string
-            changes_string = ", ".join([f"{field}: {request.data[field]}" for field in ["name", "code", "status","analytetype"]])
+            changes_string = ", ".join([f"{field}: {request.data[field]}" for field in ["name", "code", "status"]])
 
             # Save data in activity log
             activity_log = ActivityLogUnits.objects.create(
@@ -3569,14 +3571,14 @@ class SampleListView(APIView):
                 if sample.scheme_id:
                     scheme = Scheme.objects.get(id=sample.scheme_id.id)
                     sample_data['scheme'] = scheme.name
+                    
+                    # Count the analytes from the scheme's analytes field (comma-separated IDs)
+                    analytes_ids = scheme.analytes.split(',')  # Convert comma-separated string to list
+                    analytes_count = len([analyte for analyte in analytes_ids if analyte])  # Filter out empty values
+                    sample_data['noofanalytes'] = analytes_count
                 else:
                     sample_data['scheme'] = None
-                
-                # Ensure the sample is saved to get an ID before accessing the analytes field
-                if sample.pk is None:
-                    sample.save()
-
-                analytes_count = sample.analytes.count()
+                    sample_data['noofanalytes'] = 0
                 
                 # Convert analytes to a list of dictionaries
                 analytes = list(sample.analytes.values('id', 'name', 'code', 'status'))
@@ -3611,7 +3613,8 @@ class SamplePostView(APIView):
             staff_user = Staff.objects.get(account_id=account_id)
             organization = staff_user.organization_id
             id = request.data.get('scheme')
-            scheme_id = Scheme.objects.get(id=id)
+            Cycle_id = Cycle.objects.get(id=id)
+            print("cycle in sample", Cycle_id.scheme_name)
             # Assuming Sample model has account_id field as ForeignKey to UserAccount
             # Fetch the UserAccount instance based on account_id
            
@@ -3620,7 +3623,8 @@ class SamplePostView(APIView):
                 organization_id = organization,
                 samplename=request.data['samplename'],
                 sampleno=request.data['sampleno'],
-                scheme_id=scheme_id,
+                scheme_id=Cycle_id.scheme_name,
+                Cycle_id=Cycle_id,
                 detail=request.data['detail'],
                 notes=request.data['notes'],
                 # status=request.data['status'],
@@ -4176,3 +4180,29 @@ class DeleteMAnufacturerView(APIView):
 
         except Manufactural.DoesNotExist:
             return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "No such Manufacturer to delete."})
+class AnalytesListForSchemeAPIView(APIView):
+   
+    def get(self, request, *args, **kwargs):
+        scheme_id = kwargs.get('id')
+
+        try:
+            scheme = Scheme.objects.get(id=scheme_id)
+            print("analytes", scheme.analytetype)
+
+            if scheme.analytetype == "Qualitative":
+                analyte_list = Analyte.objects.filter(units__name="Pos/Neg/Equi")
+                print("analyte_list in qualitative", analyte_list)
+            else:
+                analyte_list = Analyte.objects.exclude(units__name="Pos/Neg/Equi")
+
+            # analyte_ids = [analyte.id for analyte in analyte_list]
+
+
+            serialized_data = AnalyteSerializer(analyte_list, many=True).data
+            return Response({"status": status.HTTP_200_OK, "data": serialized_data})
+        
+        except Staff.DoesNotExist:
+            return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "Invalid account_id."})
+        
+        except Analyte.DoesNotExist:
+            return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "No Analyte records found."})
