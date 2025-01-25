@@ -1,0 +1,13 @@
+{
+  "type": "service_account",
+  "project_id": "nomadic-raceway-342813",
+  "private_key_id": "b19127375cb6cf7b3d9db68b05d330266a4ed4a5",
+  "private_key": "-----BEGIN PRIVATE KEY-----\nMIIEvgIBADANBgkqhkiG9w0BAQEFAASCBKgwggSkAgEAAoIBAQC/t4jT3v9Tb0EO\ndJRCtsS/hPreR0CTJyv8jXLnYmH7EfM5txD7jsCPX9hxDtYjHmTIxw19sxrpghxc\nqCEExDS51poovmJmhULwElH20jUnsYQhPfuyaRYJ58D/qDgCLQwLZSHxcxcZGFpe\nUfEkL7o5Zx3B0accxEIpXXmJNnANvX7v7tQFGcsPtcZlNKeq3pMnZDje5EwYypFf\n2/w02S1H5qwA/YHHm4ZvHYS93AJJeWhxypZlokDjpLPv4z3sYEp99YqRcsBW3JX5\njdwcl45b74bB5uRCjBKrrCqa6MAIMsWUxWaqvjKPNtcf8/vRNKYF/7Ib3F4Axysk\niTjimKq/AgMBAAECggEAOqrYZTWNXqPh/aFxKUUyygTQnCqjuSQ4kq1aZzI1F5az\nnorF2KUjifxjiJ1orBCF+Obo2vlvF9vn//a3O/UqyV/BhwxTolnPVRXWHTjQaVgq\nPd3w4vTDeL6B0fpRQWE1mVsWWwPEIrrQFKLwrwkn7J8AfSpCAEySjoP7SCDvg1Rb\nvyxDHkUKbwGzPfEgBgjSul1dOdDFr4TR8qbbvHvL9Eol6z6a4RmQ0/t/OaKaNalh\nLYQzlYJTitUX0+MFr51/ARvMn9eOXrxiB1KXFQsn+CpE40FxGX8UAPRQA3hUkj+F\n/33pnp1u0FXoQHd8TleZqZYNctB5t2/hbpkWomTp4QKBgQD/4Ta9J3WR+ZntIT+2\nqhN2OIO3zjbJPEKxJBuLTNgkmc7KnzN2gtzWhugBG046mtoEOSShSFh8SUEbpikG\n/w8cmpTtvwa+9MiYRyjOPXhNE9C0cqyIAbLkZeBoVcd5SEalYjaBNB8PBAeuVkeU\nm+INe9T90EgW0NHU3FaF5cH18QKBgQC/zpnVMkVOmDg8EgDJpZpaqWjDC2stqjE8\nDtwsmNELic0m643X2vTcvj8mJ+x1j+pf4e5194si6HoAaVkUQx7Tm2yW51QYE0va\nax7UTnrhms7wKO3X0Xwx4nsi3WKh0eGhQBpWsavfa57EoS/BwHya5hptuEX1aqGG\nPxPHlYM7rwKBgQCTFbqJcK08g+XfUUV2kr0tL79HYNpNQr5zZPYQVNPJ9j/QaUMD\n1KVtC49BU5jcRzcbRl2v+A4lI1axtgnPY74kCxegsjYGfl7wabcjFmKYq9NEZsaW\nR6O1dnpQfz5ykQFK//Gkw3k3AHIJ3L64xgJjDdOZMqi9tLtpSF7UCQY9gQKBgGzU\nS8KE2IBErDuhN2MynEbusmtgkjqBw5fBEroXJx113bpEkuGz8ZVCONBsfKUjuCcZ\nKVUz1HVFFNwg6hMuFlKYcF+a98MFR9exSffKY7yYOuxXPMRkryQaziU1Gd6ZGH2G\nwqsH+m41QQtuLYuwrMKy5rH0iXU7QFTMe2uV8LUvAoGBAMaN8VubRtH2DOcbRKmx\nSGV3C2wIsK7iA5snGOXAilkXNnxrytqvQ6zIoOqELRT8lMnylP+zgrhbXk/YprPW\nwYfZvP1fiHFcxwRYJ0NHrt2iTbm1vAKNfQ4r0A2vSRHrBnla5fkku6ZZ/othmmem\ntX1tA3FrwST6VqWteupRcATK\n-----END PRIVATE KEY-----\n",
+  "client_email": "googlesheetsaccess@nomadic-raceway-342813.iam.gserviceaccount.com",
+  "client_id": "108056623620254438573",
+  "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+  "token_uri": "https://oauth2.googleapis.com/token",
+  "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
+  "client_x509_cert_url": "https://www.googleapis.com/robot/v1/metadata/x509/googlesheetsaccess%40nomadic-raceway-342813.iam.gserviceaccount.com",
+  "universe_domain": "googleapis.com"
+}
