@@ -4,8 +4,8 @@
 The first thing to do is to clone the repository:
 
 ```sh
-git clone https://github.com/labhazir/nhsneqas-django.git
-cd nhsneqas-django
+git clone https://github.com/steverex169/pissystem-backend.git
+cd pissystem-backend
 ```
 
 Copy settings_copy content into settings file:
