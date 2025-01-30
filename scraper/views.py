@@ -117,18 +117,20 @@ class ScrapeWeeklyFiguresView(APIView):
                 continue
 
             for entry in partner["dropdown_data"]:
-                if not Scrapdata.objects.filter(
-                    website_url=entry['website_url'], username=entry['username']
-                ).exists():
                     # Save new entry
                     Scrapdata.objects.create(
+
                         partner_name=partner['partner_name'],
+                        user=partner['partner_name'],
                         total=partner['total'],
                         partner_profit=partner['today_text'],
                         office_profit=entry['office_profit'],
                         website_url=entry['website_url'],
-                        username=entry['username'],
-                        password=entry['password'],
+                        username=partner['username'] if partner['username'] else partner['partner_name'],
+                        password=partner['password'] if partner['password'] else partner['partner_name'],
+
+                        # username=entry['username'],
+                        # password=entry['password'],
                         figure=entry['figure'],
                         affiliate_profit=entry['affiliate_profit'],
                         office_profit_dropdown=entry['office_profit']
@@ -185,27 +187,33 @@ class WeeklyFigureScraperAPI(APIView):
                     start_date = datetime.strptime(previous_date, "%m/%d/%Y")  # Adjust format if necessary
                     end_date = start_date + timedelta(days=6)  # Add 6 days for the 7-day range
                     formatted_date_range = f"{start_date.strftime('%m/%d/%y')} - {end_date.strftime('%m/%d/%y')}"
-                    print("previous ate with end date", formatted_date_range, start_date, end_date)
+                    print("previous date with end date:", formatted_date_range, start_date, end_date)
                 else:
                     formatted_date_range = "N/A"
             except Exception as e:
                 logging.error(f"Date formatting error: {str(e)}")
                 formatted_date_range = "N/A"
-            if not Scrapdata.objects.filter(username=entry.get('name')).exists():
-                Scrapdata.objects.create(
-                    partner="BETWAR",  # Default value
-                    partner_name=entry.get('user_id', "N/A"),  # Match scraped data key
-                    total=entry.get('carry', "N/A"),  # Map 'carry' to 'total'
-                    partner_profit=formatted_date_range,  # Map 'payments' to 'partner_profit'
-                    office_profit=entry.get('balance', "N/A"),  # Map 'balance' to 'office_profit'
-                    username=entry.get('name', "N/A"),  # Assuming 'name' is the username
-                    password=entry.get('password', "N/A"),  # Match scraped data key
-                    figure="N/A",  # Default value if not scraped
-                    affiliate_profit=entry.get('payments', "N/A"),  # Default value if not scraped
-                    weekly=entry.get('weekly', "N/A"),  # Default value if not scraped
-                    office_profit_dropdown="N/A",  # Default value if not scraped
-                    website_url="N/A",  # Hardcoded URL
-                )
+
+            # Log the check for existing data
+        
+            print(f"Creating new entry for {entry.get('name')}")
+            Scrapdata.objects.create(
+                partner="BETWAR",  # Default value
+                partner_name=entry.get('partner_id') if entry.get('partner_id') else entry.get('user_id', "user_id"),
+                user=entry.get('user_id', "N/A"),  # Match scraped data key
+                total=entry.get('carry', "N/A"),  # Map 'carry' to 'total'
+                partner_profit=formatted_date_range,  # Map 'payments' to 'partner_profit'
+                office_profit=entry.get('balance', "N/A"),  # Map 'balance' to 'office_profit'
+                username=entry.get('partner_id') if entry.get('partner_id') else entry.get('user_id', "user_id"),  # Match scraped data key
+                password=entry.get('password') if entry.get('password') else entry.get('user_id', "user_id"),  # Match scraped data key
+                figure="N/A",  # Default value if not scraped
+                affiliate_profit=entry.get('payments', "N/A"),  # Default value if not scraped
+                weekly=entry.get('weekly', "N/A"),  # Default value if not scraped
+                office_profit_dropdown="N/A",  # Default value if not scraped
+                website_url="N/A",  # Hardcoded URL
+            )
+
+
         # Return the scraped data
         return Response(
             {"message": "Scraping successful.", "data": scraped_data},

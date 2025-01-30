@@ -70,6 +70,8 @@ class Scrapdata(models.Model):
     partner = models.CharField(
         max_length=50, choices=PARTNERS, blank=True, null=True, default='XAOS')
     partner_name = models.CharField(max_length=1000, blank=True, null=False)
+    partner_percentage = models.CharField(max_length=1000, blank=True, null=False, default=0)
+    user = models.CharField(max_length=1000, blank=True, null=False)
     total = models.CharField(max_length=1000, blank=True, null=False)
     partner_profit = models.CharField(max_length=1000, blank=True, null=False)
     office_profit = models.CharField(max_length=1000, blank=True, null=False)

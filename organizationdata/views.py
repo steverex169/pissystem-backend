@@ -9,10 +9,9 @@ from rest_framework import status
 from django.urls import reverse
 from rest_framework.authtoken.models import Token
 from django.conf import settings
-from helpers.mail import send_mail
 from django.contrib.sites.shortcuts import get_current_site
 from organizationdata.models import Organization, Scrapdata
-from organizationdata.serializers import OrganizationSerializer
+from organizationdata.serializers import OrganizationSerializer, ScrapdataSerializer
 from account.models import UserAccount
 from account.serializers import RegisterSerializer
 from django.forms.models import model_to_dict
@@ -205,9 +204,10 @@ class Statements2View(APIView):
                         office_profit = cart_item.office_profit
                         total = cart_item.total
                         weekly = cart_item.weekly
+                        user = cart_item.user
 
 
-                        account_items.append({"partner": partner, "weekly": weekly, "partner_name": partner_name, "website_url": website_url, "username": username, "password": password, "figure":figure, "affiliate_profit": affiliate_profit, "partner_profit": partner_profit, "office_profit": office_profit,"total":total,})
+                        account_items.append({"user": user, "partner": partner, "weekly": weekly, "partner_name": partner_name, "website_url": website_url, "username": username, "password": password, "figure":figure, "affiliate_profit": affiliate_profit, "partner_profit": partner_profit, "office_profit": office_profit,"total":total,})
                 return Response({"status": status.HTTP_200_OK,  "data": account_items })
             except Scrapdata.DoesNotExist:
                 return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "No Record Exist."})
@@ -217,45 +217,151 @@ class Statements2View(APIView):
 
 class AccountsListsView(APIView):
     permission_classes = (AllowAny,)
-
-    # GET request to retrieve user accounts with account_type="database-admin"
+    
     def get(self, request, *args, **kwargs):
         try:
+            # Get all users (not used)
             all_users = UserAccount.objects.all()
             print(all_users)
 
+            # Get all database admins
             database_admins = UserAccount.objects.filter(account_type="database-admin")
             print(database_admins)
 
-            database_admins = UserAccount.objects.filter(account_type="database-admin")
-            print(database_admins)
-
+            # Initialize an empty list for serialized data
             serializer = RegisterSerializer(database_admins, many=True)
-            return Response(
-                {"status": status.HTTP_200_OK, "data": serializer.data},
-                status=status.HTTP_200_OK
-            )
+            serialized_data = serializer.data  # Convert it into mutable list
+
+            # Iterate over each admin and find partner data
+            for i, admin in enumerate(database_admins):
+                partnerdata = Scrapdata.objects.filter(partner_name=admin.username).first()  # Get first match
+                if partnerdata:
+                    serialized_data[i]["partner_percentage"] = partnerdata.partner_percentage
+                else:
+                    serialized_data[i]["partner_percentage"] = None  # Default value if no match found
+
+            return Response({"status": status.HTTP_200_OK, "data": serialized_data})
+
         except Exception as e:
             return Response(
                 {"status": status.HTTP_500_INTERNAL_SERVER_ERROR, "error": str(e)},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
+
+    # GET request to retrieve user accounts with account_type="database-admin"
+    # def get(self, request, *args, **kwargs):
+    #     try:
+    #         all_users = UserAccount.objects.all()
+    #         print(all_users)
+
+    #         database_admins = UserAccount.objects.filter(account_type="database-admin")
+    #         print(database_admins)
+
+    #         database_admins = UserAccount.objects.filter(account_type="database-admin")
+    #         print(database_admins)
+
+    #         # partnerdata = Scrapdata.objects.filter(UserAccount=database_admins.UserAccount)
+    #         # print("partnerdata username", partnerdata)
+
+    #         serializer = RegisterSerializer(database_admins, many=True)
+    #         return Response(
+    #             {"status": status.HTTP_200_OK, "data": serializer.data},
+    #             status=status.HTTP_200_OK
+    #         )
+    #     except Exception as e:
+    #         return Response(
+    #             {"status": status.HTTP_500_INTERNAL_SERVER_ERROR, "error": str(e)},
+    #             status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+    # def get(self, request, *args, **kwargs):
+    #     try:
+    #         all_users = UserAccount.objects.all()
+    #         print(all_users)
+
+    #         database_admins = UserAccount.objects.filter(account_type="database-admin")
+    #         print(database_admins)
+
+    #         # Retrieve partner data related to database admins
+    #         partnerdata = Scrapdata.objects.filter(partner_name=database_admins)
+    #         print("Partner Data:", partnerdata)
+
+    #         # Serialize the database admins and their related partner data
+    #         admins_serializer = RegisterSerializer(database_admins, many=True)
+    #         print("admins serializer", admins_serializer)
+    #         partners_serializer = ScrapdataSerializer(partnerdata, many=True)
+
+    #         return Response(
+    #             {
+    #                 "status": status.HTTP_200_OK,
+    #                 "database_admins": admins_serializer.data,
+    #                 "partner_data": partners_serializer.data,
+    #             },
+    #             status=status.HTTP_200_OK,
+    #         )
+
+    #     except Exception as e:
+    #         return Response(
+    #             {"status": status.HTTP_500_INTERNAL_SERVER_ERROR, "error": str(e)},
+    #             status=status.HTTP_500_INTERNAL_SERVER_ERROR
+                
+    #         )
     def put(self, request, *args, **kwargs):
         try:
+            # Get the staff by ID
             staff = UserAccount.objects.get(id=kwargs.get('id'))
+            print("staff info", staff, staff.username)
 
-            serializer = RegisterSerializer(
-                staff, data=request.data, partial=True)
+            # Fetch all Scrapdata objects for this partner
+            partners = Scrapdata.objects.filter(partner_name=staff.username)
+            print("partner info", partners)
 
-            if serializer.is_valid():
-                serializer.save()
+            # Check if any partners exist
+            if not partners.exists():
+                return Response({"status": status.HTTP_404_NOT_FOUND, "message": "No matching partner data found for the staff."})
 
-                return Response({"status": status.HTTP_200_OK, "data": serializer.data, "message": "Updated Successfully"})
-            else:
-                return Response({"status": status.HTTP_400_BAD_REQUEST, "message": serializer._errors})
+            # Iterate through each partner record and update
+            updated_records = []
+            for partner in partners:
+                serializer = ScrapdataSerializer(partner, data=request.data, partial=True)
+                if serializer.is_valid():
+                    serializer.save()
+                    updated_records.append(serializer.data)
+                else:
+                    return Response({"status": status.HTTP_400_BAD_REQUEST, "message": serializer.errors})
+
+            return Response({
+                "status": status.HTTP_200_OK,
+                "data": updated_records,
+                "message": f"Updated {len(updated_records)} records successfully"
+            })
 
         except UserAccount.DoesNotExist:
-            return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "Sorry! Account with this id doesn't exist. Please create account first."})
+            return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "Sorry! Account with this ID doesn't exist. Please create account first."})
+        except Exception as e:
+            # Handle unexpected errors
+            return Response({"status": status.HTTP_500_INTERNAL_SERVER_ERROR, "message": str(e)})
+
+    # def put(self, request, *args, **kwargs):
+    #     try:
+    #         staff = UserAccount.objects.get(id=kwargs.get('id'))
+    #         print("staff info", staff, staff.username)
+
+    #         partners = Scrapdata.objects.filter(partner_name = staff.username)
+    #         print("partner info", partners)
+
+    #         serializer = ScrapdataSerializer(
+    #             partners, data=request.data, partial=True)
+
+    #         if serializer.is_valid():
+    #             serializer.save()
+
+    #             return Response({"status": status.HTTP_200_OK, "data": serializer.data, "message": "Updated Successfully"})
+    #         else:
+    #             return Response({"status": status.HTTP_400_BAD_REQUEST, "message": serializer._errors})
+
+    #     except UserAccount.DoesNotExist:
+    #         return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "Sorry! Account with this id doesn't exist. Please create account first."})
 
     # Delete request to delete one cart item
     def delete(self, request, *args, **kwargs):

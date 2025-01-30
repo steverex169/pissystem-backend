@@ -112,21 +112,35 @@ class WeeklyFigureScraperBetwar:
                 scraped_data = []  # Store extracted data here
 
                 if rows:
+                    current_partner_id = ""  # Track the current partner
+
                     for row in rows[1:]:  # Skip the header row
                         cells = row.query_selector_all("td")
-                        row_data = {
-                            "user_id": cells[0].text_content().strip() if len(cells) > 0 else "",
-                            "name": cells[1].text_content().strip() if len(cells) > 1 else "",
-                            "password": cells[14].text_content().strip() if len(cells) > 14 else "",
-                            "carry": cells[3].text_content().strip() if len(cells) > 3 else "",
-                            "payments": cells[12].text_content().strip() if len(cells) > 12 else "",
-                            "balance": cells[13].text_content().strip() if len(cells) > 13 else "",
-                            "previous_week_date": previous_week_date,
-                            "weekly": cells[10].text_content().strip() if len(cells) > 10 else "",
 
+                        if len(cells) > 0:
+                            # Extract color of the first cell's text
+                            first_cell_text = cells[0].text_content().strip()
 
-                        }
-                        scraped_data.append(row_data)
+                            # Check if cells[1] and cells[14] are empty
+                            if not cells[1].text_content().strip() and not cells[14].text_content().strip():
+                                current_partner_id = first_cell_text  # Assign partner ID
+                                print(f"New Partner ID Detected: {current_partner_id}")  # Debugging
+                                continue  # Skip storing this row
+
+                            # If it's not a partner row, store it with the assigned `current_partner_id`
+                            row_data = {
+                                "partner_id": current_partner_id,  # Assign the partner ID
+                                "user_id": first_cell_text,  # First column is the user_id
+                                "name": cells[1].text_content().strip() if len(cells) > 1 else "",
+                                "password": cells[14].text_content().strip() if len(cells) > 14 else "",
+                                "carry": cells[3].text_content().strip() if len(cells) > 3 else "",
+                                "payments": cells[12].text_content().strip() if len(cells) > 12 else "",
+                                "balance": cells[13].text_content().strip() if len(cells) > 13 else "",
+                                "previous_week_date": previous_week_date,
+                                "weekly": cells[10].text_content().strip() if len(cells) > 10 else "",
+                            }
+
+                            scraped_data.append(row_data)  # Store only user rows
                 else:
                     print("No rows found, skipping.")
 

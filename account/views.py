@@ -17,7 +17,6 @@ from .serializers import RegisterSerializer
 from django.contrib.sites.shortcuts import get_current_site
 from django.urls import reverse
 from django.conf import settings
-from helpers.mail import send_mail
 from datetime import datetime
 import datetime
 from django.contrib.auth.models import update_last_login
