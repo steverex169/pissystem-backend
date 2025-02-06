@@ -5,70 +5,19 @@ from rest_framework import parsers
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from .utils import WeeklyFigureScraper
 from .utilsbetwar import WeeklyFigureScraperBetwar
+from .volumnScrape import PartnerVolume
 from .serializers import PartnerDataSerializer
-from organizationdata.models import Scrapdata
+from organizationdata.models import Scrapdata, ScrapBetwarVolumn
 import logging
 from rest_framework.views import APIView
 from account.models import UserAccount
 from rest_framework.authtoken.models import Token
 from datetime import datetime, timedelta
+from rest_framework.response import Response
+from rest_framework import status
+from datetime import datetime, timedelta
+import logging
 
-
-
-# class ScrapeWeeklyFiguresView(APIView):
-#     def post(self, request):
-#         email = request.data.get("email")
-#         password = request.data.get("password")
-#         base_url = request.data.get("base_url")
-
-#         if not email or not password or not base_url:
-#             return Response(
-#                 {"error": "email, password, and base_url are required."},
-#                 status=status.HTTP_400_BAD_REQUEST
-#             )
-
-#         scraper = WeeklyFigureScraper(email, password, base_url)
-#         try:
-#             scraper.setup_driver()
-#             scraper.login()
-#             scraper.navigate_to_weekly_figure()
-#             scraper.process_dropdowns()
-#         except Exception as e:
-#             logging.error(f"Scraper error: {str(e)}")
-#             return Response({"error": "Error during scraping."}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-#         finally:
-#             scraper.close()
-
-#         if not scraper.scraped_data:
-#             return Response({"error": "No data scraped."}, status=status.HTTP_204_NO_CONTENT)
-
-#         # Process scraped data
-#         for partner in scraper.scraped_data:
-#             for entry in partner["dropdown_data"]:
-#                 if not Scrapdata.objects.filter(
-#                     website_url=entry['website_url'], username=entry['username']
-#                 ).exists():
-#                     # Save new entry
-#                     Scrapdata.objects.create(
-#                         partner_name=partner['partner_name'],
-#                         total=partner['total'],
-#                         partner_profit=partner['today_text'],
-#                         office_profit=partner['office_profit'],
-#                         website_url=entry['website_url'],
-#                         username=entry['username'],
-#                         password=entry['password'],
-#                         figure=entry['figure'],
-#                         affiliate_profit=entry['affiliate_profit'],
-#                         office_profit_dropdown=entry['office_profit']
-#                     )
-#         # Serialize and return response
-#         serialized_data = PartnerDataSerializer(scraper.scraped_data, many=True).data
-#         return Response(
-#             {"message": "Data scraped successfully.", "data": serialized_data},
-#             status=status.HTTP_200_OK
-        # )
-    
-from datetime import datetime
 
 class ScrapeWeeklyFiguresView(APIView):
     def post(self, request):
@@ -97,44 +46,23 @@ class ScrapeWeeklyFiguresView(APIView):
         if not scraper.scraped_data:
             return Response({"error": "No data scraped."}, status=status.HTTP_204_NO_CONTENT)
 
-        # Process scraped data
+        # Process scraped data and save it to DB
         for partner in scraper.scraped_data:
-            # Extract the date range from partner['today_text']
-            date_range = partner['today_text']
-            try:
-                start_date_str, end_date_str = date_range.split(" - ")
-                start_date = datetime.strptime(start_date_str, "%m/%d/%y")
-                end_date = datetime.strptime(end_date_str, "%m/%d/%y")
+            for entry in partner.get("dropdown_data", []):
+                Scrapdata.objects.create(
+                    partner_name=partner['partner_name'],
+                    user=partner['partner_name'],
+                    total=partner['total'],
+                    partner_profit=partner['partner_profit'],
+                    office_profit=entry.get('office_profit', None),
+                    website_url=entry.get('website_url', None),
+                    username=entry.get('username', partner['partner_name']),
+                    password=entry.get('password', entry.get('username', '')),
+                    figure=entry.get('figure', 0),
+                    affiliate_profit=entry.get('affiliate_profit', 0),
+                    office_profit_dropdown=entry.get('office_profit', None)
+                )
 
-                # Format dates to "12 Jan 2024" format
-                formatted_start_date = start_date.strftime("%d %b %Y")
-                formatted_end_date = end_date.strftime("%d %b %Y")
-
-                print("Start Date:", formatted_start_date)
-                print("End Date:", formatted_end_date)
-            except ValueError as e:
-                print(f"Error parsing date range '{date_range}': {str(e)}")
-                continue
-
-            for entry in partner["dropdown_data"]:
-                    # Save new entry
-                    Scrapdata.objects.create(
-
-                        partner_name=partner['partner_name'],
-                        user=partner['partner_name'],
-                        total=partner['total'],
-                        partner_profit=partner['today_text'],
-                        office_profit=entry['office_profit'],
-                        website_url=entry['website_url'],
-                        username=partner['username'] if partner['username'] else partner['partner_name'],
-                        password=partner['password'] if partner['password'] else partner['partner_name'],
-
-                        # username=entry['username'],
-                        # password=entry['password'],
-                        figure=entry['figure'],
-                        affiliate_profit=entry['affiliate_profit'],
-                        office_profit_dropdown=entry['office_profit']
-                    )
         # Serialize and return response
         serialized_data = PartnerDataSerializer(scraper.scraped_data, many=True).data
         return Response(
@@ -219,3 +147,81 @@ class WeeklyFigureScraperAPI(APIView):
             {"message": "Scraping successful.", "data": scraped_data},
             status=status.HTTP_200_OK
         )
+
+class VolumnScrapeBewar(APIView):
+    def post(self, request, *args, **kwargs):
+        username = request.data.get("username")
+        password = request.data.get("password")
+        base_url = request.data.get("base_url", "https://betwar.com")
+
+        if not username or not password:
+            return Response(
+                {"error": "username and password are required."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        scraper = PartnerVolume(username=username, password=password, base_url=base_url)
+
+        try:
+            proxy_list = scraper.fetch_proxies()
+            scraper.get_random_proxy(proxy_list)
+            scraper.verify_proxy()
+            scraper.login()
+        except Exception as e:
+            logging.error(f"Scraper error: {str(e)}")
+            return Response({"error": "Error during scraping."}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        finally:
+            scraper.close()
+
+        if not scraper.all_rows_data:
+            return Response({"message": "No data found."}, status=status.HTTP_204_NO_CONTENT)
+
+        created_entries = []  # To collect all created entries for response
+        for entry in scraper.all_rows_data:
+            if not isinstance(entry, dict):
+                continue
+            try:
+                previous_date = entry.get('daterange')
+                pname = entry.get('partnername')
+                volumedata = entry.get('totalvolume')
+
+                if previous_date:
+                    date_parts = previous_date.split(" to ")
+                    if len(date_parts) == 2:
+                        start_date = datetime.strptime(date_parts[0], "%m/%d/%Y")
+                        end_date = datetime.strptime(date_parts[1], "%m/%d/%Y")
+                        formatted_date_range = f"{start_date.strftime('%-m/%-d/%y')} - {end_date.strftime('%-m/%-d/%y')}"
+                    else:
+                        formatted_date_range = "N/A"
+                else:
+                    formatted_date_range = "N/A"
+
+                logging.info(f"Processing entry: partner={pname}, date={formatted_date_range}, volume={volumedata}")
+
+                created_entries.append(ScrapBetwarVolumn.objects.create(
+                    partner_name=pname,
+                    weak_date=formatted_date_range,
+                    volume=volumedata
+                ))
+
+            except Exception as e:
+                logging.error(f"Error processing entry: {str(e)}")
+                continue  # Continue to next entry in case of error
+
+        if created_entries:
+            return Response(
+                {"message": "Scraping successful.", "data": [entry.id for entry in created_entries]},
+                status=status.HTTP_200_OK
+            )
+        else:
+            return Response(
+                {"message": "No new data saved."},
+                status=status.HTTP_204_NO_CONTENT
+            )
+
+
+
+
+
+
+    

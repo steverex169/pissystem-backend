@@ -1,69 +1,21 @@
-import requests
-import random
-import time
 from playwright.sync_api import sync_playwright
 from playwright_stealth import stealth_sync
+import time
+import random
 
 
 class WeeklyFigureScraperBetwar:
     def __init__(self, username, password, base_url="https://betwar.com"):
-        # User credentials
         self.username = username
         self.password = password
         self.base_url = base_url
 
-        # Webshare proxy settings
-        self.webshare_proxy_url = "https://proxy.webshare.io/api/v2/proxy/list/download/iouqvorexpcubufvlewcywrxypybuwottjggjjth/-/any/username/direct/-/"
-        self.proxy_list = self.fetch_proxy_list()
-        self.proxy_host, self.proxy_port, self.proxy_user, self.proxy_password = self.get_random_proxy()
-        self.proxy_url = f"http://{self.proxy_user}:{self.proxy_password}@{self.proxy_host}:{self.proxy_port}"
-
-    def fetch_proxy_list(self):
-        """Fetch the proxy list from Webshare."""
-        response = requests.get(self.webshare_proxy_url)
-        proxy_list = response.text.strip().split("\n")
-        if not proxy_list:
-            raise Exception("No proxies fetched from the provided Webshare link.")
-        return proxy_list
-
-    def get_random_proxy(self):
-        """Select a random proxy from the proxy list."""
-        proxy = random.choice(self.proxy_list)
-        proxy_host, proxy_port = proxy.split(":")[:2]
-        proxy_user = "dtnvyuji"
-        proxy_password = "pm5um6w7spc4"
-        return proxy_host, proxy_port, proxy_user, proxy_password
-
-    def verify_proxy(self):
-        """Verify if the selected proxy is functional."""
-        proxies = {"http": self.proxy_url, "https": self.proxy_url}
-        headers = {
-            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36",
-            "Accept-Language": "en-US,en;q=0.9",
-            "Referer": "https://google.com",
-            "Connection": "keep-alive",
-        }
-        try:
-            response = requests.get("https://ipinfo.io/json", proxies=proxies, headers=headers, timeout=10)
-            response.raise_for_status()
-            ip_data = response.json()
-            print("Proxy verification result:")
-            print(f"Public IP: {ip_data.get('ip')}")
-            print(f"Location: {ip_data.get('city')}, {ip_data.get('region')}, {ip_data.get('country')}")
-        except requests.exceptions.RequestException as e:
-            print("Proxy verification failed.")
-            raise Exception("Exiting script due to proxy verification failure.") from e
-
     def scrape_data(self):
-        """Scrape data from the Betwar website."""
+        """Scrape data from the Betwar website without proxies and in headless mode."""
         with sync_playwright() as p:
-            browser = p.chromium.launch(headless=False, proxy={
-                "server": f"http://{self.proxy_host}:{self.proxy_port}",
-                "username": self.proxy_user,
-                "password": self.proxy_password
-            })
+            browser = p.chromium.launch(headless=True)  # Running in headless mode
             context = browser.new_context()
-            stealth_sync(context)  # Apply stealth mode to bypass bot detection
+            stealth_sync(context)  # Apply stealth mode to avoid bot detection
             page = context.new_page()
 
             try:
@@ -99,38 +51,33 @@ class WeeklyFigureScraperBetwar:
                     "xpath=/html/body/form/main/div/div/div[2]/section/div/div/div/div[1]/div/div[2]/div/div/div/div[1]/select"
                 ).text_content()
                 options = [line.strip() for line in element_text.split("\n") if line.strip()]
-                if len(options) > 1:
-                    previous_week_date = options[1]
-                    print("Previous Week Date:", previous_week_date)
-                else:
-                    print("Previous week date not found.")
+                previous_week_date = options[1] if len(options) > 1 else "Not found"
+                print("Previous Week Date:", previous_week_date)
 
                 # Scrape the table data
                 page.wait_for_selector("#tblfigure", timeout=15000)
                 rows = page.query_selector_all("#tblfigure tr")
                 print("Scraping table data...")
-                scraped_data = []  # Store extracted data here
+                scraped_data = []
 
                 if rows:
-                    current_partner_id = ""  # Track the current partner
+                    current_partner_id = ""
 
-                    for row in rows[1:]:  # Skip the header row
+                    for row in rows[1:]:
                         cells = row.query_selector_all("td")
 
                         if len(cells) > 0:
-                            # Extract color of the first cell's text
                             first_cell_text = cells[0].text_content().strip()
 
                             # Check if cells[1] and cells[14] are empty
                             if not cells[1].text_content().strip() and not cells[14].text_content().strip():
-                                current_partner_id = first_cell_text  # Assign partner ID
-                                print(f"New Partner ID Detected: {current_partner_id}")  # Debugging
-                                continue  # Skip storing this row
+                                current_partner_id = first_cell_text
+                                print(f"New Partner ID Detected: {current_partner_id}")
+                                continue
 
-                            # If it's not a partner row, store it with the assigned `current_partner_id`
                             row_data = {
-                                "partner_id": current_partner_id,  # Assign the partner ID
-                                "user_id": first_cell_text,  # First column is the user_id
+                                "partner_id": current_partner_id,
+                                "user_id": first_cell_text,
                                 "name": cells[1].text_content().strip() if len(cells) > 1 else "",
                                 "password": cells[14].text_content().strip() if len(cells) > 14 else "",
                                 "carry": cells[3].text_content().strip() if len(cells) > 3 else "",
@@ -140,7 +87,7 @@ class WeeklyFigureScraperBetwar:
                                 "weekly": cells[10].text_content().strip() if len(cells) > 10 else "",
                             }
 
-                            scraped_data.append(row_data)  # Store only user rows
+                            scraped_data.append(row_data)
                 else:
                     print("No rows found, skipping.")
 
@@ -151,5 +98,3 @@ class WeeklyFigureScraperBetwar:
             finally:
                 browser.close()
                 print("Browser closed.")
-
-

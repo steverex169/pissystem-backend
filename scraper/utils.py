@@ -4,9 +4,8 @@ from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from webdriver_manager.chrome import ChromeDriverManager
-from organizationdata.models import Scrapdata
 from selenium.webdriver.chrome.options import Options
-print(Scrapdata._meta.get_fields())
+from selenium.common.exceptions import TimeoutException
 
 import time
 
@@ -19,23 +18,26 @@ class WeeklyFigureScraper:
         self.scraped_data = []
         self.scraped_data = []
 
-
-    # def setup_driver(self):
-    #     """Sets up the Selenium WebDriver."""
-    #     service = Service(ChromeDriverManager().install())
-    #     self.driver = webdriver.Chrome(service=service)
-    #     self.driver.maximize_window()
     def setup_driver(self):
-        """Sets up the Selenium WebDriver in headless mode."""
         options = Options()
-        options.add_argument("--headless")  # Enable headless mode
-        options.add_argument("--disable-gpu")  # Disable GPU (optional but recommended for headless mode)
-        options.add_argument("--no-sandbox")  # Bypass OS security model
-        options.add_argument("--disable-dev-shm-usage")  # Overcome limited resource problems
-        options.add_argument("--window-size=1920,1080")  # Set a specific window size for consistent rendering
-
+        options.add_argument("--headless")
+        options.add_argument("--no-sandbox")
+        options.add_argument("--disable-dev-shm-usage")
+        options.add_argument("--disable-gpu")
+        options.add_argument("--window-size=1920,1080")
+        options.add_argument("--disable-blink-features=AutomationControlled")
+        
+        # اضافی سیٹنگز
+        options.add_experimental_option("excludeSwitches", ["enable-automation"])
+        options.add_experimental_option('useAutomationExtension', False)
+        
+        # ChromeDriverManager کو اپ ڈیٹ کریں
         service = Service(ChromeDriverManager().install())
         self.driver = webdriver.Chrome(service=service, options=options)
+        
+        # ٹائم آؤٹ سیٹ کریں
+        self.driver.set_page_load_timeout(60)
+        self.driver.implicitly_wait(20)
 
     def login(self):
         """Logs into the system using the provided credentials."""
@@ -79,37 +81,47 @@ class WeeklyFigureScraper:
         print("Previous week selected.")
 
     def process_dropdowns(self):
-        """Processes all dropdowns on the Weekly Figure page."""
-        # Locate all the dropdown icons
-        dropdown_elements = self.driver.find_elements(By.CSS_SELECTOR, "td fa-icon.ng-fa-icon")
-        total_dropdowns = len(dropdown_elements)
-        print(f"Total dropdowns found: {total_dropdowns}")
-
-        for idx in range(total_dropdowns):
-            try:
-                print(f"Processing dropdown {idx + 1} of {total_dropdowns}...")
-
-                # Ensure the dropdown element exists before processing
-                dropdown = dropdown_elements[idx]
-                if dropdown:
-                    partner_data = self.process_dropdown(idx + 1)
-                    
-                    # Ensure that partner_data is not None and has valid dropdown data
-                    if partner_data and partner_data["dropdown_data"]:
-                        self.scraped_data.append(partner_data)  # Append partner_data to scraped_data
-                    else:
-                        print(f"No valid data for dropdown {idx + 1}, skipping.")
-                else:
-                    print(f"Dropdown {idx + 1} is not available, skipping.")
-                        
-            except IndexError as e:
-                print(f"Index error while processing dropdown {idx + 1}: {e}")
-            except Exception as e:
-                print(f"Error processing dropdown {idx + 1}: {e}")
+        """Processes dropdowns more efficiently."""
+        try:
+            # Wait for all dropdown elements to be visible
+            dropdown_elements = WebDriverWait(self.driver, 30).until(
+                EC.presence_of_all_elements_located((By.CSS_SELECTOR, "td fa-icon.ng-fa-icon"))
+            )
             
-        # print(f"Scraped data before returning: {self.scraped_data}")
-        # print("Scraping complete.")
-        return self.scraped_data  # Explicitly return scraped_data to ensure it's captured correctly
+            total_dropdowns = len(dropdown_elements)
+            print(f"Total dropdowns found: {total_dropdowns}")
+            
+            # Process each dropdown
+            for idx in range(total_dropdowns):
+                try:
+                    print(f"Processing dropdown {idx + 1} of {total_dropdowns}...")
+                    
+                    # Check if the dropdown is displayed and enabled
+                    dropdown = dropdown_elements[idx]
+                    if dropdown.is_displayed() and dropdown.is_enabled():
+                        partner_data = self.process_dropdown(idx + 1)
+                        
+                        # Append valid partner data to the scraped data list
+                        if partner_data and partner_data.get("dropdown_data"):
+                            self.scraped_data.append(partner_data)
+                        else:
+                            print(f"No valid data for dropdown {idx + 1}")
+                    
+                    # Sleep for 5 seconds every 10 dropdowns to avoid overloading the server
+                    if (idx + 1) % 10 == 0:
+                        print("Pausing for 5 seconds after 10 dropdowns...")
+                        time.sleep(5)
+                            
+                except Exception as e:
+                    print(f"Error processing dropdown {idx + 1}: {str(e)}")
+                    continue
+                    
+        except TimeoutException:
+            print("Timed out waiting for dropdown elements")
+        except Exception as e:
+            print(f"General dropdown processing error: {str(e)}")
+        
+        return self.scraped_data
 
     def process_dropdown(self, dropdown_index):
         """Processes a single dropdown and extracts its data."""

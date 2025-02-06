@@ -9,6 +9,7 @@ from rest_framework import status
 from django.urls import reverse
 from rest_framework.authtoken.models import Token
 from django.conf import settings
+from helpers.mail import send_mail
 from django.contrib.sites.shortcuts import get_current_site
 from organizationdata.models import Organization, Scrapdata
 from organizationdata.serializers import OrganizationSerializer, ScrapdataSerializer

@@ -82,6 +82,21 @@ class Scrapdata(models.Model):
     affiliate_profit = models.CharField(max_length=1000, blank=True, null=False)
     office_profit_dropdown = models.CharField(max_length=1000, blank=True, null=False)
     weekly = models.CharField(max_length=1000, blank=True, null=False)
+    volume = models.CharField(max_length=1000, blank=True, null=False)
+
+
+    def __str__(self):
+        return self.partner or "No Partner"
+
+
+
+class ScrapBetwarVolumn(models.Model):
+
+    partner_name = models.CharField(
+        max_length=50, choices=PARTNERS, blank=True, null=True, default='XAOS')
+    weak_date = models.CharField(max_length=1000, blank=True, null=False)
+    volume = models.CharField(max_length=1000, blank=True, null=False)
+
 
     def __str__(self):
         return self.partner or "No Partner"
