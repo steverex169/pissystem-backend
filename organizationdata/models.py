@@ -2,6 +2,11 @@ from django.db import models
 from account.models import UserAccount
 # Create your models here.
 
+PARTNERS = (
+    ('XAOS', 'XAOS'),
+    ('BETWAR', 'BETWAR'),
+)
+
 STATUS = (
     ('Pending', 'Pending'),
     ('Approved', 'Approved'),
@@ -11,6 +16,22 @@ STATUS = (
 PAYMENTSTATUS = (
     ('Unpaid', 'Unpaid'),
     ('Paid', 'Paid'),
+)
+COUNTRY = (
+    ('France', 'France'),
+    ('London, UK', 'London, UK'),
+)
+BOOKIE = (
+    ('Paradise', 'Paradise'),
+    ('Betwar', 'Betwar'),
+)
+ENVIRONMENT = (
+    ('Prod', 'Prod'),
+    ('Dev', 'Dev'),
+)
+ACCOUNTPOLICY = (
+    ('BM Morning', 'BM Morning'),
+    ('BM Evening', 'BM Evening'),
 )
 CURRENCY_TYPE = (
     ('Afghani', 'Afghani'),
@@ -23,32 +44,71 @@ CURRENCY_TYPE = (
     ('Dirham', 'Dirham'),
     ('Japanese', 'Japanese'),
 )
+
 class Organization(models.Model):
     account_id = models.OneToOneField(
         UserAccount, on_delete=models.CASCADE, primary_key=False, null=True, blank=True)
-    name = models.CharField(max_length=255, blank=False, null=True)
-    user_name = models.CharField(max_length=255, blank=False,
-                            null=True, verbose_name='user name')
     email = models.EmailField(max_length=255, blank=False, null=True)
-    country = models.CharField(max_length=255, blank=False, null=True)
-    website = models.CharField(max_length=255, blank=False, null=True)
-    registered_at = models.DateTimeField(
-        max_length=255, null=True, blank=False)
-    photo = models.ImageField(
-        upload_to='organization', verbose_name='Organization\'s Photo', default="blank")
-    status = models.CharField(
-        max_length=50, choices=STATUS, default='Pending')
-    payment_status = models.CharField(
-        max_length=50, choices=PAYMENTSTATUS, default='Unpaid')
+    country = models.CharField(
+        max_length=50, choices=COUNTRY, blank=True, null=True)
     currency = models.CharField(
         max_length=50, choices=CURRENCY_TYPE, blank=True, null=True)
-    payment_proof = models.ImageField(
-        upload_to='organization', verbose_name='Organization\'s Photo', default="blank")
-    issue_date = models.DateTimeField(blank=True, null=True)
-    closing_date = models.DateTimeField(blank=True, null=True)
-    amount = models.CharField(max_length=255,blank=False, null=True)
+    positiontaking = models.DecimalField(max_digits=10, decimal_places=2, blank=True, null=True)
+    bookie = models.CharField(
+        max_length=50, choices=BOOKIE, blank=True, null=True)
+    environment = models.CharField(
+        max_length=50, choices=ENVIRONMENT, blank=True, null=True)
+    accountpolicy = models.CharField(
+        max_length=50, choices=ACCOUNTPOLICY, blank=True, null=True)
 
     def __str__(self):
-        return self.name
+        return self.email
 
-        
+class Scrapdata(models.Model):
+    # account_id = models.OneToOneField(
+    #     UserAccount, on_delete=models.CASCADE, primary_key=False, null=True, blank=True)
+    partner = models.CharField(
+        max_length=50, choices=PARTNERS, blank=True, null=True, default='XAOS')
+    partner_name = models.CharField(max_length=1000, blank=True, null=False)
+    user = models.CharField(max_length=1000, blank=True, null=False)
+    total = models.CharField(max_length=1000, blank=True, null=False)
+    partner_profit = models.CharField(max_length=1000, blank=True, null=False)
+    office_profit = models.CharField(max_length=1000, blank=True, null=False)
+    website_url = models.CharField(max_length=1000, blank=True, null=False)
+    username = models.CharField(max_length=1000, blank=True, null=False)
+    password = models.CharField(max_length=1000, blank=True, null=False)
+    figure = models.CharField(max_length=1000, blank=True, null=False)
+    affiliate_profit = models.CharField(max_length=1000, blank=True, null=False)
+    office_profit_dropdown = models.CharField(max_length=1000, blank=True, null=False)
+    weekly = models.CharField(max_length=1000, blank=True, null=False)
+    volume = models.CharField(max_length=1000, blank=True, null=False)
+
+
+    def __str__(self):
+        return self.partner or "No Partner"
+
+
+
+class ScrapBetwarVolumn(models.Model):
+
+    partner_name = models.CharField(max_length=1000, blank=True, null=False)
+    weak_date = models.CharField(max_length=1000, blank=True, null=False)
+    volume = models.CharField(max_length=1000, blank=True, null=False)
+    partner  = models.CharField(
+        max_length=50, blank=True, null=True, default='BETWAR')
+
+
+    def __str__(self):
+        return self.partner_name or "No Partner"
+
+class PartnerBetwarInfo(models.Model):
+
+    partner_name = models.CharField(max_length=1000, blank=True, null=False)
+    volume_formula = models.CharField(max_length=1000, blank=True, null=False, default=0)
+    partner_percentage = models.CharField(max_length=1000, blank=True, null=False, default=0)
+    partner  = models.CharField(
+        max_length=50, blank=True, null=True, default='BETWAR')
+
+
+    def __str__(self):
+        return self.partner_name or "No Partner"

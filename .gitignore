@@ -132,7 +132,7 @@ dmypy.json
 .vscode
 
 # settings
-nhs-neqas/settings.py
+psi-system/settings.py
 static/public
 
 media/*

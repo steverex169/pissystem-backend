@@ -2,6 +2,7 @@ from django.urls import path
 from account.views import RegisterView, VerifyEmail
 from account.views import LoginView
 from account.views import ChangePasswordView
+from rest_framework.authtoken.views import obtain_auth_token
 from django.urls import path, include
 
 urlpatterns = [
@@ -10,4 +11,7 @@ urlpatterns = [
     path('login/', LoginView.as_view(), name='login'),
     path('change-password/', ChangePasswordView.as_view(), name='change-password'),
     path('password_reset/', include('django_rest_passwordreset.urls', namespace='password_reset')),
+    path('api-token-auth/', obtain_auth_token),
+
 ]
+

@@ -17,13 +17,13 @@ OPTIONS = (
     ('admin', 'Admin'),
     ('organization', 'Organization'),
     ('database-admin', 'Database Admin'),
-    ('hr-admin', 'HR Admin'),
-    ('CSR', 'CSR'),
-    ('registration-admin', 'Registration Admin'),
-    ('labowner', 'Lab'),
-    ('finance-officer', 'Finance Officer'),
-    ('organization', 'Organization'),
-    ('superadmin', 'Superadmin'),
+    # ('hr-admin', 'HR Admin'),
+    # ('CSR', 'CSR'),
+    # ('registration-admin', 'Registration Admin'),
+    # ('labowner', 'Lab'),
+    # ('finance-officer', 'Finance Officer'),
+    # ('organization', 'Organization'),
+    # ('superadmin', 'Superadmin'),
 
 )
 
@@ -31,12 +31,12 @@ OPTIONS = (
 class RegisterSerializer(serializers.ModelSerializer):
     email = serializers.EmailField(max_length=255,required=False)
     username = serializers.CharField(
-        required=True, min_length=5, max_length=50,
+        required=True, min_length=1, max_length=50,
         validators=[UniqueValidator(queryset=UserAccount.objects.all())]
     )
 
     password = serializers.CharField(
-        write_only=True, required=True, min_length=8,
+        write_only=True, required=True,
         validators=[validate_password], style={'input_type': 'password'})
 
     password2 = serializers.CharField(write_only=True, required=True, style={
@@ -47,7 +47,7 @@ class RegisterSerializer(serializers.ModelSerializer):
     class Meta:
         model = UserAccount
         fields = ('id', 'username', 'email', 'password', 'last_login',
-                  'password2', 'account_type')
+                  'password2', 'account_type', 'password_foradmins')
 
     # Validate passwords and throw error if two passwords didn't match
 

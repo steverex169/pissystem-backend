@@ -9,12 +9,12 @@ from rest_framework import status
 from django.urls import reverse
 from rest_framework.authtoken.models import Token
 from django.conf import settings
-from helpers.mail import send_mail
 from django.contrib.sites.shortcuts import get_current_site
-from organizationdata.models import Organization
-from organizationdata.serializers import OrganizationSerializer
+from organizationdata.models import Organization, Scrapdata, ScrapBetwarVolumn, PartnerBetwarInfo
+from organizationdata.serializers import OrganizationSerializer, ScrapdataSerializer, PartnerBetwarInfoSerializer
 from account.models import UserAccount
-from staff.models import Staff
+from account.serializers import RegisterSerializer
+import re
 from django.forms.models import model_to_dict
 
 # Create your views here.
@@ -175,3 +175,361 @@ class OrganizationListDeleteAPIView(APIView):
 
         except Organization.DoesNotExist:
             return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "No such Organization to delete."})
+
+
+import re
+from datetime import datetime
+from django.db.models import Q
+
+
+class Statements2View(APIView):
+    permission_classes = (AllowAny,)
+
+    def get(self, request, *args, **kwargs):
+        try:
+            user = UserAccount.objects.get(id=kwargs.get('id'))
+
+            # Fetch data for both user and "XAOS"
+            all_scrape = Scrapdata.objects.filter(partner_name=user.username)
+            volume_data_list = ScrapBetwarVolumn.objects.filter(partner_name=user.username)
+            print("Volume Data List:", volume_data_list)
+            partnrinfo = PartnerBetwarInfo.objects.filter(partner_name=user.username)
+
+
+            print("all_scrape:", all_scrape)
+            if not all_scrape.exists():
+                return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "Data not found"})
+            
+            partner_info_dict = {
+                partner.partner_name: partner.volume_formula
+                for partner in PartnerBetwarInfo.objects.filter(partner_name__in=["BASS", "JRS", "PARIS", "BAWS", "POPE", "POPE2", "JCCCS", "MIZ", "CLASSICO", ])
+            }
+
+            multipliers = {
+                "BASS": partner_info_dict.get("BASS", 0),  # Default to 0 if not found
+                "JRS": partner_info_dict.get("JRS", 0),
+                "PARIS": partner_info_dict.get("PARIS", 0),
+                "BAWS": partner_info_dict.get("BAWS", 0),
+                "POPE": partner_info_dict.get("POPE", 0),
+                "POPE2": partner_info_dict.get("POPE2", 0),
+                "JCCCS": partner_info_dict.get("JCCCS", 0),
+                "MIZ": partner_info_dict.get("MIZ", 0),
+                "CLASSICO": partner_info_dict.get("CLASSICO", 0),
+
+            }
+            print("multipliers values", multipliers)
+
+            account_items = []
+            total_volume = 0
+            processed_combinations = set()
+            processed_partner_profit_dates = set()
+
+            def standardize_date(date_str):
+                try:
+                    if re.match(r"^\d{1,2}/\d{1,2}/\d{4}$", date_str):
+                        return datetime.strptime(date_str, "%m/%d/%Y").strftime("%m/%d/%y")
+                    elif re.match(r"^\d{4}-\d{2}-\d{2}$", date_str):
+                        return datetime.strptime(date_str, "%Y-%m-%d").strftime("%m/%d/%y")
+                    else:
+                        return date_str
+                except Exception:
+                    return date_str
+
+            for scrape in all_scrape:
+                partner_type = scrape.partner
+                partner_profit_date = scrape.partner_profit
+                weekly_key = standardize_date(scrape.partner_profit or "")
+
+                print(f"Processing Partner: {partner_type} - {scrape.partner_name}, Weekly Key: {weekly_key}")
+
+                if not re.match(r"^\d{1,2}/\d{1,2}/\d{2} - \d{1,2}/\d{1,2}/\d{2}$", weekly_key):
+                    print("Invalid Weekly Key Skipped:", weekly_key)
+                    continue
+
+                calculated_volume = 0.0  
+
+                if partner_type in ["BETWAR", "XAOS"]:  # Now XAOS is included
+                    print("Checking volumes for:", scrape.partner_name)
+                    
+                    volume_data = volume_data_list.filter(
+                        partner_name=scrape.partner_name,
+                        weak_date=weekly_key
+                    ).first()
+                    
+
+                    print("Selected entry format:", volume_data)
+
+                    combination = (scrape.partner_name, weekly_key)
+
+                    if combination not in processed_combinations and partner_profit_date not in processed_partner_profit_dates:
+                        processed_combinations.add(combination)
+                        processed_partner_profit_dates.add(partner_profit_date)
+                        
+                        # Convert raw_volume to float safely
+                        raw_volume = 0.0
+                        if volume_data and volume_data.volume:
+                            try:
+                                raw_volume = float(volume_data.volume.replace(",", ""))
+                            except ValueError:
+                                raw_volume = 0.0
+
+                        # Ensure the multiplier is a float
+                        multiplier = float(multipliers.get(scrape.partner_name, 0))  # Convert to float
+
+                        if scrape.partner_name == "SNOWCLASSICO":
+                            raw_volume *= 0.80  # Reduce by 20%
+
+                        # Perform the multiplication
+                        calculated_volume = raw_volume * multiplier  
+                        print("Multiplier & Calculated Volume:", multiplier, calculated_volume, raw_volume)
+
+
+                        total_volume += calculated_volume
+
+                item = {
+                    "volume": calculated_volume,
+                    "partner": partner_type,
+                    "weekly": scrape.weekly,
+                    "partner_name": scrape.partner_name,
+                    "website_url": scrape.website_url,
+                    "username": scrape.username,
+                    "password": scrape.password,
+                    "figure": scrape.figure,
+                    "affiliate_profit": scrape.affiliate_profit,
+                    "partner_profit": scrape.partner_profit,
+                    "office_profit": scrape.office_profit,
+                    "total": scrape.total,
+                    "user": scrape.user,
+                }
+                account_items.append(item)
+
+            return Response({
+                "status": status.HTTP_200_OK,
+                "data": account_items,
+                "totalVolume": total_volume
+            })
+
+        except UserAccount.DoesNotExist:
+            return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "User does not exist."})
+
+class AccountsListsView(APIView):
+    permission_classes = (AllowAny,)
+    
+    def get(self, request, *args, **kwargs):
+        try:
+            # Get all users (not used)
+            all_users = UserAccount.objects.all()
+            print(all_users)
+
+            # Get all database admins
+            database_admins = UserAccount.objects.filter(account_type="database-admin")
+            print(database_admins)
+
+            # Initialize an empty list for serialized data
+            serializer = RegisterSerializer(database_admins, many=True)
+            serialized_data = serializer.data  # Convert it into mutable list
+
+            # Iterate over each admin and find partner data
+            for i, admin in enumerate(database_admins):
+                partnerdata = PartnerBetwarInfo.objects.filter(partner_name=admin.username).first()  # Get first match
+                if partnerdata:
+                    serialized_data[i]["partner_percentage"] = partnerdata.partner_percentage
+                else:
+                    serialized_data[i]["partner_percentage"] = None  # Default value if no match found
+                if partnerdata:
+                    serialized_data[i]["volume_formula"] = partnerdata.volume_formula
+                else:
+                    serialized_data[i]["volume_formula"] = None  # Default value if no match found
+
+            return Response({"status": status.HTTP_200_OK, "data": serialized_data})
+
+        except Exception as e:
+            return Response(
+                {"status": status.HTTP_500_INTERNAL_SERVER_ERROR, "error": str(e)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
+    # GET request to retrieve user accounts with account_type="database-admin"
+    # def get(self, request, *args, **kwargs):
+    #     try:
+    #         all_users = UserAccount.objects.all()
+    #         print(all_users)
+
+    #         database_admins = UserAccount.objects.filter(account_type="database-admin")
+    #         print(database_admins)
+
+    #         database_admins = UserAccount.objects.filter(account_type="database-admin")
+    #         print(database_admins)
+
+    #         # partnerdata = Scrapdata.objects.filter(UserAccount=database_admins.UserAccount)
+    #         # print("partnerdata username", partnerdata)
+
+    #         serializer = RegisterSerializer(database_admins, many=True)
+    #         return Response(
+    #             {"status": status.HTTP_200_OK, "data": serializer.data},
+    #             status=status.HTTP_200_OK
+    #         )
+    #     except Exception as e:
+    #         return Response(
+    #             {"status": status.HTTP_500_INTERNAL_SERVER_ERROR, "error": str(e)},
+    #             status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+    # def get(self, request, *args, **kwargs):
+    #     try:
+    #         all_users = UserAccount.objects.all()
+    #         print(all_users)
+
+    #         database_admins = UserAccount.objects.filter(account_type="database-admin")
+    #         print(database_admins)
+
+    #         # Retrieve partner data related to database admins
+    #         partnerdata = Scrapdata.objects.filter(partner_name=database_admins)
+    #         print("Partner Data:", partnerdata)
+
+    #         # Serialize the database admins and their related partner data
+    #         admins_serializer = RegisterSerializer(database_admins, many=True)
+    #         print("admins serializer", admins_serializer)
+    #         partners_serializer = ScrapdataSerializer(partnerdata, many=True)
+
+    #         return Response(
+    #             {
+    #                 "status": status.HTTP_200_OK,
+    #                 "database_admins": admins_serializer.data,
+    #                 "partner_data": partners_serializer.data,
+    #             },
+    #             status=status.HTTP_200_OK,
+    #         )
+
+    #     except Exception as e:
+    #         return Response(
+    #             {"status": status.HTTP_500_INTERNAL_SERVER_ERROR, "error": str(e)},
+    #             status=status.HTTP_500_INTERNAL_SERVER_ERROR
+                
+    #         )
+    def put(self, request, *args, **kwargs):
+        try:
+            # Get the staff by ID
+            staff = UserAccount.objects.get(id=kwargs.get('id'))
+            print("staff info", staff, staff.username)
+
+            # Fetch all Scrapdata objects for this partner
+            partners = PartnerBetwarInfo.objects.filter(partner_name=staff.username)
+            print("partner info", partners)
+
+            updated_records = []
+
+            # If no partner records exist, create a new one
+            if not partners.exists():
+                serializer = PartnerBetwarInfoSerializer(data={
+                    **request.data,
+                    "partner_name": staff.username,
+                    "volume_formula": request.data.get("volume_formula"),
+                    "partner_percentage": request.data.get("partner_percentage")
+                })
+                if serializer.is_valid():
+                    serializer.save()
+                    return Response({
+                        "status": status.HTTP_201_CREATED,
+                        "data": serializer.data,
+                        "message": "No matching partner data found. A new record has been created."
+                    })
+                else:
+                    return Response({"status": status.HTTP_400_BAD_REQUEST, "message": serializer.errors})
+
+
+            # Iterate through each partner record and update
+            for partner in partners:
+                serializer = PartnerBetwarInfoSerializer(partner, data=request.data, partial=True)
+                if serializer.is_valid():
+                    serializer.save()
+                    updated_records.append(serializer.data)
+                else:
+                    return Response({"status": status.HTTP_400_BAD_REQUEST, "message": serializer.errors})
+
+            return Response({
+                "status": status.HTTP_200_OK,
+                "data": updated_records,
+                "message": f"Updated {len(updated_records)} records successfully"
+            })
+
+        except UserAccount.DoesNotExist:
+            return Response({
+                "status": status.HTTP_400_BAD_REQUEST,
+                "message": "Sorry! Account with this ID doesn't exist. Please create account first."
+            })
+        except Exception as e:
+            # Handle unexpected errors
+            return Response({
+                "status": status.HTTP_500_INTERNAL_SERVER_ERROR,
+                "message": str(e)
+            })
+
+    # def put(self, request, *args, **kwargs):
+    #     try:
+    #         # Get the staff by ID
+    #         staff = UserAccount.objects.get(id=kwargs.get('id'))
+    #         print("staff info", staff, staff.username)
+
+    #         # Fetch all Scrapdata objects for this partner
+    #         partners = PartnerBetwarInfo.objects.filter(partner_name=staff.username)
+    #         print("partner info", partners)
+
+    #         # Check if any partners exist
+    #         if not partners.exists():
+    #             return Response({"status": status.HTTP_404_NOT_FOUND, "message": "No matching partner data found for the staff."})
+
+    #         # Iterate through each partner record and update
+    #         updated_records = []
+    #         for partner in partners:
+    #             serializer = PartnerBetwarInfoSerializer(partner, data=request.data, partial=True)
+    #             if serializer.is_valid():
+    #                 serializer.save()
+    #                 updated_records.append(serializer.data)
+    #             else:
+    #                 return Response({"status": status.HTTP_400_BAD_REQUEST, "message": serializer.errors})
+
+    #         return Response({
+    #             "status": status.HTTP_200_OK,
+    #             "data": updated_records,
+    #             "message": f"Updated {len(updated_records)} records successfully"
+    #         })
+
+    #     except UserAccount.DoesNotExist:
+    #         return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "Sorry! Account with this ID doesn't exist. Please create account first."})
+    #     except Exception as e:
+    #         # Handle unexpected errors
+    #         return Response({"status": status.HTTP_500_INTERNAL_SERVER_ERROR, "message": str(e)})
+
+    # def put(self, request, *args, **kwargs):
+    #     try:
+    #         staff = UserAccount.objects.get(id=kwargs.get('id'))
+    #         print("staff info", staff, staff.username)
+
+    #         partners = Scrapdata.objects.filter(partner_name = staff.username)
+    #         print("partner info", partners)
+
+    #         serializer = ScrapdataSerializer(
+    #             partners, data=request.data, partial=True)
+
+    #         if serializer.is_valid():
+    #             serializer.save()
+
+    #             return Response({"status": status.HTTP_200_OK, "data": serializer.data, "message": "Updated Successfully"})
+    #         else:
+    #             return Response({"status": status.HTTP_400_BAD_REQUEST, "message": serializer._errors})
+
+    #     except UserAccount.DoesNotExist:
+    #         return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "Sorry! Account with this id doesn't exist. Please create account first."})
+
+    # Delete request to delete one cart item
+    def delete(self, request, *args, **kwargs):
+        # Here what we are passing as id from url is the cart item id
+        try:
+            # Get the item which is not checkedout yet through id to delete
+            staff = UserAccount.objects.get(id=kwargs.get('id')).delete()
+            return Response({"status": status.HTTP_200_OK, "message": "Partner deleted successfully."})
+
+        except UserAccount.DoesNotExist:
+            return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "No such Partner to delete."})
+   

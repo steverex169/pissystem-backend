@@ -3,13 +3,8 @@ from rest_framework.response import Response
 from django.core.exceptions import ObjectDoesNotExist
 from rest_framework.views import APIView
 
-from databaseadmin.models import QualitativeType,ParticipantProvince,ParticipantCountry, ParticipantType,ParticipantSector,Department,Designation,District,City,News,Instrument, Units, ActivityLogUnits,Reagents , Manufactural, Method,InstrumentType, Analyte
-
-from databaseadmin.serializers import CycleSerializer, QualitativeTypeSerializer,CountrySerializer,NewsSerializer,InstrumentSerializer, MethodSerializer,AnalyteSerializer, InstrumentTypeSerializer, UnitsSerializer, ActivityLogUnitsSerializer, ReagentsSerializer, ManufacturalSerializer, Scheme, Cycle,Sample,ParticipantTypeSerializer, ParticipantSectorSerializer,DepartmentSerializer,DesignationSerializer,DistrictSerializer,CitySerializer,SchemeSerializer, CycleSerializer,  SampleSerializer, ProvinceSerializer
-from registrationadmin.models import Round, SelectedScheme
-from labowner.models import Lab
-from staff.models import Staff
-
+from databaseadmin.models import City
+from databaseadmin.serializers import CitySerializer
 from django.forms.models import model_to_dict
 from django.http import HttpResponseRedirect
 from rest_framework.permissions import IsAuthenticated, AllowAny
@@ -96,8 +91,6 @@ class InstrumentTypefileView(APIView):
                 unique_data.append(entry)
         return unique_data
 
-
-
 class ParticipantSectorListAPIView(APIView):
 
     def get(self, request, *args, **kwargs):
@@ -136,6 +129,12 @@ class ParticipantSectorCreateAPIView(APIView):
             
             # Retrieve the organization associated with the staff user
             organization = staff_user.organization_id
+
+            if ParticipantSector.objects.filter(organization_id=organization, name=request.data['name']).exists():
+                return Response({
+                    "status": status.HTTP_400_BAD_REQUEST,
+                    "message": "A Scheme with this name already exists in the organization."
+                })
             
             # Create a new sector
             sector = ParticipantSector.objects.create(
@@ -146,12 +145,17 @@ class ParticipantSectorCreateAPIView(APIView):
             changes_string = f"name: {request.data['name']}, "
 
             # Save data in activity log
-            activity_log = ActivityLogUnits.objects.create(
+            user_account = UserAccount.objects.get(id=account_id)
+
+            # Save data in activity log as a single field
+            activity_log=ActivityLogUnits.objects.create(
+                added_by= user_account,
                 sector_id=sector,
                 old_value="", 
                 new_value=changes_string, 
                 date_of_addition=timezone.now(),
-                actions='Added'  # Specify action as 'Added'
+                actions='Added',  # Specify action as 'Added'
+                type="ParticipantSector"
             )
 
             # Serialize the created sector and activity log
@@ -210,12 +214,17 @@ class ParticipantSectorUpdateAPIView(APIView):
                 changes_string = ", ".join([f"{field}: {changed_fields[field]}" for field in changed_fields])
                 
                 # Create a new entry in the ActivityLogUnits table
-                ActivityLogUnits.objects.create(
+                user_account = UserAccount.objects.get(id=account_id)
+
+                # Save data in activity log as a single field
+                activity_log=ActivityLogUnits.objects.create(
+                    added_by= user_account,                    
                     sector_id=sector,
                     old_value=", ".join([f"{field}: {old_values[field]}" for field in changed_fields]),
                     new_value=changes_string, 
                     date_of_addition=timezone.now(),
-                    actions='Updated'  
+                    actions='Updated',  
+                    type="ParticipantSector"
                 )
 
                 return Response({
@@ -273,6 +282,12 @@ class ParticipantTypeCreateAPIView(APIView):
             
             # Retrieve the organization associated with the staff user
             organization = staff_user.organization_id
+
+            if ParticipantType.objects.filter(organization_id=organization, name=request.data['name']).exists():
+                return Response({
+                    "status": status.HTTP_400_BAD_REQUEST,
+                    "message": "A Scheme with this name already exists in the organization."
+                })
             
             # Create a new type
             type = ParticipantType.objects.create(
@@ -283,12 +298,17 @@ class ParticipantTypeCreateAPIView(APIView):
             changes_string = f"name: {request.data['name']}, "
 
             # Save data in activity log
-            activity_log = ActivityLogUnits.objects.create(
+            user_account = UserAccount.objects.get(id=account_id)
+
+            # Save data in activity log as a single field
+            activity_log=ActivityLogUnits.objects.create(
+                added_by= user_account,
                 type_id=type,
                 old_value="", 
                 new_value=changes_string, 
                 date_of_addition=timezone.now(),
-                actions='Added'  # Specify action as 'Added'
+                actions='Added',  # Specify action as 'Added'
+                type="ParticipantType"
             )
 
             # Serialize the created type and activity log
@@ -347,12 +367,16 @@ class ParticipantTypeUpdateAPIView(APIView):
                 changes_string = ", ".join([f"{field}: {changed_fields[field]}" for field in changed_fields])
                 
                 # Create a new entry in the ActivityLogUnits table
-                ActivityLogUnits.objects.create(
-                    type_id=type,
+                user_account = UserAccount.objects.get(id=account_id)
+
+                # Save data in activity log as a single field
+                activity_log=ActivityLogUnits.objects.create(
+                    added_by= user_account,                    type_id=type,
                     old_value=", ".join([f"{field}: {old_values[field]}" for field in changed_fields]),
                     new_value=changes_string, 
                     date_of_addition=timezone.now(),
-                    actions='Updated'  
+                    actions='Updated',
+                    type='ParticipantType'
                 )
 
                 return Response({
@@ -378,12 +402,15 @@ class CityListAPIView(APIView):
         try:
             # Get the staff user's account_id
             account_id = kwargs.get('id')
-            
-            # Fetch the staff user based on account_id
-            staff_user = Staff.objects.get(account_id=account_id)
-            
-            # Retrieve the organization associated with the staff user
-            organization = staff_user.organization_id
+            user_account = UserAccount.objects.get(id=account_id)
+            if user_account.account_type == 'organization':
+                org = Organization.objects.get(account_id=account_id)
+                organization = org.id
+            else:
+                # Fetch the staff user based on account_id
+                staff_user = Staff.objects.get(account_id=account_id)
+                # Retrieve the organization associated with the staff user
+                organization = staff_user.organization_id
             
             # Filter city based on the organization
             city_list = City.objects.filter(organization_id=organization)
@@ -406,10 +433,17 @@ class CityCreateAPIView(APIView):
         try:
             # Fetch the staff user based on account_id
             account_id = request.data.get('added_by')  # Use 'added_by' from request data
+            print("yaha kya h", request.data.get('added_by'))
             staff_user = Staff.objects.get(account_id=account_id)
             
             # Retrieve the organization associated with the staff user
             organization = staff_user.organization_id
+
+            if City.objects.filter(organization_id=organization, name=request.data['name']).exists():
+                return Response({
+                    "status": status.HTTP_400_BAD_REQUEST,
+                    "message": "A Scheme with this name already exists in the organization."
+                })
             
             # Create a new city
             city = City.objects.create(
@@ -420,12 +454,17 @@ class CityCreateAPIView(APIView):
             changes_string = f"name: {request.data['name']}, "
 
             # Save data in activity log
-            activity_log = ActivityLogUnits.objects.create(
+            user_account = UserAccount.objects.get(id=account_id)
+
+            # Save data in activity log as a single field
+            activity_log=ActivityLogUnits.objects.create(
+                added_by= user_account,
                 city_id=city,
                 old_value="", 
                 new_value=changes_string, 
                 date_of_addition=timezone.now(),
-                actions='Added'  # Specify action as 'Added'
+                actions='Added',  # Specify action as 'Added'
+                type='City'
             )
 
             # Serialize the created city and activity log
@@ -484,12 +523,18 @@ class CityUpdateAPIView(APIView):
                 changes_string = ", ".join([f"{field}: {changed_fields[field]}" for field in changed_fields])
                 
                 # Create a new entry in the ActivityLogUnits table
-                ActivityLogUnits.objects.create(
+                user_account = UserAccount.objects.get(id=account_id)
+
+                # Save data in activity log as a single field
+                activity_log=ActivityLogUnits.objects.create(
+                    added_by= user_account, 
                     city_id=city,
                     old_value=", ".join([f"{field}: {old_values[field]}" for field in changed_fields]),
                     new_value=changes_string, 
                     date_of_addition=timezone.now(),
-                    actions='Updated'  
+                    actions='Updated' ,
+                    type='City'
+ 
                 )
 
                 return Response({
@@ -547,6 +592,12 @@ class ProvinceCreateAPIView(APIView):
             
             # Retrieve the organization associated with the staff user
             organization = staff_user.organization_id
+
+            if ParticipantProvince.objects.filter(organization_id=organization, name=request.data['name']).exists():
+                return Response({
+                    "status": status.HTTP_400_BAD_REQUEST,
+                    "message": "A Scheme with this name already exists in the organization."
+                })
             
             # Create a new province
             province = ParticipantProvince.objects.create(
@@ -557,12 +608,17 @@ class ProvinceCreateAPIView(APIView):
             changes_string = f"name: {request.data['name']}, "
 
             # Save data in activity log
-            activity_log = ActivityLogUnits.objects.create(
+            user_account = UserAccount.objects.get(id=account_id)
+
+            # Save data in activity log as a single field
+            activity_log=ActivityLogUnits.objects.create(
+                added_by= user_account,                
                 province_id=province,
                 old_value="", 
                 new_value=changes_string, 
                 date_of_addition=timezone.now(),
-                actions='Added'  # Specify action as 'Added'
+                actions='Added',  # Specify action as 'Added'
+                type='ParticipantProvince'
             )
 
             # Serialize the created province and activity log
@@ -621,12 +677,17 @@ class ProvinceUpdateAPIView(APIView):
                 changes_string = ", ".join([f"{field}: {changed_fields[field]}" for field in changed_fields])
                 
                 # Create a new entry in the ActivityLogUnits table
-                ActivityLogUnits.objects.create(
+                user_account = UserAccount.objects.get(id=account_id)
+
+                # Save data in activity log as a single field
+                activity_log=ActivityLogUnits.objects.create(
+                    added_by= user_account,                    
                     province_id=province,
                     old_value=", ".join([f"{field}: {old_values[field]}" for field in changed_fields]),
                     new_value=changes_string, 
                     date_of_addition=timezone.now(),
-                    actions='Updated'  
+                    actions='Updated',
+                    type='ParticipantProvince'
                 )
 
                 return Response({
@@ -684,6 +745,12 @@ class CountryCreateAPIView(APIView):
             
             # Retrieve the organization associated with the staff user
             organization = staff_user.organization_id
+
+            if ParticipantCountry.objects.filter(organization_id=organization, name=request.data['name']).exists():
+                return Response({
+                    "status": status.HTTP_400_BAD_REQUEST,
+                    "message": "A Scheme with this name already exists in the organization."
+                })
             
             # Create a new country
             country = ParticipantCountry.objects.create(
@@ -694,12 +761,17 @@ class CountryCreateAPIView(APIView):
             changes_string = f"name: {request.data['name']}, "
 
             # Save data in activity log
-            activity_log = ActivityLogUnits.objects.create(
+            user_account = UserAccount.objects.get(id=account_id)
+
+            # Save data in activity log as a single field
+            activity_log=ActivityLogUnits.objects.create(
+                added_by= user_account,                
                 country_id=country,
                 old_value="", 
                 new_value=changes_string, 
                 date_of_addition=timezone.now(),
-                actions='Added'  # Specify action as 'Added'
+                actions='Added',  # Specify action as 'Added'
+                type='ParticipantCountry'
             )
 
             # Serialize the created country and activity log
@@ -758,12 +830,17 @@ class CountryUpdateAPIView(APIView):
                 changes_string = ", ".join([f"{field}: {changed_fields[field]}" for field in changed_fields])
                 
                 # Create a new entry in the ActivityLogUnits table
-                ActivityLogUnits.objects.create(
+                user_account = UserAccount.objects.get(id=account_id)
+
+                # Save data in activity log as a single field
+                activity_log=ActivityLogUnits.objects.create(
+                    added_by= user_account,                    
                     country_id=country,
                     old_value=", ".join([f"{field}: {old_values[field]}" for field in changed_fields]),
                     new_value=changes_string, 
                     date_of_addition=timezone.now(),
-                    actions='Updated'  
+                    actions='Updated', 
+                    type='ParticipantCountry' 
                 )
 
                 return Response({
@@ -821,6 +898,12 @@ class DistrictCreateAPIView(APIView):
             
             # Retrieve the organization associated with the staff user
             organization = staff_user.organization_id
+
+            if District.objects.filter(organization_id=organization, name=request.data['name']).exists():
+                return Response({
+                    "status": status.HTTP_400_BAD_REQUEST,
+                    "message": "A Scheme with this name already exists in the organization."
+                })
             
             # Create a new district
             district = District.objects.create(
@@ -831,12 +914,18 @@ class DistrictCreateAPIView(APIView):
             changes_string = f"name: {request.data['name']}, "
 
             # Save data in activity log
-            activity_log = ActivityLogUnits.objects.create(
+            user_account = UserAccount.objects.get(id=account_id)
+
+            # Save data in activity log as a single field
+            activity_log=ActivityLogUnits.objects.create(
+                added_by= user_account,                
                 district_id=district,
                 old_value="", 
                 new_value=changes_string, 
                 date_of_addition=timezone.now(),
-                actions='Added'  # Specify action as 'Added'
+                actions='Added',  # Specify action as 'Added'
+                type='District'
+
             )
 
             # Serialize the created district and activity log
@@ -895,12 +984,17 @@ class DistrictUpdateAPIView(APIView):
                 changes_string = ", ".join([f"{field}: {changed_fields[field]}" for field in changed_fields])
                 
                 # Create a new entry in the ActivityLogUnits table
-                ActivityLogUnits.objects.create(
+                user_account = UserAccount.objects.get(id=account_id)
+
+                # Save data in activity log as a single field
+                activity_log=ActivityLogUnits.objects.create(
+                    added_by= user_account,                    
                     district_id=district,
                     old_value=", ".join([f"{field}: {old_values[field]}" for field in changed_fields]),
                     new_value=changes_string, 
                     date_of_addition=timezone.now(),
-                    actions='Updated'  
+                    actions='Updated',
+                    type='District'  
                 )
 
                 return Response({
@@ -958,6 +1052,12 @@ class DepartmentCreateAPIView(APIView):
             
             # Retrieve the organization associated with the staff user
             organization = staff_user.organization_id
+
+            if Department.objects.filter(organization_id=organization, name=request.data['name']).exists():
+                return Response({
+                    "status": status.HTTP_400_BAD_REQUEST,
+                    "message": "A Scheme with this name already exists in the organization."
+                })
             
             # Create a new department
             department = Department.objects.create(
@@ -968,12 +1068,17 @@ class DepartmentCreateAPIView(APIView):
             changes_string = f"name: {request.data['name']}, "
 
             # Save data in activity log
-            activity_log = ActivityLogUnits.objects.create(
+            user_account = UserAccount.objects.get(id=account_id)
+
+            # Save data in activity log as a single field
+            activity_log=ActivityLogUnits.objects.create(
+                added_by= user_account,                
                 department_id=department,
                 old_value="", 
                 new_value=changes_string, 
                 date_of_addition=timezone.now(),
-                actions='Added'  # Specify action as 'Added'
+                actions='Added',  # Specify action as 'Added'
+                type='Department'
             )
 
             # Serialize the created department and activity log
@@ -1032,12 +1137,18 @@ class DepartmentUpdateAPIView(APIView):
                 changes_string = ", ".join([f"{field}: {changed_fields[field]}" for field in changed_fields])
                 
                 # Create a new entry in the ActivityLogUnits table
-                ActivityLogUnits.objects.create(
+                user_account = UserAccount.objects.get(id=account_id)
+
+                # Save data in activity log as a single field
+                activity_log=ActivityLogUnits.objects.create(
+                    added_by= user_account,                    
                     department_id=department,
                     old_value=", ".join([f"{field}: {old_values[field]}" for field in changed_fields]),
                     new_value=changes_string, 
                     date_of_addition=timezone.now(),
-                    actions='Updated'  
+                    actions='Updated',
+                    type='Department'
+  
                 )
 
                 return Response({
@@ -1095,6 +1206,12 @@ class DesignationCreateAPIView(APIView):
             
             # Retrieve the organization associated with the staff user
             organization = staff_user.organization_id
+
+            if Designation.objects.filter(organization_id=organization, name=request.data['name']).exists():
+                return Response({
+                    "status": status.HTTP_400_BAD_REQUEST,
+                    "message": "A Scheme with this name already exists in the organization."
+                })
             
             # Create a new designation
             designation = Designation.objects.create(
@@ -1105,12 +1222,17 @@ class DesignationCreateAPIView(APIView):
             changes_string = f"name: {request.data['name']}, "
 
             # Save data in activity log
-            activity_log = ActivityLogUnits.objects.create(
+            user_account = UserAccount.objects.get(id=account_id)
+
+            # Save data in activity log as a single field
+            activity_log=ActivityLogUnits.objects.create(
+                added_by= user_account,                
                 designation_id=designation,
                 old_value="", 
                 new_value=changes_string, 
                 date_of_addition=timezone.now(),
-                actions='Added'  # Specify action as 'Added'
+                actions='Added',  # Specify action as 'Added'
+                type='Designation'
             )
 
             # Serialize the created designation and activity log
@@ -1169,12 +1291,17 @@ class DesignationUpdateAPIView(APIView):
                 changes_string = ", ".join([f"{field}: {changed_fields[field]}" for field in changed_fields])
                 
                 # Create a new entry in the ActivityLogUnits table
-                ActivityLogUnits.objects.create(
+                user_account = UserAccount.objects.get(id=account_id)
+
+                # Save data in activity log as a single field
+                activity_log=ActivityLogUnits.objects.create(
+                    added_by= user_account,                    
                     designation_id=designation,
                     old_value=", ".join([f"{field}: {old_values[field]}" for field in changed_fields]),
                     new_value=changes_string, 
                     date_of_addition=timezone.now(),
-                    actions='Updated'  
+                    actions='Updated',
+                    type='Designation'
                 )
 
                 return Response({
@@ -1220,8 +1347,7 @@ class UnitsListAPIView(APIView):
         
         except Units.DoesNotExist:
             return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "No Units records found."})
-
-        
+     
 class UnitsAPIView(APIView):
     permission_classes = (AllowAny,)  # Temporary permission setting for demonstration
 
@@ -1233,6 +1359,12 @@ class UnitsAPIView(APIView):
             
             # Retrieve the organization associated with the staff user
             organization = staff_user.organization_id
+
+            if Units.objects.filter(organization_id=organization, name=request.data['name']).exists():
+                return Response({
+                    "status": status.HTTP_400_BAD_REQUEST,
+                    "message": "A unit with this name already exists in the organization."
+                })
             
             # Create a new unit
             unit = Units.objects.create(
@@ -1243,12 +1375,17 @@ class UnitsAPIView(APIView):
             changes_string = f"name: {request.data['name']}, "
 
             # Save data in activity log
-            activity_log = ActivityLogUnits.objects.create(
+            user_account = UserAccount.objects.get(id=account_id)
+
+            # Save data in activity log as a single field
+            activity_log=ActivityLogUnits.objects.create(
+                added_by= user_account,                
                 unit_id=unit,
                 old_value="", 
                 new_value=changes_string, 
                 date_of_addition=timezone.now(),
-                actions='Added'  # Specify action as 'Added'
+                actions='Added',  # Specify action as 'Added'
+                type='Units'
             )
 
             # Serialize the created unit and activity log
@@ -1307,12 +1444,18 @@ class UnitsUpdateAPIView(APIView):
                 changes_string = ", ".join([f"{field}: {changed_fields[field]}" for field in changed_fields])
                 
                 # Create a new entry in the ActivityLogUnits table
-                ActivityLogUnits.objects.create(
+                user_account = UserAccount.objects.get(id=account_id)
+
+                # Save data in activity log as a single field
+                activity_log=ActivityLogUnits.objects.create(
+                    added_by= user_account,                    
                     unit_id=unit,
                     old_value=", ".join([f"{field}: {old_values[field]}" for field in changed_fields]),
                     new_value=changes_string, 
                     date_of_addition=timezone.now(),
-                    actions='Updated'  
+                    actions='Updated',
+                    type='Units'
+  
                 )
 
                 return Response({
@@ -1358,7 +1501,6 @@ class QualitativeTypeListAPIView(APIView):
         
         except QualitativeType.DoesNotExist:
             return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "No QualitativeType records found."})
-
         
 class QualitativeTypePostAPIView(APIView):
     permission_classes = (AllowAny,)  # Temporary permission setting for demonstration
@@ -1382,12 +1524,18 @@ class QualitativeTypePostAPIView(APIView):
             changes_string = f"name: {request.data['name']},number: {request.data['number']}, "
 
             # Save data in activity log
-            activity_log = ActivityLogUnits.objects.create(
+            user_account = UserAccount.objects.get(id=account_id)
+
+            # Save data in activity log as a single field
+            activity_log=ActivityLogUnits.objects.create(
+                added_by= user_account,                
                 qualitativetype_id=qualitativetype,
                 old_value="", 
                 new_value=changes_string, 
                 date_of_addition=timezone.now(),
-                actions='Added'  # Specify action as 'Added'
+                actions='Added',  # Specify action as 'Added'
+                # type='Designation'
+
             )
 
             # Serialize the created qualitativetype and activity log
@@ -1448,7 +1596,11 @@ class QualitativeTypeUpdateAPIView(APIView):
                 changes_string = ", ".join([f"{field}: {changed_fields[field]}" for field in changed_fields])
                 
                 # Create a new entry in the ActivityLogUnits table
-                ActivityLogUnits.objects.create(
+                user_account = UserAccount.objects.get(id=account_id)
+
+                # Save data in activity log as a single field
+                activity_log=ActivityLogUnits.objects.create(
+                    added_by= user_account,                    
                     qualitativetype_id=qualitativetype,
                     old_value=", ".join([f"{field}: {old_values[field]}" for field in changed_fields]),
                     new_value=changes_string, 
@@ -1544,7 +1696,6 @@ class InstrumentsAPIView(APIView):
         except Exception as e:
             return Response({"status": status.HTTP_400_BAD_REQUEST, "message": str(e)})
 
-
 # Post API for creating units
 class InstrumentsPostAPIView(APIView):
     permission_classes = (AllowAny,)  # AllowAny temporarily for demonstration
@@ -1578,7 +1729,13 @@ class InstrumentsPostAPIView(APIView):
                 country = ParticipantCountry.objects.get(name=country_name, organization_id=organization)
             except ParticipantCountry.DoesNotExist:
                 return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "Invalid country name provided."})
-
+            
+            if Instrument.objects.filter(organization_id=organization, name=request.data['name']).exists():
+                return Response({
+                    "status": status.HTTP_400_BAD_REQUEST,
+                    "message": "A Instrument with this name already exists in the organization."
+                })
+            
             # Create a new instrument
             instrument = Instrument.objects.create(
                 organization_id=organization,
@@ -1596,7 +1753,11 @@ class InstrumentsPostAPIView(APIView):
             changes_string = f"name: {request.data['name']}, code: {request.data['code']}, status: {request.data['status']}, instrument_type: {instrument_type.name}, manufactural: {manufactural.name},country: {country.name}"
 
             # Save data in activity log as a single field
-            ActivityLogUnits.objects.create(
+            user_account = UserAccount.objects.get(id=account_id)
+
+            # Save data in activity log as a single field
+            activity_log=ActivityLogUnits.objects.create(
+                added_by= user_account,                
                 instrument_id=instrument,
                 date_of_addition=timezone.now(),
                 field_name="Changes",
@@ -1709,7 +1870,11 @@ class InstrumentsUpdateAPIView(APIView):
                 changes_string = ", ".join([f"{field}: {changed_fields[field]}" for field in changed_fields])
 
                 # Save data in activity log as a single field
-                ActivityLogUnits.objects.create(
+                user_account = UserAccount.objects.get(id=account_id)
+
+                # Save data in activity log as a single field
+                activity_log=ActivityLogUnits.objects.create(
+                    added_by= user_account,                    
                     instrument_id=instrument,
                     date_of_addition=timezone.now(),
                     field_name="Changes",
@@ -1734,9 +1899,7 @@ class InstrumentsUpdateAPIView(APIView):
             return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "No such record exists."})
 
         except Exception as e:
-            return Response({"status": status.HTTP_400_BAD_REQUEST, "message": str(e)})
-
-            
+            return Response({"status": status.HTTP_400_BAD_REQUEST, "message": str(e)})     
 
 class ActivityLogDatabaseadmin(APIView):
     permission_classes = (AllowAny,)
@@ -1744,54 +1907,147 @@ class ActivityLogDatabaseadmin(APIView):
     def get(self, request, *args, **kwargs):
         try:
             id_value = kwargs.get('id')
+            type_value = request.GET.get('type')
+            print("id in the request", id_value, type_value)
 
             # Try to get the data from Units
-            try:
-                unit = Units.objects.get(id=id_value)
-                activity_log = ActivityLogUnits.objects.filter(unit_id=unit.id)
-            except Units.DoesNotExist:
+            if request.GET.get('type') == "Units":
+                try:
+                    unit = Units.objects.get(id=id_value)
+                    print("unit print", unit.id)
+                    activity_log = ActivityLogUnits.objects.filter(unit_id=unit.id, type=type_value)
+                    print("in the log table", activity_log)
+                except Units.DoesNotExist:
                 # If Units does not exist, try InstrumentType
+                    return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "No data found."})
+
+            elif request.GET.get('type') == "Instruments":
+
                 try:
                     instrument_type = InstrumentType.objects.get(id=id_value)
-                    activity_log = ActivityLogUnits.objects.filter(instrumenttype_id=instrument_type.id)
+                    activity_log = ActivityLogUnits.objects.filter(instrumenttype_id=instrument_type.id, type=type_value)
                 except InstrumentType.DoesNotExist:
-                    # If InstrumentType also does not exist, try Reagents
-                    try:
-                        reagent = Reagents.objects.get(id=id_value)
-                        activity_log = ActivityLogUnits.objects.filter(reagent_id=reagent.id)
-                    except Reagents.DoesNotExist:
-                        try:
-                            scheme = Scheme.objects.get(id=id_value)
-                            activity_log = ActivityLogUnits.objects.filter(scheme_id=scheme.id)
-                        except Scheme.DoesNotExist: 
-                        # If InstrumentType also does not exist, try Reagents
-                            try:
-                                method = Method.objects.get(id=id_value)
-                                activity_log = ActivityLogUnits.objects.filter(method_id=method.id)
-                            except Method.DoesNotExist:
-                                # try:
-                                #     scheme = Scheme.objects.get(id=id_value)
-                                #     activity_log = ActivityLogUnits.objects.filter(scheme_id=scheme.id)
-                                # except Scheme.DoesNotExist:
-                                    try:
-                                        manufactural = Manufactural.objects.get(id=id_value)
-                                        activity_log = ActivityLogUnits.objects.filter(manufactural_id=manufactural.id)
-                                    except Manufactural.DoesNotExist:
-                                        try:
-                                            sample = Sample.objects.get(id=id_value)
-                                            activity_log = ActivityLogUnits.objects.filter(sample_id=sample.id)
-                                        except Sample.DoesNotExist:
-                                            try:
-                                                instrument = Instrument.objects.get(id=id_value)
-                                                activity_log = ActivityLogUnits.objects.filter(instrument_id=instrument.id)
-                                            except Instrument.DoesNotExist:
-                                                return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "No record exists."}) 
-            
+                    return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "No data found."})
+            elif request.GET.get('type') == "Analyte":
+
+                try:
+                    print("id_valuetype_value....................", id_value,type_value )
+                    analyte = Analyte.objects.get(id=id_value)
+                    activity_log = ActivityLogUnits.objects.filter(analyte_id=analyte.id, type=type_value)
+                except Analyte.DoesNotExist:
+                    return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "No data found."})
+            elif request.GET.get('type') == "Reagent":
+
+                # If InstrumentType also does not exist, try Reagents
+                try:
+                    reagent = Reagents.objects.get(id=id_value)
+                    activity_log = ActivityLogUnits.objects.filter(reagent_id=reagent.id, type=type_value)
+                except Reagents.DoesNotExist:
+                    return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "No data found."})
+            elif request.GET.get('type') == "Scheme":
+
+                try:
+                    scheme = Scheme.objects.get(id=id_value)
+                    activity_log = ActivityLogUnits.objects.filter(scheme_id=scheme.id, type=type_value)
+                except Scheme.DoesNotExist: 
+                    return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "No data found."})
+            elif request.GET.get('type') == "Method":
+                try:
+                    method = Method.objects.get(id=id_value)
+                    activity_log = ActivityLogUnits.objects.filter(method_id=method.id, type=type_value)
+                except Method.DoesNotExist:
+                    return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "No data found."})
+            elif request.GET.get('type') == "Manufactural":
+                try:
+                    manufactural = Manufactural.objects.get(id=id_value)
+                    activity_log = ActivityLogUnits.objects.filter(manufactural_id=manufactural.id, type=type_value)
+                except Manufactural.DoesNotExist:
+                    return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "No data found."})
+            elif request.GET.get('type') == "Cycle":
+                try:
+                    cycle = Cycle.objects.get(id=id_value)
+                    activity_log = ActivityLogUnits.objects.filter(cycle_id=cycle.id, type=type_value)
+                except Cycle.DoesNotExist:
+                    return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "No data found."})
+            elif request.GET.get('type') == "Instrumentlist":
+
+                try:
+                    instrument = Instrument.objects.get(id=id_value)
+                    activity_log = ActivityLogUnits.objects.filter(instrument_id=instrument.id, type=type_value)
+                except Instrument.DoesNotExist:
+                    return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "No record exists."}) 
+            elif request.GET.get('type') == "Instrumentlist":
+
+                try:
+                    instrument = Instrument.objects.get(id=id_value)
+                    activity_log = ActivityLogUnits.objects.filter(instrument_id=instrument.id, type=type_value)
+                except Instrument.DoesNotExist:
+                    return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "No record exists."}) 
+            elif request.GET.get('type') == "City":
+
+                try:
+                    city = City.objects.get(id=id_value)
+                    activity_log = ActivityLogUnits.objects.filter(city_id=city.id, type=type_value)
+                except City.DoesNotExist:
+                    return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "No record exists."}) 
+            elif request.GET.get('type') == "ParticipantCountry":
+
+                try:
+                    country = ParticipantCountry.objects.get(id=id_value)
+                    activity_log = ActivityLogUnits.objects.filter(country_id=country.id, type=type_value)
+                except ParticipantCountry.DoesNotExist:
+                    return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "No record exists."}) 
+            elif request.GET.get('type') == "ParticipantProvince":
+
+                try:
+                    country = ParticipantProvince.objects.get(id=id_value)
+                    activity_log = ActivityLogUnits.objects.filter(province_id=country.id, type=type_value)
+                except ParticipantProvince.DoesNotExist:
+                    return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "No record exists."}) 
+            elif request.GET.get('type') == "District":
+
+                try:
+                    country = District.objects.get(id=id_value)
+                    activity_log = ActivityLogUnits.objects.filter(district_id=country.id, type=type_value)
+                except District.DoesNotExist:
+                    return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "No record exists."}) 
+
+            elif request.GET.get('type') == "Department":
+
+                try:
+                    country = Department.objects.get(id=id_value)
+                    activity_log = ActivityLogUnits.objects.filter(department_id=country.id, type=type_value)
+                except Department.DoesNotExist:
+                    return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "No record exists."}) 
+            elif request.GET.get('type') == "Designation":
+
+                try:
+                    country = Designation.objects.get(id=id_value)
+                    activity_log = ActivityLogUnits.objects.filter(designation_id=country.id, type=type_value)
+                except Designation.DoesNotExist:
+                    return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "No record exists."})
+            elif request.GET.get('type') == "ParticipantType":
+
+                try:
+                    country = ParticipantType.objects.get(id=id_value)
+                    activity_log = ActivityLogUnits.objects.filter(type_id=country.id, type=type_value)
+                except ParticipantType.DoesNotExist:
+                    return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "No record exists."})
+            elif request.GET.get('type') == "ParticipantSector":
+
+                try:
+                    country = ParticipantSector.objects.get(id=id_value)
+                    activity_log = ActivityLogUnits.objects.filter(sector_id=country.id, type=type_value)
+                except ParticipantSector.DoesNotExist:
+                    return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "No record exists."})
+            if activity_log is None:
+                return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "Invalid type provided."})
 
             serializer = ActivityLogUnitsSerializer(activity_log, many=True)
             if activity_log.exists():
                 data = []
                 for log_entry in serializer.data:
+                    print("added by", log_entry['added_by'])
                     user_id = log_entry['added_by']
                     username = UserAccount.objects.get(id=user_id).username
                     log_entry['added_by'] = username
@@ -1901,6 +2157,11 @@ class ReagentsPostAPIView(APIView):
             except ParticipantCountry.DoesNotExist:
                 return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "Invalid country name provided."})
 
+            if Reagents.objects.filter(organization_id=organization, name=request.data['name']).exists():
+                return Response({
+                    "status": status.HTTP_400_BAD_REQUEST,
+                    "message": "A Reagents with this name already exists in the organization."
+                })
             # Create a new reagent
             reagent = Reagents.objects.create(
                 organization_id=organization,
@@ -1916,7 +2177,11 @@ class ReagentsPostAPIView(APIView):
             changes_string = f"name: {request.data['name']}, code: {request.data['code']}, status: {request.data['status']},  manufactural: {manufactural.name},country: {country.name}"
 
             # Save data in activity log as a single field
-            ActivityLogUnits.objects.create(
+            user_account = UserAccount.objects.get(id=account_id)
+
+            # Save data in activity log as a single field
+            activity_log=ActivityLogUnits.objects.create(
+                added_by= user_account,                
                 organization_id=organization,
                 reagent_id=reagent,
                 date_of_addition=timezone.now(),
@@ -2015,7 +2280,11 @@ class ReagentsPutAPIView(APIView):
                 changes_string = ", ".join([f"{field}: {changed_fields[field]}" for field in changed_fields])
 
                 # Save data in activity log as a single field
-                ActivityLogUnits.objects.create(
+                user_account = UserAccount.objects.get(id=account_id)
+
+                # Save data in activity log as a single field
+                activity_log=ActivityLogUnits.objects.create(
+                    added_by= user_account,                    
                     reagent_id=reagent,
                     date_of_addition=timezone.now(),
                     field_name="Changes",
@@ -2112,6 +2381,11 @@ class ManufacturalPostAPIView(APIView):
             except ParticipantCountry.DoesNotExist:
                 return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "Invalid country name provided."})
 
+            if Manufactural.objects.filter(organization_id=organization, name=request.data['name']).exists():
+                return Response({
+                    "status": status.HTTP_400_BAD_REQUEST,
+                    "message": "A Manufactural with this name already exists in the organization."
+                })
             # Create a new manufactural
             manufactural = Manufactural.objects.create(
                 organization_id=organization,
@@ -2120,9 +2394,9 @@ class ManufacturalPostAPIView(APIView):
                 country=country,
                 date_of_addition=timezone.now(),
             )
-            user_account = UserAccount.objects.get(id=account_id)
             # Concatenate all changes into a single string with names
             changes_string = f"name: {request.data['name']}, website: {request.data['website']}, country: {country.name}"
+            user_account = UserAccount.objects.get(id=account_id)
 
             # Save data in activity log as a single field
             ActivityLogUnits.objects.create(
@@ -2277,7 +2551,11 @@ class MethodsPostAPIView(APIView):
             
             # Retrieve the organization associated with the staff user
             organization = staff_user.organization_id
-
+            if Method.objects.filter(organization_id=organization, name=request.data['name']).exists():
+                return Response({
+                    "status": status.HTTP_400_BAD_REQUEST,
+                    "message": "A Method with this name already exists in the organization."
+                })
             # Create a new method
             method = Method.objects.create(
                 organization_id=organization,
@@ -2474,13 +2752,18 @@ class SchemePostAPIView(APIView):
             user_name = user_account.username
             print("status in request", request.data['status'])
 
+            if Scheme.objects.filter(organization_id=organization, name=request.data['name']).exists():
+                return Response({
+                    "status": status.HTTP_400_BAD_REQUEST,
+                    "message": "A Scheme with this name already exists in the organization."
+                })
+
             # Create a new Scheme
             scheme = Scheme.objects.create(
                 organization_id=organization,
                 name=request.data['name'],
                 price=request.data['price'],
                 date_of_addition=timezone.now(),
-                analytetype=request.data['analytetype'],
                 added_by=user_account,  # Use the UserAccount object
                 status=request.data['status'],
             )
@@ -2574,70 +2857,69 @@ class CycleAPIView(APIView):
         try:
             # Get the staff user's account_id
             account_id = kwargs.get('id')
+            print("id in front end", kwargs.get('id'))
+            account_id = kwargs.get('id')
+            user_account = UserAccount.objects.get(id=account_id)
 
-            # Fetch the staff user based on account_id
-            staff_user = Staff.objects.get(account_id=account_id)
-            
-            # Retrieve the organization associated with the staff user
-            organization = staff_user.organization_id
+            if user_account.account_type == 'labowner':
+                participant = Lab.objects.get(account_id=account_id)
+                organization = participant.organization_id
+            else:
+                staff_user = Staff.objects.get(account_id=account_id)
+                organization = staff_user.organization_id
 
-            # Get all cycles for the organization
-            cycle_list = Cycle.objects.filter(organization_id=organization, status="Active")
-            cycle_ids = cycle_list.values_list('id', flat=True)  # Extract IDs of cycles
-            print("cycle list", cycle_ids, organization)
+            # Filter cycles based on the organization
+            cycle_list = Cycle.objects.filter(organization_id=organization)
 
-            # Exclude the cycles that are already in SelectedScheme
-            selected_cycle_ids = SelectedScheme.objects.filter(organization_id=organization, cycle_id__in=cycle_ids).values_list('cycle_id', flat=True)
-            print("in the selected cycle list", selected_cycle_ids, organization)
+            serialized_data = []
+            for cycle in cycle_list:
+                # Initialize cycle_data dictionary
+                cycle_data = model_to_dict(cycle)
 
-            # Get available cycles
-            available_cycles = cycle_list.exclude(id__in=selected_cycle_ids)
-            print("available_cycles", available_cycles)
-
-            # Serialize the available cycles
-            cycle_serializer = CycleSerializer(available_cycles, many=True)
-
-            # Manually add the price to the serialized data
-            # for i, cycle in enumerate(available_cycles):
-            #     analytes_count = cycle.scheme_name.analytes
-            #     print("analytes", analytes_count)
-            #     # Serialize scheme data excluding analytes
-            #     # scheme_data = model_to_dict(scheme, exclude=['analytes'])  
-            #     analytes = list(cycle.scheme_name.analytes.values('id', 'name', 'code', 'status'))  
-            #     cycle_serializer.data[i]['analytes'] = analytes
-            #     cycle_serializer.data[i]['noofanalytes'] = analytes_count
-            #     cycle_serializer.data[i]['price'] = cycle.scheme_name.price  # Assuming each cycle has a 'price' field
-            #     cycle_serializer.data[i]['scheme_name'] = cycle.scheme_name.name
-            #     cycle_serializer.data[i]['scheme_id'] = cycle.scheme_name.id
-            # Manually add the price to the serialized data
-            for i, cycle in enumerate(available_cycles):
-                analytes = cycle.scheme_name.analytes  # Get analytes related to the scheme
+                # Retrieve the scheme associated with the cycle
+                scheme = cycle.scheme_name
                 
-                # Check if analytes is a string, and if so, split it into a list
-                if isinstance(analytes, str):
-                    analytes_list = analytes.split(',')  # Split the string into a list based on commas
-                    analytes_count = len(analytes_list)  # Count the number of analytes
+                if scheme:
+                    # analytes_count = scheme.analytes.count()
+                    analytes_list = scheme.analytes.split(',') if scheme.analytes else []
+                    analytes_count = len(analytes_list)
+                    
+                    # Serialize scheme data excluding analytes
+                    scheme_data = model_to_dict(scheme, exclude=['analytes']) 
+
+                    # Convert analytes to a list of dictionaries (assuming analyte IDs are stored as the string values)
+                    # Here, we're assuming only analyte IDs are stored. You may customize the dictionary fields as needed.
+                    analytes = [{"id": analyte_id.strip()} for analyte_id in analytes_list]  # Stripping spaces for safety
+                    scheme_data['analytes'] = analytes  # Include the analytes in the response
+                    scheme_data['noofanalytes'] = analytes_count  # Include the number of analytes 
+                    
+                    # # Convert analytes to a list of dictionaries
+                    # analytes = list(scheme.analytes.values('id', 'name', 'code', 'status'))  
+                    # scheme_data['analytes'] = analytes
+                    # scheme_data['noofanalytes'] = analytes_count
+
+                    cycle_data['scheme_name'] = scheme.name
+                    cycle_data['price'] = scheme.price
+                    cycle_data['scheme_id'] = scheme.id
+                    print("scheme id",  cycle_data['scheme_id'])
+                    cycle_data['noofanalytes'] = analytes_count  # Ensure noofanalytes is added to cycle_data
                 else:
-                    analytes_list = []  # Default to empty list if it's not a string
-                    analytes_count = 0  # Set count to 0
+                    cycle_data['scheme_name'] = None
+                    cycle_data['scheme_id'] = None  # Handle case where scheme is None
+                    cycle_data['noofanalytes'] = 0  # or None, depending on your preference
 
-                print("analytes count", analytes_count)
+                serialized_data.append(cycle_data)
 
-                # Adding data to the serialized cycle object
-                cycle_serializer.data[i]['analytes'] = analytes_list
-                cycle_serializer.data[i]['noofanalytes'] = analytes_count
-                cycle_serializer.data[i]['price'] = cycle.scheme_name.price  # Assuming each cycle has a 'price' field
-                cycle_serializer.data[i]['scheme_name'] = cycle.scheme_name.name
-                cycle_serializer.data[i]['scheme_id'] = cycle.scheme_name.id
-
-            return Response({'status': status.HTTP_200_OK, 'data': cycle_serializer.data}, status=status.HTTP_200_OK)
-
+            return Response({"status": status.HTTP_200_OK, "data": serialized_data})
+        
         except Staff.DoesNotExist:
             return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "Invalid account_id."})
         
+        except Cycle.DoesNotExist:
+            return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "No cycle records found."})
+        
         except Exception as e:
-            return Response({"status": status.HTTP_500_INTERNAL_SERVER_ERROR, "message": str(e)})
-            
+            return Response({"status": status.HTTP_500_INTERNAL_SERVER_ERROR, "message": str(e)})            
             
 class CyclePostAPIView(APIView):
     permission_classes = (AllowAny,)  # Temporary permission setting for demonstration
@@ -3111,7 +3393,6 @@ class SchemeAnalyteAPIView(APIView):
         except Exception as e:
             return Response({"status": status.HTTP_400_BAD_REQUEST, "message": str(e)})
 
-
 class SchemeAddAnalyteAPIView(APIView):
     permission_classes = (AllowAny,)
     def post(self, request, id, *args, **kwargs):
@@ -3181,9 +3462,6 @@ class SchemeUpdateAnalyteAPIView(APIView):
                 "status": status.HTTP_400_BAD_REQUEST, 
                 "message": str(e)
             })
-
-
-
 
 # Analytes Assocaited With Cycle
 class AnalytesByCycleAPIView(APIView):
@@ -3270,14 +3548,16 @@ class AnalyteAPIView(APIView):
 
             # Concatenate all changes into a single string
             changes_string = ", ".join([f"{field}: {request.data[field]}" for field in ["name", "code", "status"]])
-
+            user_account=UserAccount.objects.get(id=account_id)
             # Save data in activity log
             activity_log = ActivityLogUnits.objects.create(
+                added_by=user_account,
                 analyte_id=analyte,
                 old_value=None,
                 new_value=changes_string,
                 date_of_addition=timezone.now(),
-                actions='Added'
+                actions='Added',
+                type="Analyte"
             )
 
             # Serialize the created analyte and activity log
@@ -3318,7 +3598,6 @@ class AnalyteUpdateAPIView(APIView):
                 'name': analyte.name,
                 'code': analyte.code,
                 'status': analyte.status,
-                'analytetype': analyte.analytetype,
             }
 
             serializer = AnalyteSerializer(analyte, data=request.data, partial=True)
@@ -3330,7 +3609,6 @@ class AnalyteUpdateAPIView(APIView):
                     'name': updated_analyte.name,
                     'code': updated_analyte.code,
                     'status': updated_analyte.status,
-                    'analytetype': updated_analyte.analytetype,
                 }
 
                 changed_fields = {field: new_values[field] for field in new_values if new_values[field] != old_values[field]}
@@ -3341,7 +3619,9 @@ class AnalyteUpdateAPIView(APIView):
                     old_value=", ".join([f"{field}: {old_values[field]}" for field in changed_fields]),
                     new_value=changes_string,
                     date_of_addition=timezone.now(),
-                    actions='Updated'
+                    actions='Updated',
+                    type="Analyte"
+
                 )
 
                 return Response({
@@ -4040,7 +4320,8 @@ class AnalytesUnitsAPIView(APIView):
             serialized_data = {
                 #"analyte": AnalyteSerializer(analyte).data,
                 "units": unit_ids,  # Send list of units IDs
-                "master_unit": analyte.master_unit.id if analyte.master_unit else None
+                "master_unit": analyte.master_unit.id if analyte.master_unit else None,
+                "conversion_formula": analyte.conversion_formula if analyte.conversion_formula else None
             }
             
             return Response({"status": status.HTTP_200_OK, "data": serialized_data})
@@ -4069,6 +4350,7 @@ class AnalyteAddUnitsAPIView(APIView):
             if master_unit_id:
                 master_unit = Units.objects.get(id=master_unit_id)
                 analyte.master_unit = master_unit
+                analyte.conversion_formula = request.data.get('conversion_formula')
 
             analyte.units.set(units)  # Assuming units are passed as a list of IDs
             analyte.save()
@@ -4096,6 +4378,7 @@ class AnalyteUpdateUnitsAPIView(APIView):
             if master_unit_id:
                 master_unit = Units.objects.get(id=master_unit_id)
                 analyte.master_unit = master_unit
+                analyte.conversion_formula = request.data.get('conversion_formula')
 
             analyte.units.set(units)  # Assuming units are passed as a list of IDs
             analyte.save()
@@ -4184,16 +4467,17 @@ class AnalytesListForSchemeAPIView(APIView):
    
     def get(self, request, *args, **kwargs):
         scheme_id = kwargs.get('id')
-
         try:
-            scheme = Scheme.objects.get(id=scheme_id)
-            print("analytes", scheme.analytetype)
+            scheme = Scheme.objects.get(id=scheme_id )
+            # print("analytes", scheme.analytetype)
+            organization_id=scheme.organization_id
+            print("organization_id", organization_id.id)
 
             if scheme.analytetype == "Qualitative":
-                analyte_list = Analyte.objects.filter(units__name="Pos/Neg/Equi")
+                analyte_list = Analyte.objects.filter(units__name="Pos/Neg/Equi", organization_id=organization_id)
                 print("analyte_list in qualitative", analyte_list)
             else:
-                analyte_list = Analyte.objects.exclude(units__name="Pos/Neg/Equi")
+                analyte_list = Analyte.objects.filter(organization_id=organization_id).exclude(units__name="Pos/Neg/Equi")
 
             # analyte_ids = [analyte.id for analyte in analyte_list]
 

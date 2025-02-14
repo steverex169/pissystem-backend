@@ -9,8 +9,6 @@ from rest_framework import status
 from rest_framework.authtoken.serializers import AuthTokenSerializer
 from rest_framework import generics
 from rest_framework import parsers
-from labowner.models import Lab, SampleCollector
-from staff.models import Marketer, Staff
 from .serializers import ChangePasswordSerializer
 from rest_framework.permissions import IsAuthenticated
 from account.models import UserAccount
@@ -23,11 +21,8 @@ from helpers.mail import send_mail
 from datetime import datetime
 import datetime
 from django.contrib.auth.models import update_last_login
-from staff.models import Staff
 from organizationdata.models import Organization
-from labowner.models import Lab
 from django.utils import timezone
-from registrationadmin.models import Payment
 # Redirect to admin
 
 
@@ -41,147 +36,25 @@ class RegisterView(CreateAPIView):
     
     def post(self, request):
         serializer = RegisterSerializer(data=request.data)
-        
-        # Check if the serializer data is valid
         if serializer.is_valid():
-            # Check if the email already exists in UserAccount table
-            email_exists = UserAccount.objects.filter(email=request.data['email']).exists()
-            if email_exists:
-                return Response({"status": status.HTTP_400_BAD_REQUEST, "error": "Email already exists."})
-            # email_exists = UserAccount.objects.filter(email=request.data['email']).exists()
-            # if email_exists:
-            #     return Response({"status": status.HTTP_400_BAD_REQUEST, "error": "Email already exists."})
-
-            # Proceed with saving the serializer data
             serializer.save()
-
             user_data = serializer.data
             user = UserAccount.objects.get(username=request.data['username'])
-            
-
-            # Update password_foradmins
             UserAccount.objects.filter(username=request.data['username']).update(password_foradmins=request.data['password'])
-            # Participant registration
-            if request.data['account_type'] == "labowner":
-                user.email = request.data['email']
-                user.save()
-                # organization = Organization.objects.get(account_id = request.data['added_by'])
-                staff = Staff.objects.get(account_id = request.data['added_by'])
-                # Retrieve the organization associated with the staff user
-                organization = staff.organization_id
-                # print("emaillllll", request.data['email'], request.data['added_by'], organization)
-                Lab.objects.create(
-                    
-                   account_id=user,
-                    # organization_id=request.data['added_by'],
-                    user_name=request.data['username'],
-                    email=request.data['email'],
-                    email_participant=request.data['email_participant'],
-                    city=request.data['city'],
-                    name=request.data['name'],
-                    department=request.data['department'],
-                    # organization_id = organization,
-                    organization_id = organization,
-                    staff_id = staff,
-                    country=request.data['country'],
-                    # address=request.data['address'],
-                    district=request.data['district'],
-                    # Select_schemes=request.data['Select_schemes'],
-                    province = request.data['province'],
-                    # state = request.data['state'],
-                    billing_address = request.data['billing_address'],
-                    shipping_address = request.data['shipping_address'],
-                    lab_staff_name=request.data['lab_staff_name'],
-                    # lab_staff_designation=request.data['lab_staff_designation'],
-                    landline_registered_by=request.data['landline_registered_by'],
-                    website=request.data['website'],
-                )
-            # Additional logic for creating Organization instance
             if request.data['account_type'] == "organization":
-                user.email = request.data['email']
                 user.save()
-                print("djd emial", request.data['email'])
-                if (request.data['currency'] and request.data['amount'] and 
-                    request.data['payment_proof'] and request.data['issue_date'] and 
-                    request.data['closing_date']):
-                    
-                    # Create the organization with 'Approved' status and 'Paid' payment status
-                    Organization.objects.create(
+                Organization.objects.create(
                         account_id=user,
-                        name=request.data['name'],
-                        email=request.data['email'],
-                        amount=request.data['amount'],
-                        currency=request.data['currency'],
-                        payment_proof=request.data['payment_proof'],
-                        issue_date=request.data['issue_date'],
-                        closing_date=request.data['closing_date'],
-                        user_name=request.data['username'],
-                        website=request.data['website'],
-                        country=request.data['country'],
-                        photo=request.data['logo'],
-                        registered_at=datetime.datetime.now(),
-                        status="Approved",
-                        payment_status="Paid"
                     )
-                else:
-                    # If some required fields are missing, create the organization with default status
-                    Organization.objects.create(
-                        account_id=user,
-                        name=request.data['name'],
-                        email=request.data['email'],
-                        user_name=request.data['username'],
-                        website=request.data['website'],
-                        country=request.data['country'],
-                        photo=request.data['logo'],
-                        registered_at=datetime.datetime.now(),
-                        status="Pending",
-                        payment_status="Unpaid"
-                    )
-                # Organization.objects.create(
-                #     account_id=user,
-                #     name=request.data['name'],
-                #     email=request.data['email'],
-                #     amount=request.data['amount'],
-                #     currency=request.data['currency'],
-                #     payment_proof=request.data['payment_proof'],
-                #     issue_date=request.data['issue_date'],
-                #     closing_date=request.data['closing_date'],
-                #     user_name=request.data['username'],
-                #     website=request.data['website'],
-                #     country=request.data['country'],
-                #     photo=request.data['logo'],
-                #     registered_at=datetime.datetime.now()
-                #     if request.data['currency'] and request.data['amount'] and request.data['payment_proof'] and request.data['issue_date'] and request.data['closing_date']:
-                #         status= "Approved",
-                #         payment_status= "Paid",
-
-                # )
-             
-            # Activate user and set password_foradmins for 'patient' or 'samplecollector' accounts
-            if request.data['account_type'] == "database-admin" or request.data['account_type'] == "registration-admin" or request.data['account_type'] == "CSR":
-                user.email = request.data['email']
-                user.save()
-                print("organization and user", user, request.data['added_by'])
-                organization = Organization.objects.get(account_id=request.data['added_by'])
-                print("organization and user", organization.id, user)
-                Staff.objects.create(
-                    account_id=user,
-                    organization_id=organization,
-                    name=request.data['name'],
-                    email=request.data['email'],
-                    cnic=request.data['cnic'],
-                    photo=request.data['photo'],
-                    user_name=request.data['username'],
-                    staff_type=request.data['account_type'],
-                    phone=request.data['phone'],
-                    city=request.data['city'],
-                    registered_at=datetime.datetime.now()
-
-                )  
                 user.is_active = True
                 user.password_foradmins = request.data['password']
                 user.save()
-
+            # Activate user and set password_foradmins for 'patient' or 'samplecollector' accounts
+            if request.data['account_type'] == "database-admin":
+                user.save() 
+                user.is_active = True
+                user.password_foradmins = request.data['password']
+                user.save()
                 return Response(user_data, status=status.HTTP_201_CREATED)
             else:
                 # Generate token for other account types
@@ -230,65 +103,7 @@ class LoginView(APIView):
 
             if user_account.is_active == False:
                 return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "Sorry! Your account is not verified. Please verify using the verification link sent on your email."})
-            else:
-                # We need to apply limitations on lab's login if it is blocked by us or its approval is pending
-                if user_account.account_type == "labowner":
-                    try:
-                        lab = Lab.objects.get(account_id=user_account.id)
-                        data['lab_name'] = lab.name
-                        labpayment = Payment.objects.filter(participant_id=lab.id).last()
-                        print("lab in payments", labpayment.cycle_id.id)
-                        cycleclosingdate = labpayment.cycle_id.end_date
-                        print("cycleclosingdate", cycleclosingdate)
-
-                        date_today = datetime.datetime.now().date()
-                        orgclosingdate = lab.organization_id.closing_date.date()
-                        print("today date", date_today, orgclosingdate)
-                        if cycleclosingdate <= date_today:
-                            lab = Lab.objects.filter(id=lab.id).update(membership_status = "Suspended")
-                            # lab.status == "Org Suspended"
-                            # lab.save()  # Save the updated status
-                            return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "Your account is not active Membership. Please contact Organization for membership activation."})
-                        elif orgclosingdate <= date_today:
-                            # lab.status == "Org Suspended"
-                            # lab.save()  # Save the updated status
-                            return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "We are unable to login to your account, please contact your Organization."})
-                        elif lab.is_blocked == "Yes":
-                            return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "Your lab is blocked by the admins. Please contact them for further details."})
-                        elif lab.membership_status == "Suspended":
-                            return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "Your account is not active Membership. Please contact Organization for membership activation."})
-                        elif lab.status == "Pending":
-                            return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "Your lab is pending for approval. Please contact admins for further details."})
-                        elif lab.status == "Unapproved":
-                            return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "Your lab account is not approved by Lab Hazir. Please contact our customer care for further details."})
-                    except:
-                        # UserAccount.objects.get(id=user_account.id).delete()
-                        return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "Sorry! Your registration was not completed properly. Please register again."})
-                if user_account.account_type == "organization":
-                    try:
-                        organization = Organization.objects.get(account_id=user_account.id)
-                        print("organization user id", user_account.id, organization, organization.closing_date)
-
-                        data['organization_name'] = organization.name
-                        date_today = datetime.datetime.now().date()
-                        orgclosingdate = organization.closing_date.date()
-                        print("today date", date_today, orgclosingdate)
-
-                        if orgclosingdate <= date_today:
-                            print("if case m ata hai yah nahi")
-                            lab = Organization.objects.filter(account_id=user_account.id).update(status= "Suspend", payment_status = "Unpaid")
-                           
-                            return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "Your organization account is not active Membership. Please contact admins for membership activation."})
-                        elif organization.status == "Block":
-                            return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "Your organization is blocked by the admins. Please contact them for further details."})
-                        elif organization.status == "Pending":
-                            return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "Your organization is pending for approval. Please contact admins for further details."})
-                        elif organization.payment_status == "Unpaid":
-                            return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "Your organization account is not active Membership. Please contact admins for membership activation."})
-                    except:
-                        # UserAccount.objects.get(id=user_account.id).delete()
-                        return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "Sorry! Your registration was not completed properly. Please register again."})
-            
+           
         except:
             return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "Sorry! No account found. Please provide correct Username or Register First."})
 
@@ -311,7 +126,7 @@ class LoginView(APIView):
         # We need to return account type and token from API when status is 200
         data['user_id'] = user.id
         # data['last_login'] = user.last_login
-        # user.last_login_time = last_login_time
+        data['username'] = user.username
         data['is_active'] = user.is_active
         data['account_type'] = user.account_type
         data['token'] = token_dict['key']
@@ -352,3 +167,4 @@ class ChangePasswordView(generics.UpdateAPIView):
             return Response(response)
 
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    
