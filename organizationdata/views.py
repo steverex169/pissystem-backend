@@ -1190,11 +1190,14 @@ class PartnersList(APIView):
                     volume_data = volume_data_list.filter(
                         partner_name=scrape.partner_name,
                         weak_date=weekly_key
-                    ).first()  # Ignore weekly_key
+                    ).first()  # Get the first matching entry
+                    
                     print("yaha kya a raha h dekhty hai", volume_data)
 
-                    if partner_name not in first_time_tracker:  # First occurrence of partner_name
-                        first_time_tracker.add(partner_name)
+                    combination = (scrape.partner_name, weekly_key)  # Track each partner_name + weak_date
+
+                    if combination not in first_time_tracker:  # First occurrence of (partner_name, weak_date)
+                        first_time_tracker.add(combination)  # Add this combination to the tracker
 
                         raw_volume = 0.0
                         if volume_data and volume_data.volume:
@@ -1210,7 +1213,9 @@ class PartnersList(APIView):
 
                         calculated_volume = raw_volume * multiplier
                         total_volume += calculated_volume  # Only add real volume once
+
                         print("volume a raha hai yaha nahi", total_volume, calculated_volume)
+
 
                 item = {
                     "volume": calculated_volume,  # First occurrence → real volume, others → 0
