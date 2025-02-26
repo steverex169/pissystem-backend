@@ -300,6 +300,8 @@ class Statements2View(APIView):
                     "office_profit": scrape.office_profit,
                     "total": scrape.total,
                     "user": scrape.user,
+                    "id": scrape.id,
+
                 }
                 account_items.append(item)
 
@@ -311,6 +313,19 @@ class Statements2View(APIView):
 
         except UserAccount.DoesNotExist:
             return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "User does not exist."})
+    def put(self, request, *args, **kwargs):
+        try:
+            organization = Scrapdata.objects.get(id=kwargs.get('id'))
+            serializer = ScrapdataSerializer(organization, data=request.data, partial=True)
+
+            if serializer.is_valid():
+                serializer.save()
+                return Response({"status": status.HTTP_200_OK, "data": serializer.data, "message": "Updated Successfully"})
+            else:
+                return Response({"status": status.HTTP_400_BAD_REQUEST, "message": serializer.errors})
+
+        except Organization.DoesNotExist:
+            return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "Sorry! Account with this id doesn't exist. Please create account first."})
 
 class AccountsListsView(APIView):
     permission_classes = (AllowAny,)
@@ -532,4 +547,131 @@ class AccountsListsView(APIView):
 
         except UserAccount.DoesNotExist:
             return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "No such Partner to delete."})
-   
+
+
+# class PartnersList(APIView):
+#     def get(self, request, *args, **kwargs):
+#         try:
+#             unique_users = Scrapdata.objects.values("partner_name").distinct()
+#             partner_name = [user["partner_name"] for user in unique_users]
+#             return Response(
+#                 {"status": status.HTTP_200_OK, "data": partner_name},
+#                 status=status.HTTP_200_OK
+#             )
+#         except Exception as e:
+#             return Response(
+#                 {"status": status.HTTP_500_INTERNAL_SERVER_ERROR, "error": str(e)},
+#                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
+#             )     
+
+import re
+
+class PartnersList(APIView):
+    def get(self, request, *args, **kwargs):
+        try:
+            all_scrape = Scrapdata.objects.all()
+
+            if not all_scrape.exists():
+                return Response(
+                    {"status": status.HTTP_400_BAD_REQUEST, "message": "Data not found"},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
+            # Fetch all unique partner names
+            partner_names = all_scrape.values_list("partner_name", flat=True).distinct()
+
+            # Fetch volume data related to these partners
+            volume_data_list = ScrapBetwarVolumn.objects.filter(partner_name__in=partner_names)
+
+            # Fetch partner info and create a dictionary of multipliers
+            partner_info_dict = {
+                partner.partner_name: float(partner.volume_formula or 0)  # Default to 0 if None
+                for partner in PartnerBetwarInfo.objects.filter(partner_name__in=partner_names)
+            }
+
+            # Initialize required variables
+            account_items = []
+            total_volume = 0
+            first_time_tracker = {}  # Track first occurrence of (partner_name, weekly_key)
+
+            def standardize_date_range(date_range):
+                """Convert date ranges into MM/DD/YY - MM/DD/YY format"""
+                try:
+                    match = re.match(r"(\d{1,2})/(\d{1,2})/(\d{2,4}) - (\d{1,2})/(\d{1,2})/(\d{2,4})", date_range)
+
+                    if match:
+                        m1, d1, y1, m2, d2, y2 = match.groups()
+                        y1 = y1[-2:]  # Convert YYYY to YY
+                        y2 = y2[-2:]  # Convert YYYY to YY
+                        return f"{int(m1):02d}/{int(d1):02d}/{y1} - {int(m2):02d}/{int(d2):02d}/{y2}"
+                    return date_range
+                except Exception:
+                    return date_range
+
+            first_time_tracker = set()  # Set to track first occurrences of partner_name
+
+            for scrape in all_scrape:
+                partner_type = scrape.partner
+                weekly_key = standardize_date_range(scrape.partner_profit or "")
+
+                if not re.match(r"^\d{2}/\d{2}/\d{2} - \d{2}/\d{2}/\d{2}$", weekly_key):
+                    continue
+
+                calculated_volume = 0.0
+                partner_name = scrape.partner_name  # Only tracking partner_name
+
+                if partner_type in ["BETWAR", "XAOS"]:
+                    volume_data = volume_data_list.filter(
+                        partner_name=scrape.partner_name
+                    ).first()  # Ignore weekly_key
+                    print("yaha kya a raha h dekhty hai", volume_data)
+
+                    if partner_name not in first_time_tracker:  # First occurrence of partner_name
+                        first_time_tracker.add(partner_name)
+
+                        raw_volume = 0.0
+                        if volume_data and volume_data.volume:
+                            try:
+                                raw_volume = float(volume_data.volume.replace(",", ""))
+                            except ValueError:
+                                raw_volume = 0.0
+
+                        multiplier = partner_info_dict.get(scrape.partner_name, 0.0)
+
+                        if scrape.partner_name == "SNOWCLASSICO":
+                            raw_volume *= 0.80  # Reduce by 20%
+
+                        calculated_volume = raw_volume * multiplier
+                        total_volume += calculated_volume  # Only add real volume once
+                        print("volume a raha hai yaha nahi", total_volume, calculated_volume)
+
+                item = {
+                    "volume": calculated_volume,  # First occurrence → real volume, others → 0
+                    "partner": partner_type,
+                    "weekly": scrape.weekly,
+                    "partner_name": scrape.partner_name,
+                    "website_url": scrape.website_url,
+                    "username": scrape.username,
+                    "password": scrape.password,
+                    "figure": scrape.figure,
+                    "affiliate_profit": scrape.affiliate_profit,
+                    "partner_profit": weekly_key,
+                    "office_profit": scrape.office_profit,
+                    "total": scrape.total,
+                    "user": scrape.user,
+                    "id": scrape.id,
+                }
+                account_items.append(item)
+
+            return Response({
+                "status": status.HTTP_200_OK,
+                "data": account_items,
+                "totalVolume": total_volume
+            })
+
+
+        except Exception as e:
+            return Response(
+                {"status": status.HTTP_500_INTERNAL_SERVER_ERROR, "error": str(e)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
