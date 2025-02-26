@@ -10,12 +10,14 @@ from django.urls import reverse
 from rest_framework.authtoken.models import Token
 from django.conf import settings
 from django.contrib.sites.shortcuts import get_current_site
-from organizationdata.models import Organization, Scrapdata, ScrapBetwarVolumn, PartnerBetwarInfo
-from organizationdata.serializers import OrganizationSerializer, ScrapdataSerializer, PartnerBetwarInfoSerializer
+from organizationdata.models import Organization, Scrapdata, ScrapBetwarVolumn, PartnerBetwarInfo, News
+from organizationdata.serializers import OrganizationSerializer, ScrapdataSerializer, PartnerBetwarInfoSerializer, NewsSerializer
 from account.models import UserAccount
 from account.serializers import RegisterSerializer
 import re
 from django.forms.models import model_to_dict
+from django.utils import timezone
+
 
 # Create your views here.
 class RegisterOrganizationView(APIView):
@@ -1116,19 +1118,19 @@ class AccountsListsView(APIView):
 
 
 # class PartnersList(APIView):
-#     def get(self, request, *args, **kwargs):
-#         try:
-#             unique_users = Scrapdata.objects.values("partner_name").distinct()
-#             partner_name = [user["partner_name"] for user in unique_users]
-#             return Response(
-#                 {"status": status.HTTP_200_OK, "data": partner_name},
-#                 status=status.HTTP_200_OK
-#             )
-#         except Exception as e:
-#             return Response(
-#                 {"status": status.HTTP_500_INTERNAL_SERVER_ERROR, "error": str(e)},
-#                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
-#             )     
+    # def get(self, request, *args, **kwargs):
+    #     try:
+    #         unique_users = Scrapdata.objects.values("partner_name").distinct()
+    #         partner_name = [user["partner_name"] for user in unique_users]
+    #         return Response(
+    #             {"status": status.HTTP_200_OK, "data": partner_name},
+    #             status=status.HTTP_200_OK
+    #         )
+    #     except Exception as e:
+    #         return Response(
+    #             {"status": status.HTTP_500_INTERNAL_SERVER_ERROR, "error": str(e)},
+    #             status=status.HTTP_500_INTERNAL_SERVER_ERROR
+    #         )     
 
 import re
 
@@ -1248,3 +1250,53 @@ class PartnersList(APIView):
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
 
+class NewsListView(APIView):
+    def get(self, request, *args, **kwargs):
+        try:
+            news_list = News.objects.filter(id=kwargs.get('id'))  # Use filter() instead of get()
+            print("id is", news_list)
+            if not news_list.exists():
+                return Response(
+                    {"status": status.HTTP_404_NOT_FOUND, "error": "News not found."},
+                    status=status.HTTP_404_NOT_FOUND
+                )
+
+            serialized_news = NewsSerializer(news_list, many=True)  # Serialize queryset
+            return Response(
+                {"status": status.HTTP_200_OK, "data": serialized_news.data},
+                status=status.HTTP_200_OK
+            )
+        except Exception as e:
+            return Response(
+                {"status": status.HTTP_500_INTERNAL_SERVER_ERROR, "error": str(e)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
+class NewsAddAPIView(APIView):
+    permission_classes = (AllowAny,)    
+    def post(self, request, *args, **kwargs):
+        serializer = NewsSerializer(data=request.data)
+        if serializer.is_valid():
+                # Fetch the staff user based on account_id
+                account_id1 = request.data.get('added_by')  # Use 'added_by' from request data
+                print("idddddddddddddddddddd",account_id1)
+            # Retrieve the organization associated with the staff user
+                # print("orgID/Name", organization)
+                date_of_addition = timezone.now()
+                # news = serializer.save(added_by=user_account)
+                news = serializer.save(
+                    added_by=account_id1,
+                    date_of_addition=date_of_addition
+                )
+                
+                news_data = {
+                    'title': news.title,
+                    'date_of_addition': date_of_addition,
+                    'description': news.description,
+                    'picture': news.picture.url if news.picture else None,
+                    # Add other fields as needed
+                }
+                return Response({"status": status.HTTP_201_CREATED, "data": news_data})
+
+
+        return Response({"status": status.HTTP_400_BAD_REQUEST, "errors": serializer.errors})
