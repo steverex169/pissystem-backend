@@ -98,6 +98,7 @@ class ScrapBetwarVolumn(models.Model):
         max_length=50, blank=True, null=True, default='BETWAR')
 
 
+
     def __str__(self):
         return self.partner_name or "No Partner"
 
@@ -112,3 +113,14 @@ class PartnerBetwarInfo(models.Model):
 
     def __str__(self):
         return self.partner_name or "No Partner"
+class News(models.Model):
+    added_by = models.CharField(max_length=255, blank=False, null=True)
+    title = models.CharField(max_length=255, blank=False, null=True)
+    description = models.TextField()
+    picture = models.ImageField(upload_to='news_pictures/', blank=True, null=True)
+    date_of_addition = models.DateTimeField(blank=True, null=True) 
+    def __str__(self):
+        return self.title
+
+    class Meta:
+        verbose_name = 'News'
