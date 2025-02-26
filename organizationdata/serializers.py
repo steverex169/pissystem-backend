@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from organizationdata.models import Organization, Scrapdata, ScrapBetwarVolumn, PartnerBetwarInfo
+from organizationdata.models import Organization, Scrapdata, ScrapBetwarVolumn, PartnerBetwarInfo, News
 
 
 # Serializer for storing lab's information
@@ -20,3 +20,7 @@ class PartnerBetwarInfoSerializer(serializers.ModelSerializer):
     class Meta:
         model = PartnerBetwarInfo
         fields = ('__all__')
+class NewsSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = News
+        fields = ('__all__') 
