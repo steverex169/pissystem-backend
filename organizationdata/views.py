@@ -1189,7 +1189,7 @@ class PartnersList(APIView):
                 if partner_type in ["BETWAR", "XAOS"]:
                     volume_data = volume_data_list.filter(
                         partner_name=scrape.partner_name,
-                        weak_date=scrape.partner_name
+                        weak_date=weekly_key
                     ).first()  # Ignore weekly_key
                     print("yaha kya a raha h dekhty hai", volume_data)
 
