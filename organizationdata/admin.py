@@ -1,5 +1,5 @@
 from django.contrib import admin
-from organizationdata.models import Organization, Scrapdata, ScrapBetwarVolumn, PartnerBetwarInfo
+from organizationdata.models import Organization, Scrapdata, ScrapBetwarVolumn, PartnerBetwarInfo, News
 
 
 class OrganizationAdmin(admin.ModelAdmin):
@@ -14,11 +14,15 @@ class ScraperdataAdmin(admin.ModelAdmin):
 class ScrapBetwarVolumnAdmin(admin.ModelAdmin):
     list_display = ('id', 'partner_name', 'weak_date', 'volume')
     search_fields = ('id', 'partner_name', 'weak_date', 'volume')
-# Register your models here
+class NewsAdmin(admin.ModelAdmin):
+    list_display = ('id', 'title', 'date_of_addition', 'description',)
+    search_fields = ('id', 'title', 'date_of_addition', 'description',)
+# Register your models heres
 admin.site.register(Scrapdata, ScraperdataAdmin)
 admin.site.register(PartnerBetwarInfo, PartnerBetwarInfoAdmin)
 admin.site.register(Organization, OrganizationAdmin)
 admin.site.register(ScrapBetwarVolumn, ScrapBetwarVolumnAdmin)
+admin.site.register(News, NewsAdmin)
 
 
 # Register your models here.
