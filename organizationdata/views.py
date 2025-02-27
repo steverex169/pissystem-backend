@@ -1134,10 +1134,132 @@ class AccountsListsView(APIView):
 
 import re
 
+# class PartnersList(APIView):
+#     def get(self, request, *args, **kwargs):
+#         try:
+#             all_scrape = Scrapdata.objects.all()
+
+#             if not all_scrape.exists():
+#                 return Response(
+#                     {"status": status.HTTP_400_BAD_REQUEST, "message": "Data not found"},
+#                     status=status.HTTP_400_BAD_REQUEST
+#                 )
+
+#             # Fetch all unique partner names
+#             partner_names = all_scrape.values_list("partner_name", flat=True).distinct()
+
+#             # Fetch volume data related to these partners
+#             volume_data_list = ScrapBetwarVolumn.objects.filter(partner_name__in=partner_names)
+
+#             # Fetch partner info and create a dictionary of multipliers
+#             partner_info_dict = {
+#                 partner.partner_name: float(partner.volume_formula or 0)  # Default to 0 if None
+#                 for partner in PartnerBetwarInfo.objects.filter(partner_name__in=partner_names)
+#             }
+
+#             # Initialize required variables
+#             account_items = []
+#             total_volume = 0
+#             first_time_tracker = {}  # Track first occurrence of (partner_name, weekly_key)
+
+#             def standardize_date_range(date_range):
+#                 """Convert date ranges into MM/DD/YY - MM/DD/YY format"""
+#                 try:
+#                     match = re.match(r"(\d{1,2})/(\d{1,2})/(\d{2,4}) - (\d{1,2})/(\d{1,2})/(\d{2,4})", date_range)
+
+#                     if match:
+#                         m1, d1, y1, m2, d2, y2 = match.groups()
+#                         y1 = y1[-2:]  # Convert YYYY to YY
+#                         y2 = y2[-2:]  # Convert YYYY to YY
+#                         return f"{int(m1):02d}/{int(d1):02d}/{y1} - {int(m2):02d}/{int(d2):02d}/{y2}"
+#                     return date_range
+#                 except Exception:
+#                     return date_range
+
+#             first_time_tracker = set()  # Set to track first occurrences of partner_name
+
+#             for scrape in all_scrape:
+#                 partner_type = scrape.partner
+#                 weekly_key = standardize_date_range(scrape.partner_profit or "")
+
+#                 if not re.match(r"^\d{2}/\d{2}/\d{2} - \d{2}/\d{2}/\d{2}$", weekly_key):
+#                     continue
+
+#                 calculated_volume = 0.0
+#                 partner_name = scrape.partner_name  # Only tracking partner_name
+
+#                 if partner_type in ["BETWAR", "XAOS"]:
+#                     volume_data = volume_data_list.filter(
+#                         partner_name=scrape.partner_name,
+#                         weak_date=weekly_key
+#                     ).first()  # Get the first matching entry
+                    
+#                     print("yaha kya a raha h dekhty hai", volume_data)
+
+#                     combination = (scrape.partner_name, weekly_key)  # Track each partner_name + weak_date
+
+#                     if combination not in first_time_tracker:  # First occurrence of (partner_name, weak_date)
+#                         first_time_tracker.add(combination)  # Add this combination to the tracker
+
+#                         raw_volume = 0.0
+#                         if volume_data and volume_data.volume:
+#                             try:
+#                                 raw_volume = float(volume_data.volume.replace(",", ""))
+#                             except ValueError:
+#                                 raw_volume = 0.0
+
+#                         multiplier = partner_info_dict.get(scrape.partner_name, 0.0)
+
+#                         if scrape.partner_name == "SNOWCLASSICO":
+#                             raw_volume *= 0.80  # Reduce by 20%
+
+#                         calculated_volume = raw_volume * multiplier
+#                         total_volume += calculated_volume  # Only add real volume once
+
+#                         print("volume a raha hai yaha nahi", total_volume, calculated_volume)
+
+
+#                 item = {
+#                     "volume": calculated_volume,  # First occurrence → real volume, others → 0
+#                     "partner": partner_type,
+#                     "weekly": scrape.weekly,
+#                     "partner_name": scrape.partner_name,
+#                     "website_url": scrape.website_url,
+#                     "username": scrape.username,
+#                     "password": scrape.password,
+#                     "figure": scrape.figure,
+#                     "affiliate_profit": scrape.affiliate_profit,
+#                     "partner_profit": weekly_key,
+#                     "office_profit": scrape.office_profit,
+#                     "total": scrape.total,
+#                     "user": scrape.user,
+#                     "id": scrape.id,
+#                 }
+#                 account_items.append(item)
+
+#             return Response({
+#                 "status": status.HTTP_200_OK,
+#                 "data": account_items,
+#                 "totalVolume": total_volume
+#             })
+
+
+#         except Exception as e:
+#             return Response(
+#                 {"status": status.HTTP_500_INTERNAL_SERVER_ERROR, "error": str(e)},
+#                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
+#             )
+from django.db.models import Prefetch
+
 class PartnersList(APIView):
     def get(self, request, *args, **kwargs):
         try:
-            all_scrape = Scrapdata.objects.all()
+            # Fetch only required fields (Avoid `all()`)
+            all_scrape = Scrapdata.objects.only(
+                "partner_name", "partner", "weekly", "website_url",
+                "username", "password", "figure", "affiliate_profit",
+                "partner_profit", "office_profit", "total", "user", "id"
+            )
 
             if not all_scrape.exists():
                 return Response(
@@ -1145,40 +1267,37 @@ class PartnersList(APIView):
                     status=status.HTTP_400_BAD_REQUEST
                 )
 
-            # Fetch all unique partner names
-            partner_names = all_scrape.values_list("partner_name", flat=True).distinct()
+            partner_names = list(all_scrape.values_list("partner_name", flat=True).distinct())
 
-            # Fetch volume data related to these partners
+            # Fetch related volume data in a single query
             volume_data_list = ScrapBetwarVolumn.objects.filter(partner_name__in=partner_names)
+            volume_dict = {
+                (item.partner_name, item.weak_date): item.volume
+                for item in volume_data_list
+            }
 
-            # Fetch partner info and create a dictionary of multipliers
+            # Fetch partner info once and store as dict
             partner_info_dict = {
-                partner.partner_name: float(partner.volume_formula or 0)  # Default to 0 if None
+                partner.partner_name: float(partner.volume_formula or 0)
                 for partner in PartnerBetwarInfo.objects.filter(partner_name__in=partner_names)
             }
 
-            # Initialize required variables
             account_items = []
             total_volume = 0
-            first_time_tracker = {}  # Track first occurrence of (partner_name, weekly_key)
+            first_time_tracker = set()  # Set for tracking unique (partner_name, weekly_key)
 
             def standardize_date_range(date_range):
                 """Convert date ranges into MM/DD/YY - MM/DD/YY format"""
-                try:
-                    match = re.match(r"(\d{1,2})/(\d{1,2})/(\d{2,4}) - (\d{1,2})/(\d{1,2})/(\d{2,4})", date_range)
-
-                    if match:
-                        m1, d1, y1, m2, d2, y2 = match.groups()
-                        y1 = y1[-2:]  # Convert YYYY to YY
-                        y2 = y2[-2:]  # Convert YYYY to YY
-                        return f"{int(m1):02d}/{int(d1):02d}/{y1} - {int(m2):02d}/{int(d2):02d}/{y2}"
-                    return date_range
-                except Exception:
-                    return date_range
-
-            first_time_tracker = set()  # Set to track first occurrences of partner_name
+                import re
+                match = re.match(r"(\d{1,2})/(\d{1,2})/(\d{2,4}) - (\d{1,2})/(\d{1,2})/(\d{2,4})", date_range)
+                if match:
+                    m1, d1, y1, m2, d2, y2 = match.groups()
+                    y1, y2 = y1[-2:], y2[-2:]  # Convert YYYY to YY
+                    return f"{int(m1):02d}/{int(d1):02d}/{y1} - {int(m2):02d}/{int(d2):02d}/{y2}"
+                return date_range
 
             for scrape in all_scrape:
+                partner_name = scrape.partner_name
                 partner_type = scrape.partner
                 weekly_key = standardize_date_range(scrape.partner_profit or "")
 
@@ -1186,41 +1305,28 @@ class PartnersList(APIView):
                     continue
 
                 calculated_volume = 0.0
-                partner_name = scrape.partner_name  # Only tracking partner_name
+                combination = (partner_name, weekly_key)
 
-                if partner_type in ["BETWAR", "XAOS"]:
-                    volume_data = volume_data_list.filter(
-                        partner_name=scrape.partner_name,
-                        weak_date=weekly_key
-                    ).first()  # Get the first matching entry
-                    
-                    print("yaha kya a raha h dekhty hai", volume_data)
+                if combination not in first_time_tracker:
+                    first_time_tracker.add(combination)  # Mark as seen
 
-                    combination = (scrape.partner_name, weekly_key)  # Track each partner_name + weak_date
+                    raw_volume = 0.0
+                    volume_value = volume_dict.get(combination, "0")
 
-                    if combination not in first_time_tracker:  # First occurrence of (partner_name, weak_date)
-                        first_time_tracker.add(combination)  # Add this combination to the tracker
-
+                    try:
+                        raw_volume = float(volume_value.replace(",", "")) if volume_value else 0.0
+                    except ValueError:
                         raw_volume = 0.0
-                        if volume_data and volume_data.volume:
-                            try:
-                                raw_volume = float(volume_data.volume.replace(",", ""))
-                            except ValueError:
-                                raw_volume = 0.0
 
-                        multiplier = partner_info_dict.get(scrape.partner_name, 0.0)
+                    multiplier = partner_info_dict.get(partner_name, 0.0)
+                    if partner_name == "SNOWCLASSICO":
+                        raw_volume *= 0.80  # Reduce by 20%
 
-                        if scrape.partner_name == "SNOWCLASSICO":
-                            raw_volume *= 0.80  # Reduce by 20%
+                    calculated_volume = raw_volume * multiplier
+                    total_volume += calculated_volume  # Add only once
 
-                        calculated_volume = raw_volume * multiplier
-                        total_volume += calculated_volume  # Only add real volume once
-
-                        print("volume a raha hai yaha nahi", total_volume, calculated_volume)
-
-
-                item = {
-                    "volume": calculated_volume,  # First occurrence → real volume, others → 0
+                account_items.append({
+                    "volume": calculated_volume,
                     "partner": partner_type,
                     "weekly": scrape.weekly,
                     "partner_name": scrape.partner_name,
@@ -1234,8 +1340,7 @@ class PartnersList(APIView):
                     "total": scrape.total,
                     "user": scrape.user,
                     "id": scrape.id,
-                }
-                account_items.append(item)
+                })
 
             return Response({
                 "status": status.HTTP_200_OK,
@@ -1243,17 +1348,18 @@ class PartnersList(APIView):
                 "totalVolume": total_volume
             })
 
-
         except Exception as e:
             return Response(
                 {"status": status.HTTP_500_INTERNAL_SERVER_ERROR, "error": str(e)},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
 
+
 class NewsListView(APIView):
     def get(self, request, *args, **kwargs):
         try:
-            news_list = News.objects.filter(id=kwargs.get('id'))  # Use filter() instead of get()
+
+            news_list = News.objects.filter(added_by=kwargs.get('id'))  # Use filter() instead of get()
             print("id is", news_list)
             if not news_list.exists():
                 return Response(
