@@ -1353,7 +1353,13 @@ class PartnersList(APIView):
                 {"status": status.HTTP_500_INTERNAL_SERVER_ERROR, "error": str(e)},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
+from django.http import JsonResponse
 
+class CommentsCount(APIView):
+    def post(self, request):
+        ids = request.data.get("ids", [])  # ✅ IDs request body سے لیں
+        counts = {news_id: News.objects.filter(added_by=news_id).count() for news_id in ids}  # ✅ Loop میں count کریں
+        return JsonResponse(counts)
 
 class NewsListView(APIView):
     def get(self, request, *args, **kwargs):
