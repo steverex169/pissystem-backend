@@ -1254,6 +1254,8 @@ from django.db.models import Prefetch
 class PartnersList(APIView):
     def get(self, request, *args, **kwargs):
         try:
+            admind = UserAccount.objects.get(id=kwargs.get('id'))
+            print("user id here", admind)
             # Fetch only required fields (Avoid `all()`)
             all_scrape = Scrapdata.objects.only(
                 "partner_name", "partner", "weekly", "website_url",
