@@ -8,7 +8,7 @@ urlpatterns = [
     path('delete-organization-list/<id>', OrganizationListDeleteAPIView.as_view(), name='delete-organization-list/<id>'),
     path('bank-account-statements1/<id>', Statements2View.as_view(), name='bank-account-statements1/<id>'),
     path('all-registered-partners/<id>', AccountsListsView.as_view(), name='all-registered-partners/<id>'),
-    path('partners-list', PartnersList.as_view(), name='partners-list'),
+    path('partners-list/<id>', PartnersList.as_view(), name='partners-list'),
     path('news-list/<id>',
          NewsListView.as_view(), name='news-list'),
     path('news-count/',
