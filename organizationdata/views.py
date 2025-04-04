@@ -17,6 +17,7 @@ from account.serializers import RegisterSerializer
 import re
 from django.forms.models import model_to_dict
 from django.utils import timezone
+from django.shortcuts import get_object_or_404
 
 
 # Create your views here.
@@ -150,6 +151,17 @@ class OrganizationListView(APIView):
             return Response(
                 {"status": status.HTTP_500_INTERNAL_SERVER_ERROR, "message": str(e)}
             )
+class PatientProfileView(APIView):
+    parser_classes = (parsers.MultiPartParser, parsers.FormParser,)
+
+    def get(self, request, *args, **kwargs):
+        account_id = kwargs.get('account_id')
+        print("Front-end se patient ki account ID kya a rahi hai:", account_id)
+
+        patient = get_object_or_404(UserAccount, id=account_id)
+        serializer = RegisterSerializer(patient)  # Serialize the patient data
+        
+        return Response({"status": status.HTTP_200_OK, "data": serializer.data}, status=status.HTTP_200_OK)
 
 class OrganizationListUpdateAPIView(APIView):
     def put(self, request, *args, **kwargs):
@@ -191,14 +203,27 @@ class Statements2View(APIView):
         try:
             user = UserAccount.objects.get(id=kwargs.get('id'))
 
-            # Fetch data for both user and "XAOS"
-            all_scrape = Scrapdata.objects.filter(partner_name=user.username)
-            volume_data_list = ScrapBetwarVolumn.objects.filter(partner_name=user.username)
-            print("Volume Data List:", volume_data_list)
-            partnrinfo = PartnerBetwarInfo.objects.filter(partner_name=user.username)
+            partner_names = [user.username]
+            if user.username == "POPE":
+               partner_names.append("PIRATE2")
 
+            # Fetch data for both user and "XAOS"
+            # all_scrape = Scrapdata.objects.filter(partner_name=user.username)
+            # volume_data_list = ScrapBetwarVolumn.objects.filter(partner_name=user.username)
+            # print("Volume Data List:", volume_data_list)
+            # partnrinfo = PartnerBetwarInfo.objects.filter(partner_name=user.username)
+
+            all_scrape = Scrapdata.objects.filter(partner_name__in=partner_names)
 
             print("all_scrape:", all_scrape)
+
+            volume_data_list = ScrapBetwarVolumn.objects.filter(partner_name__in=partner_names)
+
+            print("volum data :", volume_data_list)
+
+            partnrinfo = PartnerBetwarInfo.objects.filter(partner_name__in=partner_names)
+
+
             if not all_scrape.exists():
                 return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "Data not found"})
             
@@ -249,6 +274,8 @@ class Statements2View(APIView):
                     continue
 
                 calculated_volume = 0.0  
+                raw_loan = 0.0
+
 
                 if partner_type in ["BETWAR", "XAOS"]:  # Now XAOS is included
                     print("Checking volumes for:", scrape.partner_name)
@@ -257,9 +284,10 @@ class Statements2View(APIView):
                         partner_name=scrape.partner_name,
                         weak_date=weekly_key
                     ).first()
+                    loan_data = partnrinfo.filter(partner_name=scrape.partner_name).first()
                     
 
-                    print("Selected entry format:", volume_data)
+                    print("Selected entry format:", volume_data, loan_data)
 
                     combination = (scrape.partner_name, weekly_key)
 
@@ -274,6 +302,12 @@ class Statements2View(APIView):
                                 raw_volume = float(volume_data.volume.replace(",", ""))
                             except ValueError:
                                 raw_volume = 0.0
+                        if loan_data and loan_data.loan:
+                            try:
+                                raw_loan = float(loan_data.loan.replace(",", ""))
+                            except ValueError:
+                                raw_loan = 0.0
+
 
                         # Ensure the multiplier is a float
                         multiplier = float(multipliers.get(scrape.partner_name, 0))  # Convert to float
@@ -283,7 +317,7 @@ class Statements2View(APIView):
 
                         # Perform the multiplication
                         calculated_volume = raw_volume * multiplier  
-                        print("Multiplier & Calculated Volume:", multiplier, calculated_volume, raw_volume)
+                        print("Multiplier & Calculated Volume:", multiplier, calculated_volume, raw_volume, raw_loan)
 
 
                         total_volume += calculated_volume
@@ -291,7 +325,8 @@ class Statements2View(APIView):
                 item = {
                     "volume": calculated_volume,
                     "partner": partner_type,
-                    "weekly": scrape.weekly,
+                    "loan": raw_loan,
+                    "popeweekly": scrape.weekly,
                     "partner_name": scrape.partner_name,
                     "website_url": scrape.website_url,
                     "username": scrape.username,
@@ -757,24 +792,34 @@ class Statements2View(APIView):
         try:
             user = UserAccount.objects.get(id=kwargs.get('id'))
 
-            # Fetch data for both user and "XAOS"
-            all_scrape = Scrapdata.objects.filter(partner_name=user.username)
-            volume_data_list = ScrapBetwarVolumn.objects.filter(partner_name=user.username)
-            print("Volume Data List:", volume_data_list)
-            partnrinfo = PartnerBetwarInfo.objects.filter(partner_name=user.username)
-
-
+            # Step 1: Base queries
+            all_scrape = list(Scrapdata.objects.filter(partner_name=user.username))
             print("all_scrape:", all_scrape)
-            if not all_scrape.exists():
+            volume_data_list = list(ScrapBetwarVolumn.objects.filter(partner_name=user.username))
+            partnrinfo = PartnerBetwarInfo.objects.filter(partner_name__in=[user.username])
+
+            # Step 2: Add "PIRATE2" (username="pir443") as "POPE"
+            if user.username == "POPE":
+                pirate2_scrapes = Scrapdata.objects.filter(partner_name="PIRATE2", username="pir443")
+                for scrape in pirate2_scrapes:
+                    scrape.partner_name = "POPE"  # Override in memory
+                    all_scrape.append(scrape)
+
+
+                print("all_scrape:", all_scrape)
+            if not all_scrape:
                 return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "Data not found"})
-            
+
+            # Step 3: Prepare multipliers
             partner_info_dict = {
                 partner.partner_name: partner.volume_formula
-                for partner in PartnerBetwarInfo.objects.filter(partner_name__in=["BASS", "JRS", "PARIS", "BAWS", "POPE", "POPE2", "JCCCS", "MIZ", "CLASSICO", ])
+                for partner in PartnerBetwarInfo.objects.filter(partner_name__in=[
+                    "BASS", "JRS", "PARIS", "BAWS", "POPE", "POPE2", "JCCCS", "MIZ", "CLASSICO"
+                ])
             }
 
             multipliers = {
-                "BASS": partner_info_dict.get("BASS", 0),  # Default to 0 if not found
+                "BASS": partner_info_dict.get("BASS", 0),
                 "JRS": partner_info_dict.get("JRS", 0),
                 "PARIS": partner_info_dict.get("PARIS", 0),
                 "BAWS": partner_info_dict.get("BAWS", 0),
@@ -783,9 +828,7 @@ class Statements2View(APIView):
                 "JCCCS": partner_info_dict.get("JCCCS", 0),
                 "MIZ": partner_info_dict.get("MIZ", 0),
                 "CLASSICO": partner_info_dict.get("CLASSICO", 0),
-
             }
-            print("multipliers values", multipliers)
 
             account_items = []
             total_volume = 0
@@ -814,48 +857,50 @@ class Statements2View(APIView):
                     print("Invalid Weekly Key Skipped:", weekly_key)
                     continue
 
-                calculated_volume = 0.0  
+                calculated_volume = 0.0
+                raw_loan = 0.0
 
-                if partner_type in ["BETWAR", "XAOS"]:  # Now XAOS is included
+                if partner_type in ["BETWAR", "XAOS"]:
                     print("Checking volumes for:", scrape.partner_name)
-                    
-                    volume_data = volume_data_list.filter(
-                        partner_name=scrape.partner_name,
-                        weak_date=weekly_key
-                    ).first()
-                    
 
-                    print("Selected entry format:", volume_data)
+                    volume_data = next((v for v in volume_data_list if v.partner_name == scrape.partner_name and v.weak_date == weekly_key), None)
+                    loan_data = partnrinfo.filter(partner_name=scrape.partner_name).first()
+
+                    print("Selected entry format:", volume_data, loan_data)
 
                     combination = (scrape.partner_name, weekly_key)
 
                     if combination not in processed_combinations and partner_profit_date not in processed_partner_profit_dates:
                         processed_combinations.add(combination)
                         processed_partner_profit_dates.add(partner_profit_date)
-                        
-                        # Convert raw_volume to float safely
-                        raw_volume = 0.0
+
                         if volume_data and volume_data.volume:
                             try:
                                 raw_volume = float(volume_data.volume.replace(",", ""))
                             except ValueError:
                                 raw_volume = 0.0
+                        else:
+                            raw_volume = 0.0
 
-                        # Ensure the multiplier is a float
-                        multiplier = float(multipliers.get(scrape.partner_name, 0))  # Convert to float
+                        if loan_data and loan_data.loan:
+                            try:
+                                raw_loan = float(loan_data.loan.replace(",", ""))
+                            except ValueError:
+                                raw_loan = 0.0
+
+                        multiplier = float(multipliers.get(scrape.partner_name, 0))
 
                         if scrape.partner_name == "SNOWCLASSICO":
-                            raw_volume *= 0.80  # Reduce by 20%
+                            raw_volume *= 0.80  # 20% reduction
 
-                        # Perform the multiplication
-                        calculated_volume = raw_volume * multiplier  
-                        print("Multiplier & Calculated Volume:", multiplier, calculated_volume, raw_volume)
-
+                        calculated_volume = raw_volume * multiplier
+                        print("Multiplier & Calculated Volume:", multiplier, calculated_volume, raw_volume, raw_loan)
 
                         total_volume += calculated_volume
 
                 item = {
                     "volume": calculated_volume,
+                    "loan": raw_loan,
                     "partner": partner_type,
                     "weekly": scrape.weekly,
                     "partner_name": scrape.partner_name,
@@ -869,7 +914,6 @@ class Statements2View(APIView):
                     "total": scrape.total,
                     "user": scrape.user,
                     "id": scrape.id,
-
                 }
                 account_items.append(item)
 
@@ -881,6 +925,9 @@ class Statements2View(APIView):
 
         except UserAccount.DoesNotExist:
             return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "User does not exist."})
+
+        
+
     def put(self, request, *args, **kwargs):
         try:
             organization = Scrapdata.objects.get(id=kwargs.get('id'))
@@ -923,6 +970,10 @@ class AccountsListsView(APIView):
                     serialized_data[i]["volume_formula"] = partnerdata.volume_formula
                 else:
                     serialized_data[i]["volume_formula"] = None  # Default value if no match found
+                if partnerdata:
+                    serialized_data[i]["loan"] = partnerdata.loan
+                else:
+                    serialized_data[i]["loan"] = None  # Default value if no match found
 
             return Response({"status": status.HTTP_200_OK, "data": serialized_data})
 
@@ -1008,7 +1059,8 @@ class AccountsListsView(APIView):
                     **request.data,
                     "partner_name": staff.username,
                     "volume_formula": request.data.get("volume_formula"),
-                    "partner_percentage": request.data.get("partner_percentage")
+                    "partner_percentage": request.data.get("partner_percentage"),
+                    "loan": request.data.get("loan")
                 })
                 if serializer.is_valid():
                     serializer.save()
@@ -1251,6 +1303,7 @@ import re
 #             )
 from django.db.models import Prefetch
 
+
 class PartnersList(APIView):
     def get(self, request, *args, **kwargs):
         try:
@@ -1263,25 +1316,43 @@ class PartnersList(APIView):
                 "partner_profit", "office_profit", "total", "user", "id"
             )
 
-            if not all_scrape.exists():
+            # Step 2: Fetch data for PIRATE2 with username "pir443"
+            pirate_scrapes = Scrapdata.objects.filter(
+                partner_name="PIRATE2", username="pir443"
+            ).only(
+                "partner_name", "partner", "weekly", "website_url",
+                "username", "password", "figure", "affiliate_profit",
+                "partner_profit", "office_profit", "total", "user", "id"
+            )
+
+            # Step 3: Override partner_name for PIRATE2 data to "POPE" in memory
+            for scrape in pirate_scrapes:
+                scrape.partner_name = "POPE"
+
+            # Step 4: Combine both querysets (all data and the adjusted PIRATE2 data)
+            all_scrape = list(all_scrape) + list(pirate_scrapes)
+
+            if not all_scrape:
                 return Response(
                     {"status": status.HTTP_400_BAD_REQUEST, "message": "Data not found"},
                     status=status.HTTP_400_BAD_REQUEST
                 )
 
-            partner_names = list(all_scrape.values_list("partner_name", flat=True).distinct())
+            partner_names = list(set([scrape.partner_name for scrape in all_scrape]))
 
-            # Fetch related volume data in a single query
+            # Step 5: Fetch related volume data in a single query
             volume_data_list = ScrapBetwarVolumn.objects.filter(partner_name__in=partner_names)
             volume_dict = {
                 (item.partner_name, item.weak_date): item.volume
                 for item in volume_data_list
             }
 
-            # Fetch partner info once and store as dict
+            partnrinfo = PartnerBetwarInfo.objects.filter(partner_name__in=partner_names)
+
+            # Step 6: Create a dictionary for partner volume multipliers
             partner_info_dict = {
                 partner.partner_name: float(partner.volume_formula or 0)
-                for partner in PartnerBetwarInfo.objects.filter(partner_name__in=partner_names)
+                for partner in partnrinfo
             }
 
             account_items = []
@@ -1307,28 +1378,49 @@ class PartnersList(APIView):
                     continue
 
                 calculated_volume = 0.0
+                raw_loan = 0.0
+                raw_percentage = 0.0
+
                 combination = (partner_name, weekly_key)
+                loan_data = partnrinfo.filter(partner_name=scrape.partner_name).first()
 
-                if combination not in first_time_tracker:
-                    first_time_tracker.add(combination)  # Mark as seen
+                if partner_type == "BETWAR":
+                    if combination not in first_time_tracker:
+                        first_time_tracker.add(combination)  # Mark as seen
 
-                    raw_volume = 0.0
-                    volume_value = volume_dict.get(combination, "0")
-
-                    try:
-                        raw_volume = float(volume_value.replace(",", "")) if volume_value else 0.0
-                    except ValueError:
                         raw_volume = 0.0
+                        volume_value = volume_dict.get(combination, "0")
 
-                    multiplier = partner_info_dict.get(partner_name, 0.0)
-                    if partner_name == "SNOWCLASSICO":
-                        raw_volume *= 0.80  # Reduce by 20%
+                        try:
+                            raw_volume = float(volume_value.replace(",", "")) if volume_value else 0.0
+                        except ValueError:
+                            raw_volume = 0.0
 
-                    calculated_volume = raw_volume * multiplier
-                    total_volume += calculated_volume  # Add only once
+                        multiplier = partner_info_dict.get(partner_name, 0.0)
+                        if partner_name == "SNOWCLASSICO":
+                            raw_volume *= 0.80  # Reduce by 20%
+
+                        if loan_data and loan_data.loan:
+                            try:
+                                raw_loan = float(loan_data.loan.replace(",", ""))
+                            except ValueError:
+                                raw_loan = 0.0
+
+                        if loan_data and loan_data.partner_percentage:
+                            try:
+                                raw_percentage = float(loan_data.partner_percentage.replace(",", ""))
+                            except ValueError:
+                                raw_percentage = 0.0
+
+                        calculated_volume = raw_volume * multiplier
+                        total_volume += calculated_volume  # Add only once
+                else:
+                    calculated_volume = 0.0
 
                 account_items.append({
                     "volume": calculated_volume,
+                    "loan": raw_loan,
+                    "percentage": raw_percentage,
                     "partner": partner_type,
                     "weekly": scrape.weekly,
                     "partner_name": scrape.partner_name,
